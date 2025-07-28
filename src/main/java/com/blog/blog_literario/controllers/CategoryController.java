@@ -37,7 +37,7 @@ public class CategoryController {
 
     @PostMapping // Método para crear una nueva categoria
     public ResponseEntity<?> createCategory(@Valid @RequestBody categoryCreateDTO dto, BindingResult result) {
-        // Validacion de Errores
+        // Validacion de Errores DTO
         if (result.hasErrors()) {
             // Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()
@@ -55,7 +55,7 @@ public class CategoryController {
     @PutMapping("/{id}") // Método para actualizar una categoria
     public ResponseEntity<?> updateCategory(@PathVariable Integer id, @Valid @RequestBody categoryUpdateDTO dto,
             BindingResult result) {
-        // Validacion de Errores
+        // Validacion de Errores DTO
         if (result.hasErrors()) {
             // Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()

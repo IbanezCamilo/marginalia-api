@@ -1,8 +1,8 @@
 package com.blog.blog_literario.controllers;
 
 import com.blog.blog_literario.dto.userCreateDTO;
+import com.blog.blog_literario.dto.userResponseDTO;
 import com.blog.blog_literario.dto.userUpdateDTO;
-import com.blog.blog_literario.entities.User;
 import com.blog.blog_literario.services.UserService;
 
 import jakarta.validation.Valid; //Jakarta para validaciones
@@ -23,13 +23,13 @@ public class UserController {
 
     @GetMapping // Método para obtener todos los usuarios
     public ResponseEntity<?> getAllUsers(){
-         List<User> usuarios = userSevice.getAllUsers();
+         List<userResponseDTO> usuarios = userSevice.getAllUsers();
          return ResponseEntity.ok(usuarios); // status 200 = OK
     }
 
     @GetMapping ("/{id}") //Método para obtener usuario por id
     public ResponseEntity<?> getUserById(@PathVariable Integer id) {
-        User usuario = userSevice.getUserById(id);
+        userResponseDTO usuario = userSevice.getUserById(id);
         return ResponseEntity.ok(usuario); // status 200 = OK
     }    
 
@@ -45,13 +45,13 @@ public class UserController {
                 return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con la lista de errores
         }
         //Guardar y retornar
-        User usuarioCreado = userSevice.createUser(dto); //Envia y retorna datos al userService
+        userResponseDTO usuarioCreado = userSevice.createUser(dto); //Envia y retorna datos al userService
         return ResponseEntity.status(201).body(usuarioCreado); // status = 201: Guardado exitosamente
     }
 
     @PutMapping("/{id}") // Método para actualizar un usuario existente
     public ResponseEntity<?> updateUser(@PathVariable Integer id, @Valid @RequestBody userUpdateDTO dto, BindingResult result){
-        //Validacion de Errores
+        //Validacion de Errores DTO
         if(result.hasErrors()){
             //Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()
@@ -62,7 +62,7 @@ public class UserController {
         }
 
         //Guardar y retornar
-        User usuarioActualizado = userSevice.updateUser(id, dto); //Envia y retorna datos al userService
+        userResponseDTO usuarioActualizado = userSevice.updateUser(id, dto); //Envia y retorna datos al userService
         return ResponseEntity.status(201).body(usuarioActualizado); // 201: Guardado correctamente
     }
 

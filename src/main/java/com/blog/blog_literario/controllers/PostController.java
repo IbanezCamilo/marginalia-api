@@ -36,7 +36,7 @@ public class PostController {
 
     @PostMapping // Método para crear un nuevo post
     public ResponseEntity<?> createPost(@Valid @RequestBody postCreateDTO dto, BindingResult result) {
-        //Validacion de Errores
+        //Validacion de Errores DTO
         if(result.hasErrors()){
             //Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()
@@ -52,7 +52,7 @@ public class PostController {
 
     @PutMapping("/{id}") // Método para actualizar un post existente
     public ResponseEntity<?> updatePost(@PathVariable Integer id, @Valid @RequestBody postUpdateDTO dto, BindingResult result) {
-        //Validacion de Errores
+        //Validacion de Errores DTO
         if(result.hasErrors()){
             //Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()
