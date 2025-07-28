@@ -1,0 +1,55 @@
+# === Maven ===
+target/
+.mvn/wrapper/maven-wrapper.log
+
+# Puedes incluir el wrapper para que otros puedan compilar sin tener Maven:
+!mvnw
+!mvnw.cmd
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# === IDEs ===
+
+# STS / Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# === Archivos temporales / del sistema ===
+.DS_Store
+Thumbs.db
+
+# === Configuración sensible ===
+*.env
+application.properties
+application.yml
+application-*.yml
+application-*.properties
+.env.*
+
+# Puedes dejar ejemplos
+!application-example.yml
+!.env.example
+
+# Archivos de ayuda generados
+HELP.md
