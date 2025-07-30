@@ -4,9 +4,9 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
-import com.blog.blog_literario.entities.Post;
-import com.blog.blog_literario.dto.postCreateDTO;
-import com.blog.blog_literario.dto.postUpdateDTO;
+import com.blog.blog_literario.dto.postsDTO.postCreateDTO;
+import com.blog.blog_literario.dto.postsDTO.postUpdateDTO;
+import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.services.PostService;
 
 import org.springframework.beans.factory.annotation.Autowired; // Inyección de dependencias

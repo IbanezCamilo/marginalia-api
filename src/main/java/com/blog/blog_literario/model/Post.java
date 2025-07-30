@@ -1,4 +1,4 @@
-package com.blog.blog_literario.entities;
+package com.blog.blog_literario.model;
 
 import java.time.LocalDateTime;
 import jakarta.persistence.*; // Contiene todas las anotaciones de JPA

@@ -1,7 +1,9 @@
 package com.blog.blog_literario.repositories;
 
-import com.blog.blog_literario.entities.User; //Importa la entidad user
 import org.springframework.data.jpa.repository.JpaRepository; //Importa JpaRepository para operaciones CRUD
+
+import com.blog.blog_literario.model.User;
+
 import java.util.Optional; //Importa Optional para manejar valores que pueden ser nulos
 
 public interface UserRepository extends JpaRepository<User, Integer> {

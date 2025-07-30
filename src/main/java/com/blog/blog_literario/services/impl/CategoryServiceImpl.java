@@ -5,10 +5,10 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.blog.blog_literario.dto.categoryCreateDTO;
-import com.blog.blog_literario.dto.categoryUpdateDTO;
-import com.blog.blog_literario.entities.Category;
+import com.blog.blog_literario.dto.categoriesDTO.categoryCreateDTO;
+import com.blog.blog_literario.dto.categoriesDTO.categoryUpdateDTO;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
+import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.services.CategoryService;
 

@@ -6,12 +6,12 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.blog.blog_literario.dto.postCreateDTO;
-import com.blog.blog_literario.dto.postUpdateDTO;
-import com.blog.blog_literario.entities.Category;
-import com.blog.blog_literario.entities.Post;
-import com.blog.blog_literario.entities.User;
+import com.blog.blog_literario.dto.postsDTO.postCreateDTO;
+import com.blog.blog_literario.dto.postsDTO.postUpdateDTO;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
+import com.blog.blog_literario.model.Category;
+import com.blog.blog_literario.model.Post;
+import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;

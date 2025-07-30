@@ -1,6 +1,6 @@
-package com.blog.blog_literario.dto;
+package com.blog.blog_literario.dto.postsDTO;
 
-import java.time.LocalDateTime;
+//import java.time.LocalDateTime;
 
 public record postResponseDTO(
     // Integer idUsuario,

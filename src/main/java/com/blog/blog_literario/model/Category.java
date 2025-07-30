@@ -1,4 +1,4 @@
-package com.blog.blog_literario.entities;
+package com.blog.blog_literario.model;
 
 import jakarta.persistence.*; // Contiene todas las anotaciones de JPA
 import lombok.Data; // Lombok para generar getters y setters automáticamente

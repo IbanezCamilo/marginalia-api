@@ -1,4 +1,4 @@
-package com.blog.blog_literario.dto;
+package com.blog.blog_literario.dto.categoriesDTO;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

@@ -1,7 +1,9 @@
 package com.blog.blog_literario.repositories;
 
-import com.blog.blog_literario.entities.Post;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.blog.blog_literario.model.Post;
+
 import java.util.Optional;
 import java.util.List;
 

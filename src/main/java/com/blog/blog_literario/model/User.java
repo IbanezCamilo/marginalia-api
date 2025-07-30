@@ -1,4 +1,4 @@
-package com.blog.blog_literario.entities;
+package com.blog.blog_literario.model;
 
 import jakarta.persistence.*; // Contiene todas las anotaciones de JPA
 import lombok.Data;// Lombok para generar getters y setters automáticamente
@@ -16,13 +16,20 @@ public class User {
     @Column(name = "nombre", nullable = false) // Columna no nula y única
     private String nombre;
 
+    @Column //la descripcion puede estar vacia
+    private String descripcion;
+
+    @Column(nullable = false) // Si no hay foto se pondra una por defecto 
+    private String fotoPerfil;
+
     @Column(name="password", nullable = false, length = 255) // Columna no nula
     private String password;
 
     @Column(name = "email", nullable = false, unique = true) // Columna no nula
     private String email;
 
+    @Enumerated(EnumType.STRING) //Guarda el dato como String
     @Column(name = "rol", nullable = false) // Columna no nula
-    private String rol; // Rol del usuario (ej. ADMIN, USER)
+    private Rol rol; // Rol del usuario (ej. ADMIN, USER)
 
 }

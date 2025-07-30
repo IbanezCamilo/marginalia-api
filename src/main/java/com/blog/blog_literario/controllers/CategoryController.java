@@ -1,8 +1,8 @@
 package com.blog.blog_literario.controllers;
 
-import com.blog.blog_literario.dto.categoryCreateDTO;
-import com.blog.blog_literario.dto.categoryUpdateDTO;
-import com.blog.blog_literario.entities.Category;
+import com.blog.blog_literario.dto.categoriesDTO.categoryCreateDTO;
+import com.blog.blog_literario.dto.categoriesDTO.categoryUpdateDTO;
+import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.services.CategoryService;
 
 import jakarta.validation.Valid;

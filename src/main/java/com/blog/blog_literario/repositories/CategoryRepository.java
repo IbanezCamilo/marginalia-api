@@ -1,7 +1,9 @@
 package com.blog.blog_literario.repositories;
 
-import com.blog.blog_literario.entities.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.blog.blog_literario.model.Category;
+
 import java.util.Optional;
 
 public interface CategoryRepository extends JpaRepository<Category, Integer> {

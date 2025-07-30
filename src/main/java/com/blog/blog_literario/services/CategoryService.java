@@ -1,9 +1,10 @@
 package com.blog.blog_literario.services;
 
 import java.util.List;
-import com.blog.blog_literario.entities.Category;
-import com.blog.blog_literario.dto.categoryCreateDTO;
-import com.blog.blog_literario.dto.categoryUpdateDTO;
+
+import com.blog.blog_literario.dto.categoriesDTO.categoryCreateDTO;
+import com.blog.blog_literario.dto.categoriesDTO.categoryUpdateDTO;
+import com.blog.blog_literario.model.Category;
 
 public interface CategoryService {
     Category createCategory(categoryCreateDTO dto); //Método plantilla para crear una categoria

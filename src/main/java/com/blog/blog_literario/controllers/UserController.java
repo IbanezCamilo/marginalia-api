@@ -1,8 +1,10 @@
 package com.blog.blog_literario.controllers;
 
-import com.blog.blog_literario.dto.userCreateDTO;
-import com.blog.blog_literario.dto.userResponseDTO;
-import com.blog.blog_literario.dto.userUpdateDTO;
+import com.blog.blog_literario.dto.usersDTO.userCreateDTO;
+import com.blog.blog_literario.dto.usersDTO.userResponseDTO;
+import com.blog.blog_literario.dto.usersDTO.userUpdateDTO;
+//import com.blog.blog_literario.dto.usersDTO.userProfileUpdateDTO;
+//import com.blog.blog_literario.dto.usersDTO.userProfileResponseDTO;
 import com.blog.blog_literario.services.UserService;
 
 import jakarta.validation.Valid; //Jakarta para validaciones
@@ -65,6 +67,24 @@ public class UserController {
         userResponseDTO usuarioActualizado = userSevice.updateUser(id, dto); //Envia y retorna datos al userService
         return ResponseEntity.status(201).body(usuarioActualizado); // 201: Guardado correctamente
     }
+
+    /* -------------IMPLEMENTACION DEL PERFIL A FUTURO------------------------------------
+    @PatchMapping("/{id}/profile") // Método para actualizar parcialmente un usuario
+    public ResponseEntity<?> updateProfile(@PathVariable Integer id, @Valid @ModelAttribute userProfileUpdateDTO dto, BindingResult result){
+        //Validacion de Errores DTO
+        if(result.hasErrors()){
+            //Si hay errores de validación, captura y devuelve una lista
+            var errores = result.getFieldErrors()
+                .stream() // Inicia el flujo para recorrer la lista
+                .map(e -> e.getField() + ":" + e.getDefaultMessage()) //Estructura los errores en un string
+                .toList(); // Devuelve la lista de mensajes como strings
+                return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con la lista de errores
+        }
+
+        //Guardar y retornar
+        userResponseDTO perfilActualizado =
+    }
+    */
 
     @DeleteMapping("/{id}") // Método para eliminar un usuario por ID
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
