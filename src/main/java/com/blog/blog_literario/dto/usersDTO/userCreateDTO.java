@@ -1,6 +1,5 @@
 package com.blog.blog_literario.dto.usersDTO;
 
-import com.blog.blog_literario.model.Rol;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +16,4 @@ public class userCreateDTO {
     @NotBlank(message="El correo es obligatorio")
     @Email(message = "Correo no válido")
     private String email;
-    @NotBlank(message="El rol es obligatorio")
-    private Rol rol;
 }

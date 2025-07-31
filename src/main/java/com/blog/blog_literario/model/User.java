@@ -7,7 +7,7 @@ import lombok.Data;// Lombok para generar getters y setters automáticamente
 @Data // Lombok generará getters, setters, toString, equals y hashCode
 @Table(name = "usuario") // Nombre de la tabla en la base de datos
 public class User {
-    
+
     @Id // Indica que este campo es la clave primaria
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Generación automática del ID
     @Column(name = "id_usuario") // Nombre de la columna en la base de datos
@@ -16,20 +16,20 @@ public class User {
     @Column(name = "nombre", nullable = false) // Columna no nula y única
     private String nombre;
 
-    @Column //la descripcion puede estar vacia
+    @Column // la descripcion puede estar vacia
     private String descripcion;
 
-    @Column(nullable = false) // Si no hay foto se pondra una por defecto 
+    @Column(nullable = false) // Si no hay foto se pondra una por defecto
     private String fotoPerfil;
 
-    @Column(name="password", nullable = false, length = 255) // Columna no nula
+    @Column(name = "password", nullable = false, length = 255) // Columna no nula
     private String password;
 
     @Column(name = "email", nullable = false, unique = true) // Columna no nula
     private String email;
 
-    @Enumerated(EnumType.STRING) //Guarda el dato como String
-    @Column(name = "rol", nullable = false) // Columna no nula
+    @ManyToOne /* Un rol puede estar en varios usuarios, un usuario solo puede tener un rol */
+    @JoinColumn(name = "id_rol", nullable = false)
     private Rol rol; // Rol del usuario (ej. ADMIN, USER)
 
 }

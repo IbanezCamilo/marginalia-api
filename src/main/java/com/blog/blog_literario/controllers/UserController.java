@@ -35,7 +35,7 @@ public class UserController {
         return ResponseEntity.ok(usuario); // status 200 = OK
     }    
 
-    @PostMapping // Método para crear un nuevo usuario
+    /*    @PostMapping // Método para crear un nuevo usuario
     public ResponseEntity<?> createUser(@Valid @RequestBody userCreateDTO dto, BindingResult result){
         //Validacion de Errores DTO
         if(result.hasErrors()){
@@ -50,6 +50,8 @@ public class UserController {
         userResponseDTO usuarioCreado = userSevice.createUser(dto); //Envia y retorna datos al userService
         return ResponseEntity.status(201).body(usuarioCreado); // status = 201: Guardado exitosamente
     }
+         */
+
 
     @PutMapping("/{id}") // Método para actualizar un usuario existente
     public ResponseEntity<?> updateUser(@PathVariable Integer id, @Valid @RequestBody userUpdateDTO dto, BindingResult result){

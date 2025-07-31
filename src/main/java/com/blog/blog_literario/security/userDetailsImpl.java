@@ -19,7 +19,7 @@ public class userDetailsImpl implements UserDetails {
 
     @Override // Lista para conocer los permisos de usuario
     public Collection<? extends GrantedAuthority> getAuthorities(){
-        return List.of(new SimpleGrantedAuthority(usuario.getRol().name()));
+        return List.of(new SimpleGrantedAuthority(usuario.getRol().getNombre()));
     }
 
     @Override

@@ -1,7 +1,10 @@
 package com.blog.blog_literario.dto.authDTO;
 
-//Recibe el correo y contraseña del usuario
-public record LoginRequestDTO(
+import jakarta.validation.constraints.NotBlank;
+
+public record loginRequestDTO(//Recibe el correo y contraseña del usuario
+    @NotBlank(message="Debe escribir un correo")    
     String email,
+    @NotBlank(message="Debe ingresar una contraseña")
     String password
 ){}

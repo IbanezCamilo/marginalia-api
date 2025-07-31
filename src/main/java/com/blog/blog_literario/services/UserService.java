@@ -11,7 +11,7 @@ import com.blog.blog_literario.dto.usersDTO.userUpdateDTO;
 public interface UserService {
 
     //MÉTODOS PRINCIPALES DEL USUARIO
-    userResponseDTO createUser(userCreateDTO dto); // Método plantilla para crear un Usuario
+    void createUser(userCreateDTO dto); // Método plantilla para crear un Usuario
     userResponseDTO updateUser(Integer id, userUpdateDTO dto); // Método plantilla para actualizar un Usuario
     void deleteUser(Integer id); // Método plantilla para eliminar un Usuario
     userResponseDTO getUserById(Integer id); // Método plantilla para obtener un Usuario por ID
