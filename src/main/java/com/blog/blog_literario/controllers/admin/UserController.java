@@ -4,7 +4,6 @@ import com.blog.blog_literario.dto.profile.userProfileResponseDTO;
 import com.blog.blog_literario.dto.profile.userProfileUpdateDTO;
 import com.blog.blog_literario.dto.users.userCreateDTO;
 import com.blog.blog_literario.dto.users.userResponseDTO;
-import com.blog.blog_literario.dto.users.userUpdateDTO;
 import com.blog.blog_literario.services.general.UserService;
 import com.blog.blog_literario.services.secundary.UserProfileService;
 
@@ -12,7 +11,6 @@ import jakarta.validation.Valid; //Jakarta para validaciones
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*; // Anotaciones para crear controladores REST

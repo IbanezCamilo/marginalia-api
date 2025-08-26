@@ -20,7 +20,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<Category> getAllCategories() {
-        return categoryRepository.findAll(); // Retorna todos los usuarios del Repositorio
+        return categoryRepository.findAll(); // Retorna todos las categorias del Repositorio
     }
 
     @Override

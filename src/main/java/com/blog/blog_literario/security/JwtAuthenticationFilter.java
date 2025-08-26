@@ -41,7 +41,7 @@ public class JwtAuthenticationFilter extends  OncePerRequestFilter {
 
         jwt = authHeader.substring(7); // Extrae el token sin "Bearer "
         userEmail = jwtService.extractUsername(jwt); // Extrae el email del token   
-
+        System.out.println("Usuario Extraido: "+ userEmail);
         // Verifica si el usuario ya está autenticado
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             var userDetails = this.userDetailsService.loadUserByUsername(userEmail); // Carga los detalles del usuario
@@ -50,6 +50,7 @@ public class JwtAuthenticationFilter extends  OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request)); // Establece los detalles de autenticación
                 SecurityContextHolder.getContext().setAuthentication(authToken); // Guarda la autenticación en el contexto de seguridad
             }
+            System.out.println("Token valido: "+jwtService.isTokenValid(jwt, userDetails));
         }
         filterChain.doFilter(request, response); // Continúa con la cadena de filtros
 

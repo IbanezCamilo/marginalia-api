@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 import com.blog.blog_literario.dto.posts.postCreateDTO;
+import com.blog.blog_literario.dto.posts.postRequestDTO;
 import com.blog.blog_literario.dto.posts.postUpdateDTO;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.services.general.PostService;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired; // Inyección de 
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*; // Anotaciones para crear controladores REST
+import org.springframework.web.multipart.MultipartFile;
 
 
 @RestController // Indica que esta clase es un controlador REST
@@ -35,7 +37,8 @@ public class PostController {
     }
 
     @PostMapping // Método para crear un nuevo post
-    public ResponseEntity<?> createPost(@Valid @RequestBody postCreateDTO dto, BindingResult result) {
+    public ResponseEntity<?> createPost(@Valid @RequestPart("data") postRequestDTO dto,
+        @RequestPart(value = "image", required = false) MultipartFile image, BindingResult result) {
         //Validacion de Errores DTO
         if(result.hasErrors()){
             //Si hay errores de validación, captura y devuelve una lista
@@ -46,7 +49,7 @@ public class PostController {
                 return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con la lista de errores
         }
             //Crear, Guardar y Retornar
-            Post postCreado = postService.createPost(dto); // Envia y retorna datos al PostService
+            Post postCreado = postService.createPost(dto, image); // Envia y retorna datos al PostService
             return ResponseEntity.status(201).body(postCreado); // 201: Creado exitosamente
         }
 
