@@ -1,76 +1,56 @@
 package com.blog.blog_literario.controllers.profile;
 
-import com.blog.blog_literario.dto.profile.userProfileResponseDTO;
-import com.blog.blog_literario.dto.profile.userProfileUpdateDTO;
-import com.blog.blog_literario.services.secundary.UserProfileService;
-
-import jakarta.validation.Valid; //Jakarta para validaciones
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*; // Anotaciones para crear controladores REST
+import org.springframework.validation.BindingResult; //Jakarta para validaciones
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+import com.blog.blog_literario.dto.profile.userProfileResponseDTO; // Anotaciones para crear controladores REST
+import com.blog.blog_literario.dto.profile.userProfileUpdateDTO;
+import com.blog.blog_literario.services.secundary.UserProfileService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-@RestController // Indica que esta clase es un controlador REST
-@RequestMapping("/api/profile") // Define la ruta base para las peticiones a este controlador
+@RestController
+@RequestMapping("/api/users/profile")
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
 
-    @GetMapping // para ver el perfil
-    // param: Se obtiene el usuario actualmente autenticado
+    @GetMapping
+    // param: Obtiene el usuario Autenticado
     public ResponseEntity<?> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
         userProfileResponseDTO usuario = userProfileService.getUserProfile(userDetails);
         return ResponseEntity.ok(usuario); // status 200 = ok
     }
 
-    @PutMapping // Método para actualizar un usuario existente
+    @PutMapping // Actualizar un usuario existente
     public ResponseEntity<?> updateUser(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody userProfileUpdateDTO dto,
             BindingResult result) {
         // Validacion de Errores DTO
         if (result.hasErrors()) {
-            // Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()
                     .stream() // Inicia el flujo para recorrer la lista
-                    .map(e -> e.getField() + ":" + e.getDefaultMessage()) // Estructura los errores en un string
-                    .toList(); // Devuelve la lista de mensajes como strings
-            return ResponseEntity.badRequest().body(errores); // devuelve un http 400 con la lista de errores
+                    .map(e -> e.getField() + ":" + e.getDefaultMessage())
+                    .toList();
+            return ResponseEntity.badRequest().body(errores);
         }
 
-        // Guardar y retornar
-        userProfileResponseDTO usuarioActualizado = userProfileService.updateUserProfile(userDetails, dto); // Envia y
-                                                                                                            // retorna
-                                                                                                            // datos al
-                                                                                                            // userService
-        return ResponseEntity.status(201).body(usuarioActualizado); // 201: Guardado correctamente
-    }
+        try {
+            //Envia datos al userService
+            userProfileResponseDTO usuarioActualizado = userProfileService.updateUserProfile(userDetails, dto);
 
-    /*
-     * -------------IMPLEMENTACION DEL PERFIL A
-     * FUTURO------------------------------------
-     * 
-     * @PatchMapping("/{id}/profile") // Método para actualizar parcialmente un
-     * usuario
-     * public ResponseEntity<?> updateProfile(@PathVariable Integer
-     * id, @Valid @ModelAttribute userProfileUpdateDTO dto, BindingResult result){
-     * //Validacion de Errores DTO
-     * if(result.hasErrors()){
-     * //Si hay errores de validación, captura y devuelve una lista
-     * var errores = result.getFieldErrors()
-     * .stream() // Inicia el flujo para recorrer la lista
-     * .map(e -> e.getField() + ":" + e.getDefaultMessage()) //Estructura los
-     * errores en un string
-     * .toList(); // Devuelve la lista de mensajes como strings
-     * return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con
-     * la lista de errores
-     * }
-     * 
-     * //Guardar y retornar
-     * userResponseDTO perfilActualizado =
-     * }
-     */
+            return ResponseEntity.ok(usuarioActualizado);
+        } catch (Exception e) {
+            //status 500: internal error
+            return ResponseEntity.status(500).body("Error al actualizar el perfil " + e.getMessage());
+        }
+    }
 }

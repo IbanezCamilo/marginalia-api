@@ -36,7 +36,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         // Buscar el usuario
         User usuario = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "Usuario no encontrado con email: " + userDetails.getUsername()));
+                "Usuario no encontrado con email: " + userDetails.getUsername()));
 
         // Devolver DTO con los datos
         return new userProfileResponseDTO(
@@ -48,44 +48,21 @@ public class UserProfileServiceImpl implements UserProfileService {
                 usuario.getRol().getNombre());
     }
 
-    // Método para actualizar Información desde el perfil de usuario
+    // Método para actualizar datos del perfil de usuario
     public userProfileResponseDTO updateUserProfile(UserDetails userDetails, userProfileUpdateDTO dto) {
         // Buscar el usuario
         User usuario = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "Usuario no encontrado con email: " + userDetails.getUsername()));
+                "Usuario no encontrado con email: " + userDetails.getUsername()));
 
         // Actualizar el usuario
-        usuario.setNombre(dto.getNombre()); //Actualiza el nombre
+        usuario.setNombre(dto.getNombre());
         // Si la descripción es nula, se deja como está
         usuario.setDescripcion(dto.getDescripcion()); // Actualiza la descripción
 
-        //CODIGO TEMPORAL PARA EVITAR ERRORES DE COMPILACIÓN
-        // Verificar si la foto de perfil es por defecto
-        usuario.setFotoPerfil(obtenerFotoValida(dto.getFotoPerfil(), FOTO_POR_DEFECTO));
-        
-        // AGREGANDO UNA FOTO DE PERFIL POR MEDIO DE UN ARCHIVO EN UN FUTURO
-       /* MultipartFile foto = dto.getFotoPerfil();
-        if (foto != null && !foto.isEmpty()) {// Verificar si se ha proporcionado una foto de perfil
-             *  //CODIGO PARA IMPLEMENTAR FOTOS EN UN FUTURO
-             * try {
-             * // Simulación: guarda en local o genera URL ficticia
-             * String nombreArchivo = UUID.randomUUID() + "_" + foto.getOriginalFilename();
-             * Path rutaImagen = Paths.get("uploads/" + nombreArchivo); // crea la carpeta
-             * 'uploads'
-             * Files.createDirectories(rutaImagen.getParent());
-             * Files.write(rutaImagen, foto.getBytes());
-             * usuario.setFotoPerfil("/uploads/" + nombreArchivo); // ruta que se puede usar
-             * desde el frontend
-             * } catch (IOException e) {
-             * throw new RuntimeException("Error al guardar la imagen", e);
-             * }
-             
-        } else {
-            // Se asigna una foto de perfil por defecto
-            usuario.setFotoPerfil("https://servidor.com/images/default-avatar.png");
+        if (dto.getFotoPerfil() != null && !dto.getFotoPerfil().isEmpty()) {
+            usuario.setFotoPerfil(dto.getFotoPerfil());
         }
-        */
 
         // Guardar el nuevo usuario actualizado
         User actualizado = userRepository.save(usuario);
@@ -103,6 +80,6 @@ public class UserProfileServiceImpl implements UserProfileService {
     // Método para validar la foto de perfil
     // Si la foto es nula, vacía o igual a la foto por defecto, se devuelve la foto por defecto
     public static String obtenerFotoValida(String foto, String fotoPorDefecto) {
-    return (foto != null && !foto.isEmpty() && !foto.equals(fotoPorDefecto)) ? foto : fotoPorDefecto;
-}
+        return (foto != null && !foto.isEmpty() && !foto.equals(fotoPorDefecto)) ? foto : fotoPorDefecto;
+    }
 }
