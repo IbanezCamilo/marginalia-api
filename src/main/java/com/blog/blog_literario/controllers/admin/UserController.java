@@ -1,104 +1,79 @@
 package com.blog.blog_literario.controllers.admin;
 
-import com.blog.blog_literario.dto.profile.userProfileResponseDTO;
-import com.blog.blog_literario.dto.profile.userProfileUpdateDTO;
-import com.blog.blog_literario.dto.users.userCreateDTO;
-import com.blog.blog_literario.dto.users.userResponseDTO;
-import com.blog.blog_literario.services.general.UserService;
-import com.blog.blog_literario.services.secundary.UserProfileService;
-
-import jakarta.validation.Valid; //Jakarta para validaciones
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*; // Anotaciones para crear controladores REST
-
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping; //Jakarta para validaciones
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.blog.blog_literario.dto.users.userCreateDTO; // Anotaciones para crear controladores REST
+import com.blog.blog_literario.dto.users.userResponseDTO;
+import com.blog.blog_literario.dto.users.userUpdateDTO;
+import com.blog.blog_literario.services.general.UserService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
 @RequiredArgsConstructor
-@RestController // Indica que esta clase es un controlador REST
-@RequestMapping("/api/users") // Define la ruta base para las peticiones a este controlador
+@RestController
+@RequestMapping("/api/users")
 public class UserController {
 
-    private final UserProfileService userProfileService;
     private final UserService userService;
 
-    @GetMapping // Método para obtener todos los usuarios
+    @GetMapping
     public ResponseEntity<?> getAllUsers() {
         List<userResponseDTO> usuarios = userService.getAllUsers();
         return ResponseEntity.ok(usuarios); // status 200 = OK
     }
 
-    @GetMapping("/{id}") // Método para obtener usuario por id
+    @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable Integer id) {
         userResponseDTO usuario = userService.getUserById(id);
         return ResponseEntity.ok(usuario); // status 200 = OK
     }
 
-    @PostMapping // Método para crear un nuevo usuario
+    @PostMapping
     public ResponseEntity<?> createUser(@Valid @RequestBody userCreateDTO dto, BindingResult result) {
-        // Validacion de Errores DTO
         if (result.hasErrors()) {
-            // Si hay errores de validación, captura y devuelve una lista
+            // Captura y devuelve una lista
             var errores = result.getFieldErrors()
-                    .stream() // Inicia el flujo para recorrer la lista
-                    .map(e -> e.getField() + ":" + e.getDefaultMessage()) // Estructura los errores en un string
-                    .toList(); // Devuelve la lista de mensajes como strings
-            return ResponseEntity.badRequest().body(errores); // devuelve un http 400 con la lista de errores
+                    .stream()
+                    .map(e -> e.getField() + ":" + e.getDefaultMessage())
+                    .toList();
+            return ResponseEntity.badRequest().body(errores); // status 400: bad request
         }
-        // Guardar y retornar
+
         userResponseDTO usuarioCreado = userService.createUserWithResponse(dto); // Envia y retorna datos al userService
 
         return ResponseEntity.status(201).body(usuarioCreado); // status = 201: Guardado exitosamente
     }
 
-    @PutMapping("/{id}") // Método para actualizar un usuario existente
-    public ResponseEntity<?> updateUser(UserDetails userDetails, @Valid @RequestBody userProfileUpdateDTO dto,
+    //Actualizar por ID (SOLO PARA ADMINS)
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateUserComplete(@PathVariable Integer id, @Valid @RequestBody userUpdateDTO dto,
             BindingResult result) {
-        // Validacion de Errores DTO
         if (result.hasErrors()) {
-            // Si hay errores de validación, captura y devuelve una lista
+            // Captura y devuelve una lista
             var errores = result.getFieldErrors()
-                    .stream() // Inicia el flujo para recorrer la lista
-                    .map(e -> e.getField() + ":" + e.getDefaultMessage()) // Estructura los errores en un string
-                    .toList(); // Devuelve la lista de mensajes como strings
-            return ResponseEntity.badRequest().body(errores); // devuelve un http 400 con la lista de errores
+                    .stream()
+                    .map(e -> e.getField() + ":" + e.getDefaultMessage())
+                    .toList();
+            return ResponseEntity.badRequest().body(errores);
         }
 
-        // Guardar y retornar
-        userProfileResponseDTO usuarioActualizado = userProfileService.updateUserProfile(userDetails, dto); // Envia y
-                                                                                                            // retorna
-                                                                                                            // datos al
-                                                                                                            // userService
+        userResponseDTO usuarioActualizado = userService.updateUserById(id, dto);
         return ResponseEntity.status(201).body(usuarioActualizado); // 201: Guardado correctamente
     }
-
-    /*
-     * -------------IMPLEMENTACION DEL PERFIL A
-     * FUTURO------------------------------------
-     * 
-     * @PatchMapping("/{id}/profile") // Método para actualizar parcialmente un
-     * usuario
-     * public ResponseEntity<?> updateProfile(@PathVariable Integer
-     * id, @Valid @ModelAttribute userProfileUpdateDTO dto, BindingResult result){
-     * //Validacion de Errores DTO
-     * if(result.hasErrors()){
-     * //Si hay errores de validación, captura y devuelve una lista
-     * var errores = result.getFieldErrors()
-     * .stream() // Inicia el flujo para recorrer la lista
-     * .map(e -> e.getField() + ":" + e.getDefaultMessage()) //Estructura los
-     * errores en un string
-     * .toList(); // Devuelve la lista de mensajes como strings
-     * return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con
-     * la lista de errores
-     * }
-     * 
-     * //Guardar y retornar
-     * userResponseDTO perfilActualizado =
-     * }
-     */
 
     @DeleteMapping("/{id}") // Método para eliminar un usuario por ID
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
