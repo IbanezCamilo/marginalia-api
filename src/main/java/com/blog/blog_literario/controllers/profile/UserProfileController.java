@@ -31,13 +31,13 @@ public class UserProfileController {
         return ResponseEntity.ok(usuario); // status 200 = ok
     }
 
-    @PutMapping // Actualizar un usuario existente
+    @PutMapping
     public ResponseEntity<?> updateUser(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody userProfileUpdateDTO dto,
             BindingResult result) {
         // Validacion de Errores DTO
         if (result.hasErrors()) {
             var errores = result.getFieldErrors()
-                    .stream() // Inicia el flujo para recorrer la lista
+                    .stream()
                     .map(e -> e.getField() + ":" + e.getDefaultMessage())
                     .toList();
             return ResponseEntity.badRequest().body(errores);
