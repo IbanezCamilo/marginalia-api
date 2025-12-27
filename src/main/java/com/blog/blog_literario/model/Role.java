@@ -47,16 +47,12 @@ public class Role {
         this.name = name;
     }
 
-    /**
-     * ✅ Método para verificar si es admin
-     */
+
     public boolean isAdmin() {
         return ADMIN.equalsIgnoreCase(name);
     }
 
-    /**
-     * ✅ Método para verificar si es autor
-     */
+
     public boolean isAuthor() {
         return AUTHOR.equalsIgnoreCase(name);
     }

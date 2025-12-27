@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(
-        name = "users", // ✅ Plural según convención
+        name = "users",
         indexes = {
             @Index(name = "idx_user_email", columnList = "email"),
             @Index(name = "idx_user_role", columnList = "role_id")
@@ -40,7 +40,7 @@ public class User {
 
     // RELATIONSHIPS
     @ManyToOne(fetch = FetchType.EAGER) // ✅ EAGER porque siempre necesitas el rol
-    @JoinColumn(name = "role_id", nullable = false) // ✅ Consistente con otras FKs
+    @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
     // UTILITY METHODS
