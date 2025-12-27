@@ -9,15 +9,15 @@ import lombok.Data;
 public class postUpdateDTO {
     @NotBlank(message = "El titulo debe ser obligatorio")
     @Size(max = 100, message = "El titulo no puede tener más de 100 caracteres")
-    private String titulo;
+    private String title;
     @NotBlank(message = "El contenido no puede estar vacio")
-    private String contenido;
+    private String content;
     @NotBlank
-    private String estado;
+    private String status;
     @NotBlank
     private String slug;
     @NotBlank
-    private String imagenPortada;
+    private String coverImage;
     @NotNull
-    private Integer idCategoria;
+    private Integer categoryId;
 }

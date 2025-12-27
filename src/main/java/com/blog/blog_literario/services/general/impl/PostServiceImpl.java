@@ -9,8 +9,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import com.blog.blog_literario.utils.SlugUtils;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -26,43 +24,39 @@ import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.general.PostService;
+import com.blog.blog_literario.utils.SlugUtils;
 
 @Service
 public class PostServiceImpl implements PostService {
+
     @Autowired
     private PostRepository postRepository; // Inyección del Repositorio de Posts
     @Autowired
     private UserRepository userRepository; // Inyección del Repositorio de Usuarios
     @Autowired
-    private CategoryRepository categoryRepository; // Inyección del Repositorio de Categorias
+    private CategoryRepository categoryRepository;
 
     @Override
     public Post createPost(postRequestDTO dto, MultipartFile image) {
         // Obtener email del usuario
-        String emailUsuario = SecurityContextHolder.getContext().getAuthentication().getName();
+        String emailAuthor = SecurityContextHolder.getContext().getAuthentication().getName();
 
         // Usuario creador del post
-        User usuario = userRepository.findByEmail(emailUsuario)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con correo: " + emailUsuario));
+        User author = userRepository.findByEmail(emailAuthor)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con correo: " + emailAuthor));
 
         // Categoria del post
-        Category categoria = categoryRepository.findById(dto.idCategoria())
+        Category category = categoryRepository.findById(dto.categoryId())
                 .orElseThrow(
-                        () -> new ResourceNotFoundException("Categoria no encontrada con ID: " + dto.idCategoria()));
+                        () -> new ResourceNotFoundException("Categoria no encontrada con ID: " + dto.categoryId()));
 
         // Creación del Slug
-        String postSlug = SlugUtils.toSlug(dto.titulo());
+        String postSlug = SlugUtils.toSlug(dto.title());
 
         // Crear nuevo post
-        Post nuevoPost = new Post();
-        nuevoPost.setTitulo(dto.titulo());
-        nuevoPost.setContenido(dto.contenido());
-        nuevoPost.setEstado(dto.estado());
-        nuevoPost.setSlug(postSlug);
-        nuevoPost.setFechaCreacion(LocalDateTime.now());
-        nuevoPost.setFechaActualizacion(LocalDateTime.now());
-        nuevoPost.setUsuario(usuario); // Crear Relacion con Usuario
-        nuevoPost.setCategoria(categoria); // Crear Relacion con Categoria
+        Post newPost = new Post(dto.title(), dto.content(), dto.estatus(), postSlug, author, category);
+        newPost.setCreatedAt(LocalDateTime.now());
+        newPost.setUpdatedAt(LocalDateTime.now());
 
         if (image != null && !image.isEmpty()) {
             // Generar el nombre del archivo a partir de un identificador aleatorio
@@ -77,49 +71,50 @@ public class PostServiceImpl implements PostService {
                 // param3: Si existe un archivo con el mismo nombre lo sobreescribe
                 Files.copy(image.getInputStream(), imagePath, StandardCopyOption.REPLACE_EXISTING);
                 // Guarda la ruta relativa
-                nuevoPost.setImagenPortada("/ImgTest/" + fileName);
+                newPost.setCoverImage("/ImgTest/" + fileName);
             } catch (IOException e) {
                 throw new RuntimeException("Error al guardar la imagen" + e);
             }
         } else {
-            nuevoPost.setImagenPortada("/ImgTest/" + "default-image.png"); // Ruta por defecto si no se proporciona una imagen
+            newPost.setCoverImage("/ImgTest/" + "default-image.png"); // Ruta por defecto si no se proporciona una imagen
         }
 
         // Guardar y Retornar
-        return postRepository.save(nuevoPost); // 201: Creado exitosamente
+        return postRepository.save(newPost); // 201: Creado exitosamente
     }
 
     @Override
     public Post updatePost(Integer id, postUpdateDTO dto) {
         // Verificar existencia del post
-        Post postExistente = postRepository.findById(id)
+        Post existingPost = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + id));
 
         // Actualiza el contenido del post
-        postExistente.setTitulo(dto.getTitulo());
-        postExistente.setContenido(dto.getContenido());
-        postExistente.setEstado(dto.getEstado());
-        postExistente.setSlug(dto.getSlug());
-        postExistente.setImagenPortada(dto.getImagenPortada());
-        postExistente.setFechaActualizacion(LocalDateTime.now());
+        existingPost.setTitle(dto.getTitle());
+        existingPost.setContent(dto.getContent());
+        existingPost.setStatus(dto.getStatus());
+        existingPost.setSlug(dto.getSlug());
+        existingPost.setCoverImage(dto.getCoverImage());
+        existingPost.setUpdatedAt(LocalDateTime.now());
 
         // Actualiza la Relación con Categoria
-        if (dto.getIdCategoria() != null) {
-            Category categoria = categoryRepository.findById(dto.getIdCategoria())// Verificar existencia de la
-                                                                                  // categoría
+        if (dto.getCategoryId() != null) {
+            Category category = categoryRepository.findById(dto.getCategoryId())// Verificar existencia de la
+                    // categoría
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Categoria no encontrada con ID: " + dto.getIdCategoria()));
-            postExistente.setCategoria(categoria); // Guarda la nueva categoria
+                    "Categoria no encontrada con ID: " + dto.getCategoryId()));
+            existingPost.setCategory(category); // Guarda la nueva categoria
         }
 
-        return postRepository.save(postExistente); // Guarda y retorna el post actualizado
+        return postRepository.save(existingPost); // Guarda y retorna el post actualizado
     }
 
     @Override
     public void deletePost(Integer id) {
         if (!postRepository.existsById(id)) // Verifica la existencia del Post
+        {
             throw new ResourceNotFoundException("No se encontró el Post con ID: " + id); // No existe el post: Lanza
-                                                                                         // Exepcion
+        }                                                                                         // Exepcion
 
         postRepository.deleteById(id); // Existe el post: Elimina el Post
     }
@@ -128,9 +123,9 @@ public class PostServiceImpl implements PostService {
     public Post getPostById(Integer id) {
         return postRepository.findById(id) // Verifica la existencia del Post
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el Post con ID: " + id)); // No existe
-                                                                                                           // el post:
-                                                                                                           // Lanza
-                                                                                                           // Exepcion
+        // el post:
+        // Lanza
+        // Exepcion
     }
 
     @Override

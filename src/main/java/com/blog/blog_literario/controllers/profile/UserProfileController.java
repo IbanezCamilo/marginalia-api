@@ -27,8 +27,8 @@ public class UserProfileController {
     @GetMapping
     // param: Obtiene el usuario Autenticado
     public ResponseEntity<?> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
-        userProfileResponseDTO usuario = userProfileService.getUserProfile(userDetails);
-        return ResponseEntity.ok(usuario); // status 200 = ok
+        userProfileResponseDTO user = userProfileService.getUserProfile(userDetails);
+        return ResponseEntity.ok(user); // status 200 = ok
     }
 
     @PutMapping
@@ -36,18 +36,18 @@ public class UserProfileController {
             BindingResult result) {
         // Validacion de Errores DTO
         if (result.hasErrors()) {
-            var errores = result.getFieldErrors()
+            var error = result.getFieldErrors()
                     .stream()
                     .map(e -> e.getField() + ":" + e.getDefaultMessage())
                     .toList();
-            return ResponseEntity.badRequest().body(errores);
+            return ResponseEntity.badRequest().body(error);
         }
 
         try {
             //Envia datos al userService
-            userProfileResponseDTO usuarioActualizado = userProfileService.updateUserProfile(userDetails, dto);
+            userProfileResponseDTO userUpdated = userProfileService.updateUserProfile(userDetails, dto);
 
-            return ResponseEntity.ok(usuarioActualizado);
+            return ResponseEntity.ok(userUpdated);
         } catch (Exception e) {
             //status 500: internal error
             return ResponseEntity.status(500).body("Error al actualizar el perfil " + e.getMessage());

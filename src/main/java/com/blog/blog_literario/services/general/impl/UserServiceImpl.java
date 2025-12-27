@@ -11,11 +11,13 @@ import com.blog.blog_literario.dto.users.userCreateDTO;
 import com.blog.blog_literario.dto.users.userResponseDTO;
 import com.blog.blog_literario.dto.users.userUpdateDTO;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
-import com.blog.blog_literario.model.Rol;
+import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
-import com.blog.blog_literario.repositories.RolRepository;
+import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.general.UserService;
+
+import jakarta.validation.constraints.NotNull;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -24,7 +26,7 @@ public class UserServiceImpl implements UserService {
     private UserRepository userRepository; // Inyección del Repositorio de Usuarios
 
     @Autowired
-    private RolRepository rolRepository; // Inyección del Repositorio de Roles
+    private RoleRepository roleRepository; // Inyección del Repositorio de Roles
 
     @Autowired
     private PasswordEncoder passwordEncoder; // Inyección del Encriptador de Contraseñas
@@ -34,25 +36,25 @@ public class UserServiceImpl implements UserService {
         return userRepository.findAll() // Retorna todos los usuarios del Repositorio
                 .stream() // Se inicia el flujo de los usuarios
                 .map(user -> new userResponseDTO( // Por cada usuario se crea un nuevo userResponseDTO
-                user.getIdUsuario(), // con los atributos correspondientes
-                user.getNombre(),
+                user.getId(), // con los atributos correspondientes
+                user.getName(),
                 user.getEmail(),
-                user.getRol()))
+                user.getRole()))
                 .toList(); // Se convierte en una lista para un manejo más flexible
     }
-
+    
     @Override
     public userResponseDTO getUserById(Integer id) {
-        User usuario = userRepository.findById(id) // Verifica la existencia del usuario
+        User user = userRepository.findById(id) // Verifica la existencia del usuario
                 .orElseThrow(() -> new ResourceNotFoundException(
                 "No se encontró el usuario con ID: " + id));
 
         // Retornar userResponse
         return new userResponseDTO(
-                usuario.getIdUsuario(),
-                usuario.getNombre(),
-                usuario.getEmail(),
-                usuario.getRol());
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole());
     }
     //Crea un usuario por medio de la autenticacion y registro
 
@@ -64,22 +66,22 @@ public class UserServiceImpl implements UserService {
         }
 
         // Agrega el rol por defecto desde la DB
-        Rol rolDefault = rolRepository.findByNombre("AUTOR")
+        Role defaultRole = roleRepository.findByName("AUTOR")
                 .orElseThrow(() -> new ResourceNotFoundException("ROL NO ENCONTRADO"));
 
         // Crear nuevo usuario
-        User nuevoUsuario = new User();
-        nuevoUsuario.setNombre(dto.getNombre());
-        nuevoUsuario.setEmail(dto.getEmail());
+        User newUser = new User();
+        newUser.setName(dto.getNombre());
+        newUser.setEmail(dto.getEmail());
         // Creación y Encriptación de Contraseña
-        nuevoUsuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        newUser.setPassword(passwordEncoder.encode(dto.getPassword()));
         //Asigna un rol por defecto
-        nuevoUsuario.setRol(rolDefault);
+        newUser.setRole(defaultRole);
         // Asigna una foto de perfil por defecto
-        nuevoUsuario.setFotoPerfil("https://servidor.com/images/default-avatar.png");
+        newUser.setProfilePicture("https://servidor.com/images/default-avatar.png");
 
         // Guardar el nuevo usuario creado
-        userRepository.save(nuevoUsuario);
+        userRepository.save(newUser);
     }
 
     //Permite al administrador crear un usuario desde una interfaz única
@@ -91,48 +93,48 @@ public class UserServiceImpl implements UserService {
         }
 
         // Crear nuevo usuario
-        User nuevoUsuario = new User();
-        nuevoUsuario.setNombre(dto.getNombre());
-        nuevoUsuario.setEmail(dto.getEmail());
+        User newUser = new User();
+        newUser.setName(dto.getName());
+        newUser.setEmail(dto.getEmail());
         // Creación y Encriptación de Contraseña
-        nuevoUsuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        newUser.setPassword(passwordEncoder.encode(dto.getPassword()));
         //El rol lo asigna el administrador que crea el usuario
-        nuevoUsuario.setRol(dto.getRol());
+        newUser.setRole(dto.getRole());
         // Se asigna una foto de perfil por defecto
-        nuevoUsuario.setFotoPerfil("https://servidor.com/images/default-avatar.png");
+        newUser.setProfilePicture("https://servidor.com/images/default-avatar.png");
 
         // Guardar el nuevo usuario creado
-        userRepository.save(nuevoUsuario);
+        userRepository.save(newUser);
 
         // Retornar userResponse
         return new userResponseDTO(
-                nuevoUsuario.getIdUsuario(),
-                nuevoUsuario.getNombre(),
-                nuevoUsuario.getEmail(),
-                nuevoUsuario.getRol());
+                newUser.getId(),
+                newUser.getName(),
+                newUser.getEmail(),
+                newUser.getRole());
     }
 
     @Override
     public userResponseDTO updateUserById(Integer id, userUpdateDTO dto) {
         // Verificar la existencia del usuario
-        User usuarioExistente = userRepository.findById(id)
+        User existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                 "Usuario no encontrado con ID: " + id));
 
         // Actualizar campos basicos
-        usuarioExistente.setNombre(dto.getNombre());
-        usuarioExistente.setEmail(dto.getEmail());
-        usuarioExistente.setRol(dto.getRol());
+        existingUser.setName(dto.getName());
+        existingUser.setEmail(dto.getEmail());
+        existingUser.setRole(dto.getRole());
 
         // Guardar el nuevo usuario actualizado
-        User actualizado = userRepository.save(usuarioExistente);
+        User updated = userRepository.save(existingUser);
 
         // Actualizar y Retornar userResponse
         return new userResponseDTO(
-                actualizado.getIdUsuario(),
-                actualizado.getNombre(),
-                actualizado.getEmail(),
-                actualizado.getRol());
+                updated.getId(),
+                updated.getName(),
+                updated.getEmail(),
+                updated.getRole());
     }
 
 //     @Override

@@ -12,6 +12,8 @@ import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.services.general.CategoryService;
 
+import lombok.NonNull;
+
 @Service
 public class CategoryServiceImpl implements CategoryService {
 
@@ -24,52 +26,51 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public Category getCategoryById(Integer id) {
+    public Category getCategoryById(@NonNull Integer id) {
         return categoryRepository.findById(id) // Verifica la existencia de la categoria
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la Categoria con ID: " + id)); // No
-                                                                                                              // existe
-                                                                                                              // la
-                                                                                                              // categoria:
-                                                                                                              // Lanza
-                                                                                                              // Exepcion
+        // existe
+        // la
+        // categoria:
+        // Lanza
+        // Exepcion
     }
 
     @Override
-    public Category createCategory(categoryCreateDTO dto){
+    public Category createCategory(categoryCreateDTO dto) {
         //Validar si la categoria ya existe
-        if (categoryRepository.findByNombre(dto.getNombre()).isPresent()) {
+        if (categoryRepository.findByName(dto.getName()).isPresent()) {
             throw new RuntimeException("La categoria ya existe");
         }
 
         //Crear una nueva Categoria
-        Category nuevaCategoria = new Category();
-        nuevaCategoria.setNombre(dto.getNombre());
-        nuevaCategoria.setSlug(dto.getSlug());
+        Category newCategory = new Category(dto.getName(), dto.getSlug());
 
         //Guardar y retornar
-        return categoryRepository.save(nuevaCategoria);
+        return categoryRepository.save(newCategory);
     }
 
     @Override
-    public Category updateCategory(Integer id, categoryUpdateDTO dto) {
+    public Category updateCategory(@NonNull Integer id, categoryUpdateDTO dto) {
         // Verificar si la categoria Existe
-        Category categoriaExistente = categoryRepository.findById(id)
+        Category existingCategory = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada con ID: " + id));
 
         // Actualizamos la categoria
-        categoriaExistente.setNombre(dto.getNombre());
-        categoriaExistente.setSlug(dto.getSlug());
+        existingCategory.setName(dto.getName());
+        existingCategory.setSlug(dto.getSlug());
 
         // Guardar y retornar
-        return categoryRepository.save(categoriaExistente); // Actualiza y retorna la categoria
+        return categoryRepository.save(existingCategory); // Actualiza y retorna la categoria
     }
 
     @Override
-    public void deleteCategory(Integer id) {
+    public void deleteCategory(@NonNull Integer id) {
         if (!categoryRepository.existsById(id)) // Verifica la existencia de la categoria
+        {
             throw new ResourceNotFoundException("No se encontró la Categoria con ID: " + id); // No existe la categoria:
-                                                                                              // Lanza
-                                                                                              // Exepcion
+        }                                                                                              // Lanza
+        // Exepcion
         categoryRepository.deleteById(id); // Existe la Categoria: Elimina la categoria
     }
 }

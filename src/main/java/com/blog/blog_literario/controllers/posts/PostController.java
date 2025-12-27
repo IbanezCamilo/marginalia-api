@@ -4,21 +4,20 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
-import com.blog.blog_literario.dto.posts.postCreateDTO;
 import com.blog.blog_literario.dto.posts.postRequestDTO;
 import com.blog.blog_literario.dto.posts.postUpdateDTO;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.services.general.PostService;
 
-import org.springframework.beans.factory.annotation.Autowired; // Inyección de dependencias
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*; // Anotaciones para crear controladores REST
+import org.springframework.web.bind.annotation.*; 
 import org.springframework.web.multipart.MultipartFile;
 
 
-@RestController // Indica que esta clase es un controlador REST
-@RequestMapping ("/api/posts")// Define la ruta base para las peticiones a este controlador
+@RestController
+@RequestMapping ("/api/posts")
 public class PostController {
 
     @Autowired

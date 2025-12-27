@@ -5,8 +5,9 @@ import lombok.Data;
 
 @Data
 public class categoryUpdateDTO {
-    @NotBlank(message="El nombre no puede estar vacio")
-    private String nombre;
+
+    @NotBlank(message = "El nombre no puede estar vacio")
+    private String name;
     @NotBlank(message = "El slug no puede estar vacio")
     private String slug;
 }

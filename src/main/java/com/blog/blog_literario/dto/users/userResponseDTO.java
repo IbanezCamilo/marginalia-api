@@ -1,10 +1,12 @@
 package com.blog.blog_literario.dto.users;
 
-import com.blog.blog_literario.model.Rol;
+import com.blog.blog_literario.model.Role;
 
 public record userResponseDTO(
-    Integer id,
-    String nombre,
-    String email,
-    Rol rol
-) {}
+        Integer id,
+        String nombre,
+        String email,
+        Role role
+        ) {
+
+}

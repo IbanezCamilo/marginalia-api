@@ -25,49 +25,49 @@ public class UserProfileServiceImpl implements UserProfileService {
     // Mostrar Información en el perfil del usuario
     public userProfileResponseDTO getUserProfile(UserDetails userDetails) {
         // Buscar el usuario por email
-        User usuario = userRepository.findByEmail(userDetails.getUsername())
+        User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException(
                 "Usuario no encontrado con email: " + userDetails.getUsername()));
 
         // Devolver DTO con los datos
         return new userProfileResponseDTO(
-                usuario.getIdUsuario(),
-                usuario.getNombre(),
-                usuario.getEmail(),
-                usuario.getDescripcion(),
-                usuario.getFotoPerfil(),
-                usuario.getRol().getNombre());
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getDescription(),
+                user.getProfilePicture(),
+                user.getRole().getName());
     }
 
     // Actualizar datos del perfil de usuario
     public userProfileResponseDTO updateUserProfile(UserDetails userDetails, userProfileUpdateDTO dto) {
         // Buscar el usuario
-        User usuario = userRepository.findByEmail(userDetails.getUsername())
+        User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException(
                 "Usuario no encontrado con email: " + userDetails.getUsername()));
 
         // Actualizar nombre
-        usuario.setNombre(dto.getNombre());
+        user.setName(dto.getNombre());
         // Actualiza la descripción
         // Si la descripción es nula, se deja como está
-        usuario.setDescripcion(dto.getDescripcion());
+        user.setDescription(dto.getDescripcion());
 
         // Si se envió una URL de foto de perfil, actualizarla
         if (dto.getFotoPerfil() != null && !dto.getFotoPerfil().isEmpty()) {
-            usuario.setFotoPerfil(dto.getFotoPerfil());
+            user.setProfilePicture(dto.getFotoPerfil());
         }
 
         // Guardar el nuevo usuario actualizado
-        User actualizado = userRepository.save(usuario);
+        User updated = userRepository.save(user);
 
         // Actualizar y Retornar userResponse
         return new userProfileResponseDTO(
-                actualizado.getIdUsuario(),
-                actualizado.getNombre(),
-                actualizado.getEmail(),
-                actualizado.getDescripcion(),
-                actualizado.getFotoPerfil(),
-                actualizado.getRol().getNombre());
+                updated.getId(),
+                updated.getName(),
+                updated.getEmail(),
+                updated.getDescription(),
+                updated.getProfilePicture(),
+                updated.getRole().getName());
     }
 
     // Validar la foto de perfil

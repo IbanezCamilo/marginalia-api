@@ -8,13 +8,13 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping; //Jakarta para validaciones
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.blog.blog_literario.dto.users.userCreateDTO; // Anotaciones para crear controladores REST
+import com.blog.blog_literario.dto.users.userCreateDTO;
 import com.blog.blog_literario.dto.users.userResponseDTO;
 import com.blog.blog_literario.dto.users.userUpdateDTO;
 import com.blog.blog_literario.services.general.UserService;

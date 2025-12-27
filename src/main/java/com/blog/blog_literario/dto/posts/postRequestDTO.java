@@ -1,8 +1,8 @@
 package com.blog.blog_literario.dto.posts;
 
 public record postRequestDTO(
-        String titulo,
-        String contenido,
-        Integer idCategoria,
-        String estado
+        String title,
+        String content,
+        Integer categoryId,
+        String estatus
 ){}

@@ -11,7 +11,7 @@ import com.blog.blog_literario.dto.auth.authResponseDTO;
 import com.blog.blog_literario.dto.auth.loginRequestDTO;
 import com.blog.blog_literario.dto.auth.registerRequestDTO;
 import com.blog.blog_literario.security.JwtService;
-import com.blog.blog_literario.security.userDetailsServiceImpl;
+import com.blog.blog_literario.security.UserDetailsServiceImpl;
 import com.blog.blog_literario.services.general.AuthService;
 import com.blog.blog_literario.services.general.UserService;
 
@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthServiceImpl implements AuthService {
 
     private final UserService userService;
-    private final userDetailsServiceImpl userDetailsService;
+    private final UserDetailsServiceImpl userDetailsService;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 

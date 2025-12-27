@@ -8,24 +8,19 @@ import java.util.Optional;
 import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Integer> {
-        // Buscar por estado (publicada, borrador, etc.)
-    List<Post> findByEstado(String estado);
+    // Buscar por estado (publicada, borrador, etc.)
 
-    // Buscar por slug (único)
+    List<Post> findByStatus(String status);
+
     Optional<Post> findBySlug(String slug);
 
-    // Buscar todos los posts de un usuario
-    List<Post> findByUsuario_IdUsuario(Integer idUsuario);
+    List<Post> findByAuthor_Id(Integer authorId);
 
-    // Buscar todos los posts de una categoría
-    List<Post> findByCategoria_IdCategoria(Integer idCategoria);
+    List<Post> findByCategory_Id(Integer categoryId);
 
-    // Buscar por título (exacto)
-    List<Post> findByTitulo(String titulo);
+    List<Post> findByTitle(String title);
 
-    // Buscar por fragmento de título (búsqueda parcial)
-    List<Post> findByTituloContaining(String fragmento);
+    List<Post> findByTitleContaining(String fragment);
 
-    // Verificar si existe un post con un slug específico
     boolean existsBySlug(String slug);
 }

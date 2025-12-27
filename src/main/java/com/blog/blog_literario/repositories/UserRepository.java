@@ -7,16 +7,9 @@ import com.blog.blog_literario.model.User;
 import java.util.Optional; //Importa Optional para manejar valores que pueden ser nulos
 
 public interface UserRepository extends JpaRepository<User, Integer> {
-    
-    // Método para encontrar un usuario por su email
-    Optional<User> findByEmail(String email);
-    
-    // Método para verificar si un usuario existe por su email
-    boolean existsByEmail(String email);
-    
-    // Método para verificar si un usuario existe por su nombre
-    boolean existsByNombre(String nombre);
 
-    // Método para encontrar un usuario por su nombre
-    Optional<User> findByNombre(String nombre);
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
+    boolean existsByName(String name);
+    Optional<User> findByName(String name);
 }
