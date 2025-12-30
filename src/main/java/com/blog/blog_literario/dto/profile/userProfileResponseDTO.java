@@ -3,9 +3,9 @@ package com.blog.blog_literario.dto.profile;
 //DTO para devolver datos del perfil
 public record userProfileResponseDTO(
     Integer id,
-    String nombre,
+    String name,
     String email,
-    String descripcion,
-    String fotoPerfil, // para guardar la url de la foto de perfil
-    String rol
+    String description,
+    String image, // para guardar la url de la foto de perfil
+    String role
 ){}

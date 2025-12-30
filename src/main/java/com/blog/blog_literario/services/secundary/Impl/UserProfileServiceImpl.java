@@ -47,14 +47,14 @@ public class UserProfileServiceImpl implements UserProfileService {
                 "Usuario no encontrado con email: " + userDetails.getUsername()));
 
         // Actualizar nombre
-        user.setName(dto.getNombre());
+        user.setName(dto.getName());
         // Actualiza la descripción
         // Si la descripción es nula, se deja como está
-        user.setDescription(dto.getDescripcion());
+        user.setDescription(dto.getDescription());
 
         // Si se envió una URL de foto de perfil, actualizarla
-        if (dto.getFotoPerfil() != null && !dto.getFotoPerfil().isEmpty()) {
-            user.setProfilePicture(dto.getFotoPerfil());
+        if (dto.getImage() != null && !dto.getImage().isEmpty()) {
+            user.setProfilePicture(dto.getImage());
         }
 
         // Guardar el nuevo usuario actualizado
