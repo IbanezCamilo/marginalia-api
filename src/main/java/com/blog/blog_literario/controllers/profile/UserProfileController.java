@@ -72,17 +72,32 @@ public class UserProfileController {
     @PostMapping("/upload-image")
     public ResponseEntity<?> uploadProfileImage(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam("image") MultipartFile image) {
+            @RequestParam("image") MultipartFile imageFile) {
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        // Validate Empty File        
+        if (imageFile.isEmpty()) {
+            return ResponseEntity.badRequest().body("No se ha proporcionado ninguna imagen");
+        }
 
-        String imageUrl = imageStorageService.saveImage(image);
+        String contentType = imageFile.getContentType();
+        // Validate File Type
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El archivo debe ser una imagen"));
+        }
 
-        user.setProfilePicture(imageUrl); //replace the image
-        userRepository.save(user);
+        try {
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+            String imageUrl = imageStorageService.saveImage(imageFile);
 
+            user.setProfilePicture(imageUrl); //replace the image
+            userRepository.save(user);
+
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error al subir la imagen: " + e.getMessage());
+        }
     }
 }

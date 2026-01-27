@@ -37,15 +37,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> {
-                })// Habilitar CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))// Habilitar CORS
                 .authorizeHttpRequests(auth -> auth
-                //Public routes
+                //Public endpoints
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 //Allows image upload
-                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/images/**").permitAll()
                 .requestMatchers("/ImgTest/**").permitAll()
                 .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
@@ -76,9 +76,12 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:5173"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        //Cors-Allow-Header for Dev
+        configuration.setAllowedHeaders(List.of("*"));
+        //Cors-Allow-Header for Production
+        // configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        configuration.setExposedHeaders(List.of("Authorization", "X-Total-Count"));
         // configuration.setAllowCredentials(true); // SE UTILIZARA AL IMPLEMENTAR COOKIES
         configuration.setMaxAge(3600L); // se conceden permisos durante 1 hora
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

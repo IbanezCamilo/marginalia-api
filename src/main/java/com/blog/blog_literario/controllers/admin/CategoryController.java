@@ -7,35 +7,34 @@ import com.blog.blog_literario.services.general.CategoryService;
 
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired; // Inyección de dependencias
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*; // Anotaciones para crear controladores REST
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 //import java.util.Optional;
 
-@RestController // Indica que esta clase es un controlador REST
-@RequestMapping("/api/categories") // Define la ruta base para las peticiones a este controlador
-
+@RestController
+@RequestMapping("/api/categories")
 public class CategoryController {
 
     @Autowired
-    private CategoryService categoryService; // Inyeccion de repositorio de Category
+    private CategoryService categoryService;
 
-    @GetMapping // Método para obtener todos los posts
+    @GetMapping
     public ResponseEntity<?> getAllCategories() {
          List<Category> categorias = categoryService.getAllCategories();
          return ResponseEntity.ok(categorias); // status 200 = OK
     }
 
-    @GetMapping("/{id}") // Método para obtener un post por ID
+    @GetMapping("/{id}")
     public ResponseEntity<?> getCategoryById(@PathVariable Integer id) {
         Category categoria = categoryService.getCategoryById(id);
         return ResponseEntity.ok(categoria); // status 200 = OK
     }
 
-    @PostMapping // Método para crear una nueva categoria
+    @PostMapping
     public ResponseEntity<?> createCategory(@Valid @RequestBody categoryCreateDTO dto, BindingResult result) {
         // Validacion de Errores DTO
         if (result.hasErrors()) {

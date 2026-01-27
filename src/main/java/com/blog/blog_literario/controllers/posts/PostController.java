@@ -1,23 +1,30 @@
 package com.blog.blog_literario.controllers.posts;
 
-import jakarta.validation.Valid;
-
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.blog.blog_literario.dto.posts.postRequestDTO;
 import com.blog.blog_literario.dto.posts.postUpdateDTO;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.services.general.PostService;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*; 
-import org.springframework.web.multipart.MultipartFile;
-
+import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping ("/api/posts")
+@RequestMapping("/api/posts")
 public class PostController {
 
     @Autowired
@@ -25,8 +32,8 @@ public class PostController {
 
     @GetMapping // Método para obtener todos los posts
     public ResponseEntity<?> getAllPosts() {
-         List<Post> posts = postService.getAllPosts();
-         return ResponseEntity.ok(posts); // status 200 = OK
+        List<Post> posts = postService.getAllPosts();
+        return ResponseEntity.ok(posts); // status 200 = OK
     }
 
     @GetMapping("/{id}") // Método para obtener un post por ID
@@ -35,33 +42,34 @@ public class PostController {
         return ResponseEntity.ok(post); // status 200 = OK
     }
 
-    @PostMapping // Método para crear un nuevo post
-    public ResponseEntity<?> createPost(@Valid @RequestPart("data") postRequestDTO dto,
-        @RequestPart(value = "image", required = false) MultipartFile image, BindingResult result) {
+    // Método para crear un nuevo post
+    @PostMapping("/create-post")
+    public ResponseEntity<?> createPost(@Valid @RequestPart("postData") postRequestDTO dto,
+            @RequestPart(value = "postImage", required = false) MultipartFile image, BindingResult result) {
         //Validacion de Errores DTO
-        if(result.hasErrors()){
+        if (result.hasErrors()) {
             //Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()
-                .stream() // Inicia el flujo para recorrer la lista
-                .map(e -> e.getField() + " : " + e.getDefaultMessage()) //Estructura los errores en un string
-                .toList(); // Devuelve la lista de mensajes como strings
-                return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con la lista de errores
+                    .stream() // Inicia el flujo para recorrer la lista
+                    .map(e -> e.getField() + " : " + e.getDefaultMessage()) //Estructura los errores en un string
+                    .toList(); // Devuelve la lista de mensajes como strings
+            return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con la lista de errores
         }
-            //Crear, Guardar y Retornar
-            Post postCreado = postService.createPost(dto, image); // Envia y retorna datos al PostService
-            return ResponseEntity.status(201).body(postCreado); // 201: Creado exitosamente
-        }
+        //Crear, Guardar y Retornar
+        Post postCreado = postService.createPost(dto, image); // Envia y retorna datos al PostService
+        return ResponseEntity.status(201).body(postCreado); // 201: Creado exitosamente
+    }
 
     @PutMapping("/{id}") // Método para actualizar un post existente
     public ResponseEntity<?> updatePost(@PathVariable Integer id, @Valid @RequestBody postUpdateDTO dto, BindingResult result) {
         //Validacion de Errores DTO
-        if(result.hasErrors()){
+        if (result.hasErrors()) {
             //Si hay errores de validación, captura y devuelve una lista
             var errores = result.getFieldErrors()
-                .stream() // Inicia el flujo para recorrer la lista
-                .map(e -> e.getField() + " : " + e.getDefaultMessage()) //Estructura los errores en un string
-                .toList(); // Devuelve la lista de mensajes como strings
-                return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con la lista de errores
+                    .stream() // Inicia el flujo para recorrer la lista
+                    .map(e -> e.getField() + " : " + e.getDefaultMessage()) //Estructura los errores en un string
+                    .toList(); // Devuelve la lista de mensajes como strings
+            return ResponseEntity.badRequest().body(errores); //devuelve un http 400 con la lista de errores
         }
 
         //Actualizar, Guardar y Retornar

@@ -23,11 +23,14 @@ public class UserProfileServiceImpl implements UserProfileService {
     private UserRepository userRepository;
 
     // Mostrar Información en el perfil del usuario
+    @Override
     public userProfileResponseDTO getUserProfile(UserDetails userDetails) {
         // Buscar el usuario por email
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException(
                 "Usuario no encontrado con email: " + userDetails.getUsername()));
+
+        System.out.println("ProfilePicture: " + user.getProfilePicture());
 
         // Devolver DTO con los datos
         return new userProfileResponseDTO(
@@ -40,6 +43,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     // Actualizar datos del perfil de usuario
+    @Override
     public userProfileResponseDTO updateUserProfile(UserDetails userDetails, userProfileUpdateDTO dto) {
         // Buscar el usuario
         User user = userRepository.findByEmail(userDetails.getUsername())
@@ -53,8 +57,8 @@ public class UserProfileServiceImpl implements UserProfileService {
         user.setDescription(dto.getDescription());
 
         // Si se envió una URL de foto de perfil, actualizarla
-        if (dto.getImage() != null && !dto.getImage().isEmpty()) {
-            user.setProfilePicture(dto.getImage());
+        if (dto.getProfilePicture() != null && !dto.getProfilePicture().isEmpty()) {
+            user.setProfilePicture(dto.getProfilePicture());
         }
 
         // Guardar el nuevo usuario actualizado
