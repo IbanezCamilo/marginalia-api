@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -77,9 +76,9 @@ public class PostController {
         return ResponseEntity.status(201).body(postActualizado); // status = 201: Guardado exitosamente 
     }
 
-    @DeleteMapping("/{id}") // Método para eliminar un post por ID
-    public ResponseEntity<?> deletePost(@PathVariable Integer id) {
-        postService.deletePost(id);
-        return ResponseEntity.noContent().build(); // 204 No content: Eliminado exitosamente
-    }
+    // @DeleteMapping("/{id}") // Método para eliminar un post por ID
+    // public ResponseEntity<?> deletePost(@PathVariable Integer id) {
+    //     postService.deletePost(id);
+    //     return ResponseEntity.noContent().build(); // 204 No content: Eliminado exitosamente
+    // }
 }

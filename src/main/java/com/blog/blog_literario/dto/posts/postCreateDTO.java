@@ -13,7 +13,7 @@ public class postCreateDTO {
     @NotBlank(message = "El contenido no puede estar vacio")
     private String content;
     @NotBlank
-    private String estatus;
+    private String status;
     @NotBlank
     private String slug;
     @NotBlank

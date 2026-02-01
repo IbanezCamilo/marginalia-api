@@ -4,5 +4,7 @@ public record postRequestDTO(
         String title,
         String content,
         Integer categoryId,
-        String estatus
-){}
+        String status
+        ) {
+
+}

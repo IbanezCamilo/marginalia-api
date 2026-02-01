@@ -9,9 +9,8 @@ import com.blog.blog_literario.dto.posts.postUpdateDTO;
 import com.blog.blog_literario.model.Post;
 
 public interface PostService {
-    Post createPost(postRequestDTO dto, MultipartFile image); // Método plantilla para crear un Post
-    Post updatePost(Integer id, postUpdateDTO dto); // Método plantilla para actualizar un Post
-    void deletePost(Integer id); //Método plantilla para eliminar un Post
-    Post getPostById(Integer id); // Método plantilla para obtener un Post por ID
-    List<Post> getAllPosts(); // Método plantilla para obtener Todos los Posts
+    Post createPost(postRequestDTO dto, MultipartFile image); 
+    Post updatePost(Integer id, postUpdateDTO dto); 
+    Post getPostById(Integer id);
+    List<Post> getAllPosts(); 
 }

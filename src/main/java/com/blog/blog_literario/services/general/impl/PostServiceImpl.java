@@ -33,7 +33,6 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private ImageStorageService imageStorageService;
 
-
     @Override
     public Post createPost(postRequestDTO dto, MultipartFile image) {
         String emailAuthor = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -49,15 +48,15 @@ public class PostServiceImpl implements PostService {
         String postSlug = SlugUtils.toSlug(dto.title());
 
         // Crear nuevo post
-        Post newPost = new Post(dto.title(), dto.content(), dto.estatus(), postSlug, author, category);
+        Post newPost = new Post(dto.title(), dto.content(), dto.status(), postSlug, author, category);
 
         newPost.setCreatedAt(LocalDateTime.now());
         newPost.setUpdatedAt(LocalDateTime.now());
 
-        if(image != null && !image.isEmpty()){
+        if (image != null && !image.isEmpty()) {
             String imageUrl = imageStorageService.saveImage(image);
             newPost.setCoverImage(imageUrl);
-        }else{
+        } else {
             //Default image
             newPost.setCoverImage("/api/images/default-image.png");
         }
@@ -91,19 +90,16 @@ public class PostServiceImpl implements PostService {
         return postRepository.save(existingPost);
     }
 
-    @Override
-    public void deletePost(Integer id) {
-        if (!postRepository.existsById(id))
-        {
-            throw new ResourceNotFoundException("No se encontró el Post con ID: " + id);
-        }    
-
-        postRepository.deleteById(id); 
-    }
-
+    // @Override
+    // public void deletePost(Integer id) {
+    //     if (!postRepository.existsById(id)) {
+    //         throw new ResourceNotFoundException("No se encontró el Post con ID: " + id);
+    //     }
+    //     postRepository.deleteById(id);
+    // }
     @Override
     public Post getPostById(Integer id) {
-        return postRepository.findById(id) 
+        return postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el Post con ID: " + id));
     }
 

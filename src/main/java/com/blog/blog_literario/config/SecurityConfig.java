@@ -40,10 +40,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))// Habilitar CORS
                 .authorizeHttpRequests(auth -> auth
                 //Public endpoints
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/posts/create-post").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 //Allows image upload
                 .requestMatchers("/api/images/**").permitAll()
                 .requestMatchers("/ImgTest/**").permitAll()
