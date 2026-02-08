@@ -1,24 +1,25 @@
 package com.blog.blog_literario.repositories;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.blog.blog_literario.model.Post;
 
-import java.util.Optional;
-import java.util.List;
-
 public interface PostRepository extends JpaRepository<Post, Integer> {
-    // Buscar por estado (publicada, borrador, etc.)
 
-    List<Post> findByStatus(String status);
+    //Public --Read Only--
+    Page<Post> findByStatusIgnoreCase(String status, Pageable pageable);
 
-    Optional<Post> findBySlug(String slug);
+    Optional<Post> findBySlugAndStatusIgnoreCase(String slug, String status);
 
+    //Private --Legacy--
     List<Post> findByAuthor_Id(Integer authorId);
 
     List<Post> findByCategory_Id(Integer categoryId);
-
-    List<Post> findByTitle(String title);
 
     List<Post> findByTitleContaining(String fragment);
 
