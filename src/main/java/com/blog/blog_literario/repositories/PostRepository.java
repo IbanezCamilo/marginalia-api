@@ -17,7 +17,9 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
     Optional<Post> findBySlugAndStatusIgnoreCase(String slug, String status);
 
     //Private --Legacy--
-    List<Post> findByAuthor_Id(Integer authorId);
+    Page<Post> findByAuthor_Id(Integer authorId, Pageable pageable);
+
+    Optional<Post> findByIdAndAuthor_Id(Integer id, Integer authorId);
 
     List<Post> findByCategory_Id(Integer categoryId);
 
