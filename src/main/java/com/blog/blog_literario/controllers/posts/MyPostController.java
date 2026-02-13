@@ -1,14 +1,59 @@
 package com.blog.blog_literario.controllers.posts;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+import com.blog.blog_literario.dto.posts.CreatePostRequest;
+import com.blog.blog_literario.dto.posts.MyPostResponse;
+import com.blog.blog_literario.dto.posts.UpdatePostRequest;
+import com.blog.blog_literario.security.UserDetailsImpl;
+import com.blog.blog_literario.services.posts.MyPostCommandService;
+
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequiredArgsConstructor
 @RequestMapping("api/me/posts")
 public class MyPostController {
 
+    private final MyPostCommandService myService;
+
     @GetMapping
-    public List<MyPostResponse> list(Authentication authentication) {
+    public Page<MyPostResponse> list(Authentication authentication, Pageable pageable) {
+        Integer userId = getUserId(authentication);
+
+        return myService.list(userId, pageable);
+    }
+
+    @PostMapping
+    public MyPostResponse create(Authentication authentication, @RequestBody CreatePostRequest request) {
+        Integer userId = getUserId(authentication);
+        return myService.create(userId, request);
+    }
+
+    @PutMapping("/{id}")
+    public MyPostResponse update(Authentication authentication, @PathVariable Integer id,
+            @RequestBody UpdatePostRequest request) {
+        Integer userId = getUserId(authentication);
+        return myService.update(userId, id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Integer id, Authentication authetication) {
+        Integer userId = getUserId(authetication);
+        myService.delete(userId, id);
+    }
+
+    private Integer getUserId(Authentication authentication) {
+        return ((UserDetailsImpl) authentication.getPrincipal()).getUser().getId();
     }
 }
