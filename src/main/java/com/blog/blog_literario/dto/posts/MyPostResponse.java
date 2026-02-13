@@ -10,6 +10,4 @@ public record MyPostResponse(
         String slug,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
-        ) {
-
-}
+        ) {}
