@@ -1,7 +1,20 @@
 package com.blog.blog_literario.model;
 
 import java.time.LocalDateTime;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
@@ -26,8 +39,9 @@ public class Post {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private String status;
+    private PostStatus status = PostStatus.DRAFT; // default value
 
     @Column(name = "slug", nullable = false, unique = true, length = 250)
     private String slug;
@@ -48,7 +62,7 @@ public class Post {
     // LIFECYCLE CALLBACKS
     // ============================================
     /**
-     * ✅ Establece timestamps automáticamente al crear
+     * Establece timestamps automáticamente al crear
      */
     @PrePersist
     protected void onCreate() {
@@ -58,7 +72,7 @@ public class Post {
     }
 
     /**
-     * ✅ Actualiza timestamp automáticamente al modificar
+     * Actualiza timestamp automáticamente al modificar
      */
     @PreUpdate
     protected void onUpdate() {
@@ -68,15 +82,11 @@ public class Post {
     // ============================================
     // CUSTOM CONSTRUCTOR (sin timestamps)
     // ============================================
-    /**
-     * Constructor personalizado para crear posts Los timestamps se establecen
-     * automáticamente con @PrePersist
-     */
     public Post(String title, String content, String status, String slug,
             User author, Category category) {
         this.title = title;
         this.content = content;
-        this.status = status;
+        this.status = status != null ? PostStatus.valueOf(status) : PostStatus.DRAFT; //default status if not Null
         this.slug = slug;
         this.author = author;
         this.category = category;
@@ -85,22 +95,20 @@ public class Post {
     // ============================================
     // UTILITY METHODS
     // ============================================
-    /**
-     * ✅ Método para verificar si el post está publicado
-     */
     public boolean isPublished() {
-        return "PUBLISHED".equalsIgnoreCase(status);
+        return this.status == PostStatus.PUBLISHED;
     }
 
-    /**
-     * ✅ Método para verificar si el post es borrador
-     */
     public boolean isDraft() {
-        return "DRAFT".equalsIgnoreCase(status);
+        return this.status == PostStatus.DRAFT;
+    }
+
+    public boolean canBeEditedByAuthor() {
+        return this.status.canBeEditedByAuthor();
     }
 
     /**
-     * ✅ toString personalizado (Lombok @Data lo genera, pero sin relaciones)
+     * toString personalizado (Lombok @Data lo genera, pero sin relaciones)
      * Evita LazyInitializationException al hacer toString()
      */
     @Override
