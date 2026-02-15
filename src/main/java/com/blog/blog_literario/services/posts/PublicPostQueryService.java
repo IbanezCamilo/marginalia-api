@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.model.Post;
+import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.repositories.PostRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,17 +22,17 @@ public class PublicPostQueryService {
     private final PostRepository postRepository;
 
     //public list
-    public Page<PublicPostResponse> list(Pageable pageable) {
+    public Page<PublicPostResponse> listPublishedPosts(Pageable pageable) {
 
         return postRepository
-                .findByStatusIgnoreCase(PUBLISHED, pageable)
+                .findByStatus(PostStatus.PUBLISHED, pageable)
                 .map(this::toResponse);
     }
 
-    // publi details by slug
+    // public details by slug
     public PublicPostResponse getBySlug(String slug) {
         Post post = postRepository
-                .findBySlugAndStatusIgnoreCase(slug, PUBLISHED)
+                .findBySlugAndStatus(slug, PostStatus.PUBLISHED)
                 .orElseThrow(() -> new RuntimeException("Post not Found: " + slug));
 
         return toResponse(post);

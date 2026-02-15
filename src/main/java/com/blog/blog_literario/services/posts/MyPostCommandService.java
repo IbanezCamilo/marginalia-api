@@ -32,7 +32,7 @@ public class MyPostCommandService {
     @Transactional(readOnly = true)
     public Page<MyPostResponse> list(Integer userId, Pageable pageable) {
         return postRepository
-                .findByAuthor_Id(userId, pageable)
+                .findByAuthorId(userId, pageable)
                 .map(this::ToResponse);
     }
 
@@ -55,18 +55,19 @@ public class MyPostCommandService {
 
     public MyPostResponse update(Integer userId, Integer postId, UpdatePostRequest request) {
         Post post = postRepository
-                .findByIdAndAuthor_Id(postId, userId)
+                .findByIdAndAuthorId(postId, userId)
                 .orElseThrow();
         post.setTitle(request.title());
         post.setContent(request.content());
-        post.setStatus(request.status());
+
+        post.setStatus(PostStatus.valueOf(request.status()));
 
         return ToResponse(post);
     }
 
     public void delete(Integer userId, Integer postId) {
         Post post = postRepository
-                .findByIdAndAuthor_Id(postId, userId)
+                .findByIdAndAuthorId(postId, userId)
                 .orElseThrow();
 
         postRepository.delete(post);
@@ -77,7 +78,7 @@ public class MyPostCommandService {
                 post.getId(),
                 post.getTitle(),
                 post.getContent(),
-                post.getStatus(),
+                post.getStatus().name(),
                 post.getCategory().getName(),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
