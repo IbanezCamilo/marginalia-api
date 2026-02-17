@@ -1,5 +1,7 @@
 package com.blog.blog_literario.dto.posts;
 
+import com.blog.blog_literario.model.PostStatus;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,7 +15,7 @@ public class postCreateDTO {
     @NotBlank(message = "El contenido no puede estar vacio")
     private String content;
     @NotBlank
-    private String status;
+    private PostStatus status = PostStatus.DRAFT;
     @NotBlank
     private String slug;
     @NotBlank
