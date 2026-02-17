@@ -10,6 +10,7 @@ import com.blog.blog_literario.dto.posts.MyPostResponse;
 import com.blog.blog_literario.dto.posts.UpdatePostRequest;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.model.Post;
+import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.repositories.PostRepository;
@@ -37,14 +38,23 @@ public class MyPostCommandService {
     }
 
     public MyPostResponse create(Integer userId, CreatePostRequest request) {
-        User user = userRepository.findById(userId).orElseThrow();
-        Category category = categoryRepository.findById(request.categoryId()).orElseThrow();
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + userId));
+
+        Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new RuntimeException("Categoria no encontrada con ID: " + request.categoryId()));
+
+        //Generate Slug
+        String slug = SlugUtils.toSlug(request.title());
+
+        //Validate Slug Uniqueness
+        if (postRepository.existsBySlug(slug)) {
+            throw new RuntimeException("El slug ya existe. Por favor, elige otro título.");
+        }
 
         Post post = new Post(
                 request.title(),
                 request.content(),
-                "DRAFT",
-                SlugUtils.toSlug(request.title()),
+                PostStatus.DRAFT.name(),
+                slug,
                 user,
                 category
         );
@@ -56,12 +66,27 @@ public class MyPostCommandService {
     public MyPostResponse update(Integer userId, Integer postId, UpdatePostRequest request) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("Post no encontrado con ID: " + postId));
+
         post.setTitle(request.title());
         post.setContent(request.content());
 
-        post.setStatus(PostStatus.valueOf(request.status()));
+        //Validate Slug Uniqueness if title changed
+        PostStatus newStatus = PostStatus.valueOf(request.status());
+        validateAuthorCanChangeStatus(post.getStatus(), newStatus);
 
+        post.setStatus(newStatus);
+
+        //Title changed: Rebuild Slug
+        String newSlug = SlugUtils.toSlug(request.title());
+        if (!post.getSlug().equals(newSlug)) {
+            if (postRepository.existsBySlugAndIdNot(newSlug, postId)) {
+                throw new RuntimeException("Ya existe un post con tal slug");
+            }
+            post.setSlug(newSlug);
+        }
+        
+        
         return ToResponse(post);
     }
 
@@ -83,5 +108,29 @@ public class MyPostCommandService {
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );
+    }
+
+    private void validateAuthorCanChangeStatus(PostStatus currentStatus, PostStatus newStatus) {
+        if (currentStatus == newStatus) {
+            return; // No status change, no validation needed
+        }
+        //Only allow this list of status changes for authors
+        boolean isAllowed = switch (currentStatus) {
+            case DRAFT ->
+                newStatus == PostStatus.PUBLISHED;
+            case PUBLISHED ->
+                newStatus == PostStatus.DRAFT;
+            case REJECTED ->
+                newStatus == PostStatus.DRAFT;
+            case ARCHIVED ->
+                false;
+        };
+
+        if (!isAllowed) {
+            throw new IllegalStateException(
+                    String.format("No puedes cambiar el estado de %s a %s. Solo administradores pueden hacer esto.",
+                            currentStatus, newStatus)
+            );
+        }
     }
 }
