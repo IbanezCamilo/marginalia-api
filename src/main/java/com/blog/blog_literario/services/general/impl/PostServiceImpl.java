@@ -13,6 +13,7 @@ import com.blog.blog_literario.dto.posts.postUpdateDTO;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.model.Post;
+import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.repositories.PostRepository;
@@ -73,7 +74,7 @@ public class PostServiceImpl implements PostService {
         // Actualiza el contenido del post
         existingPost.setTitle(dto.getTitle());
         existingPost.setContent(dto.getContent());
-        existingPost.setStatus(dto.getStatus());
+        existingPost.setStatus(PostStatus.valueOf(dto.getStatus()));
         existingPost.setSlug(dto.getSlug());
         existingPost.setCoverImage(dto.getCoverImage());
         existingPost.setUpdatedAt(LocalDateTime.now());

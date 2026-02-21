@@ -17,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class PublicPostQueryService {
 
-    public static final String PUBLISHED = "PUBLISHED";
-
     private final PostRepository postRepository;
 
     //public list

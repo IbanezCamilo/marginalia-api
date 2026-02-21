@@ -9,6 +9,7 @@ import lombok.Data;
 
 @Data
 public class postCreateDTO {
+
     @NotBlank(message = "El titulo debe ser obligatorio")
     @Size(max = 100, message = "El titulo no puede tener más de 100 caracteres")
     private String title;
@@ -22,6 +23,6 @@ public class postCreateDTO {
     private String coverImage;
     @NotNull
     private Integer userId;
-    @NotNull
+    @NotNull(message = "La categoria es obligatoria")
     private Integer categoryId;
 }

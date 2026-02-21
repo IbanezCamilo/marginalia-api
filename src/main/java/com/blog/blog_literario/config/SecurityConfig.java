@@ -44,19 +44,20 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                 //Public endpoints--------------
                 .requestMatchers(HttpMethod.GET, "/api/public/posts/**").permitAll()
-                //Authenticated author endpoints-----------------------
-                .requestMatchers("/api/me/posts/**").authenticated()
-                //--------------------------------------
-                //ADMIN endpoints-----------------------
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                //--------------------------------------
-
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                //Allows image upload
                 .requestMatchers("/api/images/**").permitAll()
+                //ADMIN endpoints-----------------------
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                //Authenticated author endpoints-----------------------
+                .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN")
+                //--------------------------------------
+                //--------------------------------------
+
+                //Allows image upload
                 .requestMatchers("/ImgTest/**").permitAll()
+                //Fallback - All other endpoints require authentication
                 .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
