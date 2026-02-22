@@ -82,11 +82,11 @@ public class Post {
     // ============================================
     // CUSTOM CONSTRUCTOR (sin timestamps)
     // ============================================
-    public Post(String title, String content, String status, String slug,
+    public Post(String title, String content, PostStatus status, String slug,
             User author, Category category) {
         this.title = title;
         this.content = content;
-        this.status = status != null ? PostStatus.valueOf(status) : PostStatus.DRAFT; //default status if not Null
+        this.status = status != null ? status : PostStatus.DRAFT; //default status if not Null
         this.slug = slug;
         this.author = author;
         this.category = category;

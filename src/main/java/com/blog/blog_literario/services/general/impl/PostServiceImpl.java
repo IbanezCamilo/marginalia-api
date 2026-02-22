@@ -34,6 +34,7 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private ImageStorageService imageStorageService;
 
+    /* */
     @Override
     public Post createPost(postRequestDTO dto, MultipartFile image) {
         String emailAuthor = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -49,7 +50,7 @@ public class PostServiceImpl implements PostService {
         String postSlug = SlugUtils.toSlug(dto.title());
 
         // Crear nuevo post
-        Post newPost = new Post(dto.title(), dto.content(), dto.status(), postSlug, author, category);
+        Post newPost = new Post(dto.title(), dto.content(), PostStatus.valueOf(dto.status()), postSlug, author, category);
 
         newPost.setCreatedAt(LocalDateTime.now());
         newPost.setUpdatedAt(LocalDateTime.now());
