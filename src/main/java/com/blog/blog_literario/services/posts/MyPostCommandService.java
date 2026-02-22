@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.blog.blog_literario.dto.posts.CreatePostRequest;
 import com.blog.blog_literario.dto.posts.MyPostResponse;
@@ -23,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 @RequiredArgsConstructor
 public class MyPostCommandService {
+
+    private final ImageStorageServiceV2 imageStorageServiceV2;
 
     private final PostRepository postRepository;
 
@@ -53,7 +56,7 @@ public class MyPostCommandService {
         Post post = new Post(
                 request.title(),
                 request.content(),
-                PostStatus.DRAFT.name(),
+                PostStatus.DRAFT, // default status for new posts
                 slug,
                 user,
                 category
@@ -85,8 +88,7 @@ public class MyPostCommandService {
             }
             post.setSlug(newSlug);
         }
-        
-        
+
         return ToResponse(post);
     }
 
@@ -98,16 +100,23 @@ public class MyPostCommandService {
         postRepository.delete(post);
     }
 
-    public MyPostResponse ToResponse(Post post) {
-        return new MyPostResponse(
-                post.getId(),
-                post.getTitle(),
-                post.getContent(),
-                post.getStatus().name(),
-                post.getCategory().getName(),
-                post.getCreatedAt(),
-                post.getUpdatedAt()
-        );
+    public MyPostResponse uploadCoverImage(Integer userId, Integer postId, MultipartFile image) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post no encontrado con id: " + postId));
+
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new RuntimeException("No tienes permisos para modificar este post");
+        }
+
+        if (image == null || image.isEmpty()) {
+            throw new RuntimeException("No se proporciono ninguna imagen");
+        }
+
+        String imageUrl = imageStorageServiceV2.saveImage(image);
+        post.setCoverImage(imageUrl);
+        postRepository.save(post);
+
+        return ToResponse(post);
     }
 
     private void validateAuthorCanChangeStatus(PostStatus currentStatus, PostStatus newStatus) {
@@ -132,5 +141,17 @@ public class MyPostCommandService {
                             currentStatus, newStatus)
             );
         }
+    }
+
+    public MyPostResponse ToResponse(Post post) {
+        return new MyPostResponse(
+                post.getId(),
+                post.getTitle(),
+                post.getContent(),
+                post.getStatus().name(),
+                post.getCategory().getName(),
+                post.getCreatedAt(),
+                post.getUpdatedAt()
+        );
     }
 }

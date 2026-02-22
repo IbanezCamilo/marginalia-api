@@ -2,6 +2,7 @@ package com.blog.blog_literario.controllers.posts;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +11,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.blog.blog_literario.dto.posts.CreatePostRequest;
 import com.blog.blog_literario.dto.posts.MyPostResponse;
@@ -38,6 +41,15 @@ public class MyPostController {
     public MyPostResponse create(Authentication authentication, @RequestBody CreatePostRequest request) {
         Integer userId = getUserId(authentication);
         return myService.create(userId, request);
+    }
+
+    @PostMapping("/{id}/cover-image")
+    public ResponseEntity<MyPostResponse> uploadCoverImage(Authentication authentication, @PathVariable Integer id, @RequestParam("postImage") MultipartFile image) {
+
+        Integer userId = getUserId(authentication);
+        MyPostResponse updated = myService.uploadCoverImage(userId, id, image);
+
+        return ResponseEntity.ok(updated);
     }
 
     @PutMapping("/{id}")
