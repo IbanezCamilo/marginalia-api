@@ -56,6 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     var authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request)); // Establece los detalles de autenticación
                     SecurityContextHolder.getContext().setAuthentication(authToken); // Guarda la autenticación en el contexto de seguridad
+                    System.out.println("Authorities: " + userDetails.getAuthorities());
                 }
                 System.out.println("Token valido: " + jwtService.isTokenValid(jwt, userDetails));
             }

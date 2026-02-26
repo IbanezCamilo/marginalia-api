@@ -25,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/me/posts")
+@RequestMapping("/api/me/posts")
 public class MyPostController {
 
     private final MyPostCommandService myService;
@@ -44,7 +44,7 @@ public class MyPostController {
     }
 
     @PostMapping("/{id}/cover-image")
-    public ResponseEntity<MyPostResponse> uploadCoverImage(Authentication authentication, @PathVariable Integer id, @RequestParam("postImage") MultipartFile image) {
+    public ResponseEntity<MyPostResponse> uploadCoverImage(Authentication authentication, @PathVariable Integer id, @RequestParam("image") MultipartFile image) {
 
         Integer userId = getUserId(authentication);
         MyPostResponse updated = myService.uploadCoverImage(userId, id, image);

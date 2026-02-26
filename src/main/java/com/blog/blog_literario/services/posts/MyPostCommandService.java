@@ -47,7 +47,6 @@ public class MyPostCommandService {
 
         //Generate Slug
         String slug = SlugUtils.toSlug(request.title());
-
         //Validate Slug Uniqueness
         if (postRepository.existsBySlug(slug)) {
             throw new RuntimeException("El slug ya existe. Por favor, elige otro título.");

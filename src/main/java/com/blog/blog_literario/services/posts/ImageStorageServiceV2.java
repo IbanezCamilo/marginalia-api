@@ -24,7 +24,7 @@ public class ImageStorageServiceV2 {
             Files.createDirectories(imagePath.getParent());
             Files.copy(file.getInputStream(), imagePath, StandardCopyOption.REPLACE_EXISTING);
 
-            return "/api/images/" + fileName; //Ruta
+            return fileName; //Ruta
         } catch (IOException e) {
             throw new RuntimeException("Error al guardar la imagen", e);
         }
