@@ -148,7 +148,10 @@ public class MyPostCommandService {
                 post.getTitle(),
                 post.getContent(),
                 post.getStatus().name(),
+                post.getSlug(),
+                post.getAuthor().getName(),
                 post.getCategory().getName(),
+                post.getCoverImage(),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );

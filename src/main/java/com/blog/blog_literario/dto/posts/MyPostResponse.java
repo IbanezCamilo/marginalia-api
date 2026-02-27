@@ -8,6 +8,11 @@ public record MyPostResponse(
         String content,
         String status,
         String slug,
+        String authorName,
+        String categoryName,
+        String coverImage,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
-        ) {}
+        ) {
+
+}
