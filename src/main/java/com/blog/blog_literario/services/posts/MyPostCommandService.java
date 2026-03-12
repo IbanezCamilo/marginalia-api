@@ -40,6 +40,15 @@ public class MyPostCommandService {
                 .map(this::ToResponse);
     }
 
+    @Transactional(readOnly = true)
+    public MyPostResponse getById(Integer userId, Integer postId) {
+        Post post = postRepository
+                .findByIdAndAuthorId(postId, userId)
+                .orElseThrow(() -> new RuntimeException("Post no encontrado con ID: " + postId));
+
+        return ToResponse(post);
+    }
+
     public MyPostResponse create(Integer userId, CreatePostRequest request) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + userId));
 
@@ -150,6 +159,7 @@ public class MyPostCommandService {
                 post.getStatus().name(),
                 post.getSlug(),
                 post.getAuthor().getName(),
+                post.getCategory().getId(),
                 post.getCategory().getName(),
                 post.getCoverImage(),
                 post.getCreatedAt(),
