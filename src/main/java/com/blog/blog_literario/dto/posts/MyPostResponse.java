@@ -9,6 +9,7 @@ public record MyPostResponse(
         String status,
         String slug,
         String authorName,
+        Integer categoryId,
         String categoryName,
         String coverImage,
         LocalDateTime createdAt,
