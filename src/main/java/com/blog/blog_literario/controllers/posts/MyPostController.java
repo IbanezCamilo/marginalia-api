@@ -37,6 +37,14 @@ public class MyPostController {
         return myService.list(userId, pageable);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<MyPostResponse> getById(Authentication authentication, @PathVariable Integer id) {
+        Integer userId = getUserId(authentication);
+        MyPostResponse response = myService.getById(userId, id);
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping
     public MyPostResponse create(Authentication authentication, @RequestBody CreatePostRequest request) {
         Integer userId = getUserId(authentication);
