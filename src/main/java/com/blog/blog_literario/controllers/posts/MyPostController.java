@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.blog.blog_literario.dto.posts.CreatePostRequest;
 import com.blog.blog_literario.dto.posts.MyPostResponse;
+import com.blog.blog_literario.dto.posts.PatchStatusRequest;
 import com.blog.blog_literario.dto.posts.UpdatePostRequest;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.services.posts.MyPostCommandService;
@@ -65,6 +67,15 @@ public class MyPostController {
             @RequestBody UpdatePostRequest request) {
         Integer userId = getUserId(authentication);
         return myService.update(userId, id, request);
+    }
+
+    // This endpoint is specifically for changing the status of a post, it will have more strict rules than the general update endpoint
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<MyPostResponse> updateStatus(Authentication authentication, @PathVariable Integer id, @RequestBody PatchStatusRequest request) {
+        Integer userId = getUserId(authentication);
+        MyPostResponse updated = myService.updateStatus(userId, id, request.status());
+
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")

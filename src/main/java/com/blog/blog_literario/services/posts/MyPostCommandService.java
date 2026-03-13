@@ -100,6 +100,32 @@ public class MyPostCommandService {
         return ToResponse(post);
     }
 
+    // This method is specifically for changing status, it will have more strict rules than the general update method
+    public MyPostResponse updateStatus(Integer userId, Integer postId, String newStatusStr) {
+
+        //Verify if the post exist and belongs to the user
+        Post post = postRepository
+                .findByIdAndAuthorId(postId, userId)
+                .orElseThrow(() -> new RuntimeException("Post no encontrado con ID: " + postId));
+
+        // Conver String to Enum
+        PostStatus newStatus;
+        try {
+            newStatus = PostStatus.valueOf(newStatusStr);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Estado no valido: " + newStatusStr);
+        }
+
+        //Validate if the author can change to the new status
+        validateAuthorCanChangeStatus(post.getStatus(), newStatus);
+
+        //Execute changes and save
+        post.setStatus(newStatus);
+        postRepository.save(post);
+
+        return ToResponse(post);
+    }
+
     public void delete(Integer userId, Integer postId) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
