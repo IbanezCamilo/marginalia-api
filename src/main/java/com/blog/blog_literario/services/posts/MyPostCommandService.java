@@ -16,6 +16,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.general.ImageStorageServiceV2;
 import com.blog.blog_literario.utils.SlugUtils;
 
 import lombok.RequiredArgsConstructor;
