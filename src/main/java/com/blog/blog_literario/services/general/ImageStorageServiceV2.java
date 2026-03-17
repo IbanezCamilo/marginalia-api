@@ -1,4 +1,4 @@
-package com.blog.blog_literario.services.posts;
+package com.blog.blog_literario.services.general;
 
 import java.io.IOException;
 import java.nio.file.Files;
