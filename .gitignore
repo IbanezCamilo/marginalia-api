@@ -48,8 +48,11 @@ application-*.properties
 .env.*
 
 # Puedes dejar ejemplos
-!application-example.yml
-!.env.example
+!application-sample.yml
+!.env.sample
+
+# Otras carpetas o archivos que quieras ignorar
+ImgTest/
 
 # Archivos de ayuda generados
 HELP.md

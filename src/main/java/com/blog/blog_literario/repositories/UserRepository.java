@@ -9,7 +9,10 @@ import java.util.Optional; //Importa Optional para manejar valores que pueden se
 public interface UserRepository extends JpaRepository<User, Integer> {
 
     Optional<User> findByEmail(String email);
+
     boolean existsByEmail(String email);
+
     boolean existsByName(String name);
+
     Optional<User> findByName(String name);
 }
