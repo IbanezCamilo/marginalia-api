@@ -19,6 +19,7 @@ import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.general.ImageStorageServiceV2;
 import com.blog.blog_literario.utils.SlugUtils;
 
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -50,7 +51,7 @@ public class MyPostCommandService {
         return ToResponse(post);
     }
 
-    public MyPostResponse create(Integer userId, CreatePostRequest request) {
+    public MyPostResponse create(@NonNull Integer userId, CreatePostRequest request) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + userId));
 
         Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new RuntimeException("Categoria no encontrada con ID: " + request.categoryId()));
@@ -127,7 +128,7 @@ public class MyPostCommandService {
         return ToResponse(post);
     }
 
-    public void delete(Integer userId, Integer postId) {
+    public void delete(@NonNull Integer userId, @NonNull Integer postId) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
                 .orElseThrow();
@@ -135,7 +136,7 @@ public class MyPostCommandService {
         postRepository.delete(post);
     }
 
-    public MyPostResponse uploadCoverImage(Integer userId, Integer postId, MultipartFile image) {
+    public MyPostResponse uploadCoverImage(@NonNull Integer userId, @NonNull Integer postId, MultipartFile image) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post no encontrado con id: " + postId));
 

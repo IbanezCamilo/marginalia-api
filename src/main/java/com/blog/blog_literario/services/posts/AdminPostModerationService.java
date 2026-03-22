@@ -11,6 +11,7 @@ import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.repositories.PostRepository;
 
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -19,7 +20,7 @@ public class AdminPostModerationService {
 
     private final PostRepository postRepository;
 
-    public Page<AdminPostResponse> listAll(PostStatus status, Pageable pageable) {
+    public Page<AdminPostResponse> listAll(PostStatus status, @NonNull Pageable pageable) {
         Page<Post> posts;
 
         if (status != null) {
@@ -31,7 +32,7 @@ public class AdminPostModerationService {
     }
 
     //Change the post status for Global moderation
-    public AdminPostResponse updateStatus(Integer postId, AdminStatusUpdateRequest request) {
+    public AdminPostResponse updateStatus(@NonNull Integer postId, AdminStatusUpdateRequest request) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
@@ -49,7 +50,7 @@ public class AdminPostModerationService {
     }
 
     //Hard delete of a post
-    public void delete(Integer postId) {
+    public void delete(@NonNull Integer postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + postId));
 
