@@ -1,4 +1,4 @@
-package com.blog.blog_literario.controllers;
+package com.blog.blog_literario.controllers.image;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 
@@ -19,10 +20,13 @@ import com.blog.blog_literario.exception.ResourceNotFoundException;
 @RequestMapping("/api/images")
 public class ImageController {
 
+    @Value("${storage.local.upload-dir:uploads}")
+    private String uploadDir;
+
     @GetMapping("/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) {
         try {
-            Path uploadPath = Paths.get("ImgTest").toAbsolutePath().normalize();
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Path filePath = uploadPath.resolve(filename).normalize();
 
             if (!filePath.startsWith(uploadPath)) {
