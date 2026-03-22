@@ -15,6 +15,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -32,7 +33,8 @@ public class AdminUserService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getRole()
+                user.getRole(),
+                user.getCreatedAt()
         );
     }
 
@@ -46,12 +48,13 @@ public class AdminUserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserById(Integer id) {
+    public UserResponse getUserById(@NonNull Integer id) {
         return userRepository.findById(id)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el usuario con ID: " + id));
     }
 
+    // ─── Commands ────────────────────────────────────────────────────────────────
     public UserResponse create(CreateUserRequest request) {
         if (userRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("El correo ya está en uso");
@@ -72,7 +75,7 @@ public class AdminUserService {
         return toResponse(newUser);
     }
 
-    public UserResponse update(Integer id, UpdateUserRequest request) {
+    public UserResponse update(@NonNull Integer id, UpdateUserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                 "Usuario no encontrado con ID: " + id));
@@ -88,7 +91,7 @@ public class AdminUserService {
         return toResponse(userRepository.save(user));
     }
 
-    public void delete(Integer id) {
+    public void delete(@NonNull Integer id) {
         if (!userRepository.existsById(id)) {
             throw new ResourceNotFoundException("No se encontró el usuario con ID: " + id);
         }

@@ -2,11 +2,9 @@ package com.blog.blog_literario.controllers.profile;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,11 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.blog.blog_literario.dto.profile.UserProfileResponse;
 import com.blog.blog_literario.dto.profile.UserProfileUpdateRequest;
-import com.blog.blog_literario.model.User;
-import com.blog.blog_literario.repositories.UserRepository;
-import com.blog.blog_literario.services.general.ImageStorageService;
 import com.blog.blog_literario.services.users.UserProfileServiceV2;
 
 import jakarta.validation.Valid;

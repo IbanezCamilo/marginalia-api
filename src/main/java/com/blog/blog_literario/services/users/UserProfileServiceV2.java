@@ -1,18 +1,16 @@
 package com.blog.blog_literario.services.users;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.blog.blog_literario.dto.profile.UserProfileResponse;
 import com.blog.blog_literario.dto.profile.UserProfileUpdateRequest;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
-import com.blog.blog_literario.services.general.ImageStorageService;
-import com.blog.blog_literario.services.users.UserProfileServiceV2;
+import com.blog.blog_literario.services.general.ImageStorageServiceV2;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class UserProfileServiceV2 {
 
     private final UserRepository userRepository;
-    private final ImageStorageService imageStorageService;
+    private final ImageStorageServiceV2 imageStorageService;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
@@ -74,7 +72,8 @@ public class UserProfileServiceV2 {
                 user.getEmail(),
                 user.getDescription(),
                 user.getProfilePicture(),
-                user.getRole().getName()
+                user.getRole().getName(),
+                user.getCreatedAt()
         );
     }
 }
