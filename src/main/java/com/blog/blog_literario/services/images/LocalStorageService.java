@@ -1,0 +1,100 @@
+package com.blog.blog_literario.services.images;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.blog.blog_literario.utils.FileNameGenerator;
+import com.blog.blog_literario.utils.ImageValidator;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+public class LocalStorageService implements StorageService {
+
+    //Base directory for uploads, can be configured in application.properties
+    @Value("${storage.local.upload-dir:uploads}")
+    private String uploadDir;
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
+
+    @Override
+    public String save(MultipartFile file, String previousFile) {
+        try {
+
+            //Validate the file (size, type, etc.)
+            ImageValidator.validate(file);
+
+            //Clean up old file if exists
+            if (previousFile != null && !previousFile.isBlank()) {
+                delete(previousFile);
+            }
+
+            //Generate a unique file name based on the file's content (magic bytes) and original name
+            String fileName = FileNameGenerator.generate(file);
+
+            // Ensure the upload directory exists and save the file
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Files.createDirectories(uploadPath);
+            Path destination = uploadPath.resolve(fileName);
+
+            // Ensure the destination path is within the upload directory to prevent path traversal
+            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+
+            log.info("Imagen guardada exitosamente: {}", fileName);
+
+            return fileName;
+        } catch (IllegalArgumentException e) {
+            // Validation errors (e.g., invalid file type, size too large)
+            throw e;
+        } catch (IOException e) {
+            log.error("Error al guardar imagen en disco", e);
+            throw new RuntimeException("No se pudo guardar la imagen. Inténtalo de nuevo.", e);
+        }
+    }
+
+    @Override
+    public void delete(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return;
+        }
+
+        try {
+            Path uploadPath = Paths.get(uploadDir).normalize();
+            Path filePath = uploadPath.resolve(fileName).normalize();
+
+            if (!filePath.startsWith(uploadPath)) {
+                log.warn("Intento de acceso a archivo fuera del directorio permitido: " + fileName);
+                return;
+            }
+
+            boolean deleted = Files.deleteIfExists(filePath);
+
+            if (deleted) {
+                log.info("Imagen eliminada: {}", fileName);
+            } else {
+                log.warn("Se intentó eliminar una imagen que no existe: {}", fileName);
+            }
+        } catch (IOException e) {
+            log.error("No se pudo eliminar la imagen: {}", fileName, e);
+        }
+    }
+
+    @Override
+    public String buildUrl(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return null;
+        }
+
+        return baseUrl + "/api/images/" + fileName;
+    }
+
+}
