@@ -1,77 +1,79 @@
 package com.blog.blog_literario.controllers.admin;
 
-import com.blog.blog_literario.dto.categories.categoryCreateDTO;
-import com.blog.blog_literario.dto.categories.categoryUpdateDTO;
-import com.blog.blog_literario.model.Category;
-import com.blog.blog_literario.services.general.CategoryService;
+import com.blog.blog_literario.dto.categories.CategoryResponse;
+import com.blog.blog_literario.dto.categories.CreateCategoryRequest;
+import com.blog.blog_literario.dto.categories.UpdateCategoryRequest;
+import com.blog.blog_literario.services.categories.CategoryService;
 
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
 //import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/categories")
+@RequiredArgsConstructor
 public class CategoryController {
 
-    @Autowired
-    private CategoryService categoryService;
+    private final CategoryService categoryService;
 
+    
     @GetMapping
-    public ResponseEntity<?> getAllCategories() {
-         List<Category> categorias = categoryService.getAllCategories();
-         return ResponseEntity.ok(categorias); // status 200 = OK
+    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
+        return ResponseEntity.ok(categoryService.getAllCategories());
+
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getCategoryById(@PathVariable Integer id) {
-        Category categoria = categoryService.getCategoryById(id);
-        return ResponseEntity.ok(categoria); // status 200 = OK
+    public ResponseEntity<CategoryResponse> getCategoryById(@PathVariable Integer id) {
+
+        return ResponseEntity.ok(categoryService.getCategoryById(id));
     }
 
     @PostMapping
-    public ResponseEntity<?> createCategory(@Valid @RequestBody categoryCreateDTO dto, BindingResult result) {
-        // Validacion de Errores DTO
-        if (result.hasErrors()) {
-            // Si hay errores de validación, captura y devuelve una lista
-            var errores = result.getFieldErrors()
-                    .stream() // Inicia el flujo para recorrer la lista
-                    .map(e -> e.getField() + ":" + e.getDefaultMessage()) // Estructura los errores en un string
-                    .toList(); // Devuelve la lista de mensajes como strings
-            return ResponseEntity.badRequest().body(errores); // devuelve un http 400 con la lista de errores
-        }
-
-        // Guardar y retornar
-        Category categoriaCreada = categoryService.createCategory(dto);
-        return ResponseEntity.status(201).body(categoriaCreada); // status 201 : Guardado existosamente
-    }
-
-    @PutMapping("/{id}") // Método para actualizar una categoria
-    public ResponseEntity<?> updateCategory(@PathVariable Integer id, @Valid @RequestBody categoryUpdateDTO dto,
+    public ResponseEntity<?> createCategory(
+            @Valid @RequestBody CreateCategoryRequest dto,
             BindingResult result) {
-        // Validacion de Errores DTO
+
         if (result.hasErrors()) {
-            // Si hay errores de validación, captura y devuelve una lista
-            var errores = result.getFieldErrors()
-                    .stream() // Inicia el flujo para recorrer la lista
-                    .map(e -> e.getField() + ":" + e.getDefaultMessage()) // Estructura los errores en un string
-                    .toList(); // Devuelve la lista de mensajes como strings
-            return ResponseEntity.badRequest().body(errores); // devuelve un http 400 con la lista de errores
+            List<String> errors = result.getFieldErrors()
+                    .stream()
+                    .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                    .toList();
+
+            return ResponseEntity.badRequest().body(errors);
         }
 
-        // Actualizar, Guardar y Retornar
-        Category categoriaActualizada = categoryService.updateCategory(id, dto); // Envia y retorna datos al CategoryService
-        return ResponseEntity.status(201).body(categoriaActualizada); // status = 201: Guardado exitosamente
+        return ResponseEntity.status(201).body(categoryService.createCategory(dto));
     }
 
-    @DeleteMapping("/{id}") // Método para eliminar un post por ID
-    public ResponseEntity<?> deleteCategory(@PathVariable Integer id) {
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateCategory(
+            @PathVariable Integer id,
+            @Valid @RequestBody UpdateCategoryRequest dto,
+            BindingResult result) {
+
+        if (result.hasErrors()) {
+            List<String> errors = result.getFieldErrors()
+
+                    .stream()
+                    .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                    .toList();
+            return ResponseEntity.badRequest().body(errors);
+        }
+
+        return ResponseEntity.ok(categoryService.updateCategory(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCategory(@PathVariable Integer id) {
         categoryService.deleteCategory(id);
-        return ResponseEntity.noContent().build(); // 204 No content: Eliminado exitosamente
+        return ResponseEntity.noContent().build();
     }
 }
