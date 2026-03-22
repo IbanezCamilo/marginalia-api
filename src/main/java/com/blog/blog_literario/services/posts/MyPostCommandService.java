@@ -16,7 +16,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
-import com.blog.blog_literario.services.general.ImageStorageServiceV2;
+import com.blog.blog_literario.services.images.StorageService;
 import com.blog.blog_literario.utils.SlugUtils;
 
 import lombok.NonNull;
@@ -27,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MyPostCommandService {
 
-    private final ImageStorageServiceV2 imageStorageServiceV2;
+    private final StorageService storageService;
 
     private final PostRepository postRepository;
 
@@ -131,7 +131,10 @@ public class MyPostCommandService {
     public void delete(@NonNull Integer userId, @NonNull Integer postId) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("Post no encontrado"));
+
+        //Delete cover image before deleting the post to avoid orphaned files
+        storageService.delete(post.getCoverImage());
 
         postRepository.delete(post);
     }
@@ -148,7 +151,8 @@ public class MyPostCommandService {
             throw new RuntimeException("No se proporciono ninguna imagen");
         }
 
-        String imageUrl = imageStorageServiceV2.saveImage(image);
+        String imageUrl = storageService.save(image, post.getCoverImage());
+
         post.setCoverImage(imageUrl);
         postRepository.save(post);
 

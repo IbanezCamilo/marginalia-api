@@ -10,7 +10,7 @@ import com.blog.blog_literario.dto.profile.UserProfileResponse;
 import com.blog.blog_literario.dto.profile.UserProfileUpdateRequest;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
-import com.blog.blog_literario.services.general.ImageStorageServiceV2;
+import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,27 +20,22 @@ import lombok.RequiredArgsConstructor;
 public class UserProfileServiceV2 {
 
     private final UserRepository userRepository;
-    private final ImageStorageServiceV2 imageStorageService;
+    private final StorageService storageService;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
-        // Buscar el usuario por email
         User user = findByEmail(userDetails.getUsername());
 
-        // Return user data
         return toResponse(user);
     }
 
     // Actualizar datos del perfil de usuario
     public UserProfileResponse updateProfile(UserDetails userDetails, UserProfileUpdateRequest request) {
-        // Buscar el usuario
         User user = findByEmail(userDetails.getUsername());
-        // Actualizar nombre
+
         user.setName(request.name());
-        // Actualiza la descripción
         user.setDescription(request.description());
 
-        // Guardar el nuevo usuario actualizado
         return toResponse(userRepository.save(user));
 
     }
@@ -48,10 +43,12 @@ public class UserProfileServiceV2 {
     public String uploadProfileImage(UserDetails userDetails, MultipartFile imageFile) {
         User user = findByEmail(userDetails.getUsername());
 
-        String imageUrl = imageStorageService.saveImage(imageFile);
+        String imageUrl = storageService.save(imageFile, user.getProfilePicture());
+
         user.setProfilePicture(imageUrl);
         userRepository.save(user);
-        return imageUrl;
+
+        return storageService.buildUrl(imageUrl);
     }
 
     // Validar la foto de perfil
