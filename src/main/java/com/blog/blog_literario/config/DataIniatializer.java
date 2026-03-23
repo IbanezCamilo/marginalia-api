@@ -36,9 +36,9 @@ public class DataIniatializer implements CommandLineRunner {
 
     private void RoleInitializer() {
         //creating roles
-        createRoleIfNotExist("READER");
-        createRoleIfNotExist("AUTHOR");
-        createRoleIfNotExist("ADMIN");
+        createRoleIfNotExist(Role.READER);
+        createRoleIfNotExist(Role.AUTHOR);
+        createRoleIfNotExist(Role.ADMIN);
 
     }
 
