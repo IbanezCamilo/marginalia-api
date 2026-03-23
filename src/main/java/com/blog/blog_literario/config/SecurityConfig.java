@@ -24,6 +24,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
+import com.blog.blog_literario.security.RateLimitFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final UserDetailsService userDetailsService;
 
     @Value("${FRONTEND_URL}")
@@ -42,7 +44,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))// Habilitar CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -63,6 +65,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -91,13 +94,11 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(frontendUrl));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        //Cors-Allow-Header for Dev
-        configuration.setAllowedHeaders(List.of("*"));
-        //Cors-Allow-Header for Production
-        // configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        //Cors-Allow-Header
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         configuration.setExposedHeaders(List.of("Authorization", "X-Total-Count"));
         // configuration.setAllowCredentials(true); // SE UTILIZARA AL IMPLEMENTAR COOKIES
-        configuration.setMaxAge(3600L); // se conceden permisos durante 1 hora
+        configuration.setMaxAge(3600L); // Authorize for 1 hour
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
