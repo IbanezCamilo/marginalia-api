@@ -1,29 +1,34 @@
 package com.blog.blog_literario.controllers.admin;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.blog.blog_literario.dto.categories.CategoryResponse;
 import com.blog.blog_literario.dto.categories.CreateCategoryRequest;
 import com.blog.blog_literario.dto.categories.UpdateCategoryRequest;
 import com.blog.blog_literario.services.categories.CategoryService;
 
 import jakarta.validation.Valid;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
 //import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/admin/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 
     private final CategoryService categoryService;
 
-    
     @GetMapping
     public ResponseEntity<List<CategoryResponse>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
@@ -61,7 +66,6 @@ public class CategoryController {
 
         if (result.hasErrors()) {
             List<String> errors = result.getFieldErrors()
-
                     .stream()
                     .map(e -> e.getField() + ": " + e.getDefaultMessage())
                     .toList();
