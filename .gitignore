@@ -2,7 +2,7 @@
 target/
 .mvn/wrapper/maven-wrapper.log
 
-# Puedes incluir el wrapper para que otros puedan compilar sin tener Maven:
+# Wrappers
 !mvnw
 !mvnw.cmd
 !.mvn/wrapper/maven-wrapper.jar
@@ -35,11 +35,11 @@ target/
 # VS Code
 .vscode/
 
-# === Archivos temporales / del sistema ===
+# === TempFiles
 .DS_Store
 Thumbs.db
 
-# === Configuración sensible ===
+# === Config
 *.env
 application.properties
 application.yml
@@ -47,11 +47,7 @@ application-*.yml
 application-*.properties
 .env.*
 
-# Puedes dejar ejemplos
-!application-sample.yml
-!.env.sample
-
-# Otras carpetas o archivos que quieras ignorar
+#Other
 ImgTest/
 uploads/
 
@@ -63,5 +59,5 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Archivos de ayuda generados
+# Help
 HELP.md
