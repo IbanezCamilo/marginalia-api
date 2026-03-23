@@ -34,36 +34,36 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
-    public AuthResponse register(RegisterRequest dto) {
-        if (userRepository.findByEmail(dto.email()).isPresent()) {
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("El correo ya está en uso");
         }
 
-        Role defaultRole = roleRepository.findByName("AUTOR")
+        Role defaultRole = roleRepository.findByName(Role.AUTHOR)
                 .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado"));
 
         User newUser = new User();
-        newUser.setName(dto.nombre());
-        newUser.setEmail(dto.email());
-        newUser.setPassword(passwordEncoder.encode(dto.password()));
+        newUser.setName(request.nombre());
+        newUser.setEmail(request.email());
+        newUser.setPassword(passwordEncoder.encode(request.password()));
         newUser.setRole(defaultRole);
-        newUser.setProfilePicture("https://servidor.com/images/default-avatar.png");
+        newUser.setProfilePicture("https://ui-avatars.com/api/?name=" + request.nombre() + "&background=random");
 
         userRepository.save(newUser);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(dto.email());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
         String token = jwtService.generateToken(userDetails);
 
         return new AuthResponse(token);
     }
 
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest dto) {
+    public AuthResponse login(LoginRequest request) {
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(dto.email(), dto.password()));
+                    new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(dto.email());
+            UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
             String token = jwtService.generateToken(userDetails);
 
             return new AuthResponse(token);
