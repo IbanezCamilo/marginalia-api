@@ -53,6 +53,15 @@ application-*.properties
 
 # Otras carpetas o archivos que quieras ignorar
 ImgTest/
+uploads/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Archivos de ayuda generados
 HELP.md
