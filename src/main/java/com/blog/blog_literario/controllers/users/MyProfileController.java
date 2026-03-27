@@ -1,4 +1,4 @@
-package com.blog.blog_literario.controllers.profile;
+package com.blog.blog_literario.controllers.users;
 
 import java.util.Map;
 
@@ -15,18 +15,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.blog.blog_literario.dto.profile.UserProfileUpdateRequest;
-import com.blog.blog_literario.services.users.UserProfileServiceV2;
+import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
+import com.blog.blog_literario.services.users.UserProfileService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/user/profile/v2")
-public class UserProfileControllerV2 {
+@RequestMapping("/api/me/profile")
+public class MyProfileController {
 
-    private final UserProfileServiceV2 userProfileService;
+    private final UserProfileService userProfileService;
 
     @GetMapping
     // param: Obtiene el usuario Autenticado

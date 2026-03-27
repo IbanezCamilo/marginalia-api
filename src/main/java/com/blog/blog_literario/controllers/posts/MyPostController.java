@@ -23,6 +23,7 @@ import com.blog.blog_literario.dto.posts.UpdatePostRequest;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.services.posts.MyPostCommandService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -48,7 +49,7 @@ public class MyPostController {
     }
 
     @PostMapping
-    public MyPostResponse create(Authentication authentication, @RequestBody CreatePostRequest request) {
+    public MyPostResponse create(Authentication authentication, @Valid @RequestBody CreatePostRequest request) {
         Integer userId = getUserId(authentication);
         return myService.create(userId, request);
     }
@@ -64,7 +65,7 @@ public class MyPostController {
 
     @PutMapping("/{id}")
     public MyPostResponse update(Authentication authentication, @PathVariable Integer id,
-            @RequestBody UpdatePostRequest request) {
+            @Valid @RequestBody UpdatePostRequest request) {
         Integer userId = getUserId(authentication);
         return myService.update(userId, id, request);
     }
