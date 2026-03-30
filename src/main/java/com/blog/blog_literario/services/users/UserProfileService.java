@@ -10,7 +10,7 @@ import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
-import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.services.images.LocalStorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class UserProfileService {
 
     private final UserRepository userRepository;
-    private final StorageService storageService;
+    private final LocalStorageService localStorageService;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
@@ -43,12 +43,12 @@ public class UserProfileService {
     public String uploadProfileImage(UserDetails userDetails, MultipartFile imageFile) {
         User user = findByEmail(userDetails.getUsername());
 
-        String imageUrl = storageService.save(imageFile, user.getProfilePicture());
+        String imageUrl = localStorageService.save(imageFile, user.getProfilePicture());
 
         user.setProfilePicture(imageUrl);
         userRepository.save(user);
 
-        return storageService.buildUrl(imageUrl);
+        return localStorageService.buildUrl(imageUrl);
     }
 
     // Validar la foto de perfil
@@ -68,7 +68,7 @@ public class UserProfileService {
                 user.getName(),
                 user.getEmail(),
                 user.getDescription(),
-                user.getProfilePicture(),
+                localStorageService.buildUrl(user.getProfilePicture()),
                 user.getRole().getName(),
                 user.getCreatedAt()
         );
