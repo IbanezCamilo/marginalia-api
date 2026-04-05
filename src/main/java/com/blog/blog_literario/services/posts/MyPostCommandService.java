@@ -66,7 +66,7 @@ public class MyPostCommandService {
         Post post = new Post(
                 request.title(),
                 request.content(),
-                PostStatus.DRAFT, // default status for new posts
+                PostStatus.valueOf(request.status()), // default status for new posts
                 slug,
                 user,
                 category
