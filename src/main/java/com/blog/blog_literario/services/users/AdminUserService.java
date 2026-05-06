@@ -69,7 +69,7 @@ public class AdminUserService {
         newUser.setEmail(request.email());
         newUser.setPassword(passwordEncoder.encode(request.password()));
         newUser.setRole(role);
-        newUser.setProfilePicture("https://servidor.com/images/default-avatar.png");
+        newUser.setProfilePicture(null);
 
         userRepository.save(newUser);
         return toResponse(newUser);

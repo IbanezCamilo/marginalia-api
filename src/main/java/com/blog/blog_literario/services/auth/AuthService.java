@@ -43,11 +43,11 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado"));
 
         User newUser = new User();
-        newUser.setName(request.nombre());
+        newUser.setName(request.name());
         newUser.setEmail(request.email());
         newUser.setPassword(passwordEncoder.encode(request.password()));
         newUser.setRole(defaultRole);
-        newUser.setProfilePicture("https://ui-avatars.com/api/?name=" + request.nombre() + "&background=random");
+        newUser.setProfilePicture(null);
 
         userRepository.save(newUser);
 

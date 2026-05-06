@@ -1,5 +1,8 @@
 package com.blog.blog_literario.services.users;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -62,13 +65,24 @@ public class UserProfileService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
     }
 
+    private String resolveProfilePicture(User user){
+        
+        if(user.getProfilePicture() != null){
+            return localStorageService.buildUrl(user.getProfilePicture());
+        }
+
+        String encodedName = URLEncoder.encode(user.getName(), StandardCharsets.UTF_8);
+        return "https://ui-avatars.com/api/?name=" + encodedName + "&background=random";
+        
+    }
+
     private UserProfileResponse toResponse(User user) {
         return new UserProfileResponse(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
                 user.getDescription(),
-                localStorageService.buildUrl(user.getProfilePicture()),
+                resolveProfilePicture(user),
                 user.getRole().getName(),
                 user.getCreatedAt()
         );
