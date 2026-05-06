@@ -65,7 +65,7 @@ public class DataIniatializer implements CommandLineRunner {
             String encryptedPassword = passwordEncoder.encode(adminPassword);
             admin.setPassword(encryptedPassword);
             admin.setRole(adminRole);
-            admin.setProfilePicture("https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff");
+            admin.setProfilePicture(null);
 
             userRepository.save(admin);
 
