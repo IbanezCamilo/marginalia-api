@@ -7,8 +7,9 @@ public record PublicPostResponse(
         String title,
         String content,
         String slug,
-        String AuthorName,
-        String CategoryName,
+        String authorName,
+        String categoryName,
+        String coverImage,
         LocalDateTime createdAt
         ) {
 

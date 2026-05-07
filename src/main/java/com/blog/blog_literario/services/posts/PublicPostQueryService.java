@@ -39,10 +39,11 @@ public class PublicPostQueryService {
     private PublicPostResponse toResponse(Post post) {
         return new PublicPostResponse(
                 post.getTitle(),
-                post.getSlug(),
                 post.getContent(),
+                post.getSlug(),
                 post.getAuthor().getName(),
                 post.getCategory().getName(),
+                post.getCoverImage(),
                 post.getCreatedAt()
         );
     }
