@@ -20,11 +20,20 @@ public class PublicPostQueryService {
     private final PostRepository postRepository;
 
     //public list
-    public Page<PublicPostResponse> listPublishedPosts(Pageable pageable) {
-
+    public Page<PublicPostResponse> listPublishedPosts(Integer categoryId, Pageable pageable) {
+        if (categoryId != null) {
+            return postRepository
+                    .findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
+                    .map(this::toResponse);
+        }
         return postRepository
                 .findByStatus(PostStatus.PUBLISHED, pageable)
                 .map(this::toResponse);
+    }
+
+    // Overload for backward compatibility (no categoryId filter)
+    public Page<PublicPostResponse> listPublishedPosts(Pageable pageable) {
+        return listPublishedPosts(null, pageable);
     }
 
     // public details by slug
