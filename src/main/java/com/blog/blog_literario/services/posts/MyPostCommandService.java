@@ -84,6 +84,12 @@ public class MyPostCommandService {
         post.setTitle(request.title());
         post.setContent(request.content());
 
+        //Category changed
+        if(request.categoryId() != null){
+            Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new RuntimeException("Categoria no encontrada con ID: " + request.categoryId()));
+            post.setCategory(category);
+        }
+
         //Validate Slug Uniqueness if title changed
         PostStatus newStatus = PostStatus.valueOf(request.status());
         validateAuthorCanChangeStatus(post.getStatus(), newStatus);
