@@ -2,14 +2,13 @@ package com.blog.blog_literario.controllers.categories;
 
 import java.util.List;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.blog.blog_literario.dto.categories.CategoryResponse;
-import com.blog.blog_literario.services.categories.CategoryService;
+import com.blog.blog_literario.services.categories.PublicCategoryService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -18,16 +17,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PublicCategoryController {
 
-    private final CategoryService categoryService;
+    private final PublicCategoryService publicCategoryService;
 
     @GetMapping
-    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
+    public List<CategoryResponse> list() {
+        return publicCategoryService.listCategories();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<CategoryResponse> getCategoryById(@PathVariable Integer id) {
-        return ResponseEntity.ok(categoryService.getCategoryById(id));
+    @GetMapping("/{slug}")
+    public CategoryResponse detail(@PathVariable String slug) {
+        return publicCategoryService.getBySlug(slug);
     }
-
 }
