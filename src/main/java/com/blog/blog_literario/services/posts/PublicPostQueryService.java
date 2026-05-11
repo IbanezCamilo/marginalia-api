@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
+import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
+import com.blog.blog_literario.services.images.LocalStorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class PublicPostQueryService {
 
+    private final LocalStorageService localStorageService;
     private final PostRepository postRepository;
 
     //public list
@@ -46,14 +49,28 @@ public class PublicPostQueryService {
     }
 
     private PublicPostResponse toResponse(Post post) {
+        User author = post.getAuthor();
+        String pictureUrl = resolveProfilePicture(author);
+
         return new PublicPostResponse(
                 post.getTitle(),
                 post.getContent(),
                 post.getSlug(),
-                post.getAuthor().getName(),
+                author.getId(),
+                author.getName(),
+                author.getDescription(),
+                pictureUrl,
                 post.getCategory().getName(),
+                post.getCategory().getSlug(),
                 post.getCoverImage(),
                 post.getCreatedAt()
         );
+    }
+
+    private String resolveProfilePicture(User user){
+        if(user.getProfilePicture() != null && !user.getProfilePicture().isBlank()){
+            return localStorageService.buildUrl(user.getProfilePicture());
+        }
+        return null;
     }
 }
