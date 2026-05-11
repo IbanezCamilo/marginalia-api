@@ -43,6 +43,9 @@ public class Post {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private PostStatus status = PostStatus.DRAFT; // default value
@@ -73,6 +76,10 @@ public class Post {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         updatedAt = now;
+        // If created as PUBLISHED, set publishedAt
+        if (status == PostStatus.PUBLISHED) {
+            publishedAt = now;
+        }
     }
 
     /**
@@ -80,7 +87,12 @@ public class Post {
      */
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        updatedAt = now;
+        // Set publishedAt when status changes to PUBLISHED (and it wasn't already set)
+        if (status == PostStatus.PUBLISHED && publishedAt == null) {
+            publishedAt = now;
+        }
     }
 
     // ============================================
