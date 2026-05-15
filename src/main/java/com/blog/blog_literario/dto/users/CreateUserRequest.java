@@ -17,7 +17,7 @@ public record CreateUserRequest(
         @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
         String password,
         @NotNull(message = "El rol es obligatorio")
-        Role role
+        String roleName
         ) {
 
 }
