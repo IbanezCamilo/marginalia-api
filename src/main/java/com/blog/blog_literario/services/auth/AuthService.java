@@ -12,51 +12,61 @@ import org.springframework.transaction.annotation.Transactional;
 import com.blog.blog_literario.dto.auth.AuthResponse;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
-import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
-import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
+import com.blog.blog_literario.services.users.UserCreationService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service for user authentication and registration
+ * Handles login and user self-registration (signup)
+ */
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final UserCreationService userCreationService;
 
+    /**
+     * Registers a new user with self-signup
+     * Automatically assigns the AUTHOR role to new registrants
+     * 
+     * @param request the registration request with name, email, password
+     * @return AuthResponse with JWT token
+     */
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new RuntimeException("El correo ya está en uso");
-        }
+        // Create user with default AUTHOR role
+        User newUser = userCreationService.createUser(
+                request.name(),
+                request.email(),
+                request.password(),
+                Role.AUTHOR  // Default role for self-registered users
+        );
 
-        Role defaultRole = roleRepository.findByName(Role.AUTHOR)
-                .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado"));
-
-        User newUser = new User();
-        newUser.setName(request.name());
-        newUser.setEmail(request.email());
-        newUser.setPassword(passwordEncoder.encode(request.password()));
-        newUser.setRole(defaultRole);
-        newUser.setProfilePicture(null);
-
-        userRepository.save(newUser);
-
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
+        // Generate JWT token
+        UserDetails userDetails = userDetailsService.loadUserByUsername(newUser.getEmail());
         String token = jwtService.generateToken(userDetails);
 
         return new AuthResponse(token);
     }
 
+    /**
+     * Authenticates a user with email and password
+     * 
+     * @param request the login request with email and password
+     * @return AuthResponse with JWT token
+     * @throws BadCredentialsException if credentials are invalid
+     */
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         try {
@@ -72,3 +82,4 @@ public class AuthService {
         }
     }
 }
+
