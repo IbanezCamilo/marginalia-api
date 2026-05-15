@@ -49,6 +49,17 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
     @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Post p WHERE p.slug = :slug AND p.id != :postId")
     boolean existsBySlugAndIdNot(@Param("slug") String slug, @Param("postId") Integer postId);
 
+    /**
+     * Finds all posts by a specific user without pagination
+     */
+    @Query("SELECT p FROM Post p WHERE p.user.id = :userId")
+    List<Post> findAllByUserId(@Param("userId") Integer userId);
+
+    /**
+     * Deletes all posts authored by a specific user
+     */
+    void deleteAllByUserId(Integer userId);
+
     //AUDIT AND MODERATION
     //filter multiples status
     Page<Post> findByStatusIn(List<PostStatus> statuses, Pageable pageable);
@@ -73,5 +84,4 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
     default Page<Post> findMyDrafts(Integer authorId, Pageable pageable) {
         return findByAuthorIdAndStatus(authorId, PostStatus.DRAFT, pageable);
     }
-
 }
