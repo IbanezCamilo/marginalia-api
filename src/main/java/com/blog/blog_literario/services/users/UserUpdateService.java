@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
  * Ensures data integrity for sensitive operations like email changes
  */
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class UserUpdateService {
 

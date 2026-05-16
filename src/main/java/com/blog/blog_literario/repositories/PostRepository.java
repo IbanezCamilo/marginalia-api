@@ -52,13 +52,13 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
     /**
      * Finds all posts by a specific user without pagination
      */
-    @Query("SELECT p FROM Post p WHERE p.user.id = :userId")
-    List<Post> findAllByUserId(@Param("userId") Integer userId);
+    @Query("SELECT p FROM Post p WHERE p.author.id = :authorId")
+    List<Post> findAllByAuthorId(@Param("authorId") Integer authorId);
 
     /**
-     * Deletes all posts authored by a specific user
+     * Deletes all posts authored by a specific author
      */
-    void deleteAllByUserId(Integer userId);
+    void deleteAllByAuthorId(Integer authorId);
 
     //AUDIT AND MODERATION
     //filter multiples status

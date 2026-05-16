@@ -161,9 +161,9 @@ public class AdminUserService {
             .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + id));
 
     // Clean up post images
-    postRepository.findAllByUserId(id)
+    postRepository.findAllByAuthorId(id)
             .forEach(p -> storageService.delete(p.getCoverImage()));
-    postRepository.deleteAllByUserId(id);
+    postRepository.deleteAllByAuthorId(id);
 
     // Clean up profile picture
     storageService.delete(user.getProfilePicture());

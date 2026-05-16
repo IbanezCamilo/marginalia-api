@@ -1,6 +1,5 @@
 package com.blog.blog_literario.controllers.admin;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,18 +20,14 @@ import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.services.posts.AdminPostModerationService;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin/posts")
+@RequiredArgsConstructor
 public class AdminPostController {
 
     private final AdminPostModerationService adminService;
-
-    @Autowired
-    public AdminPostController(AdminPostModerationService adminService) {
-        this.adminService = adminService;
-    }
-
     /**
      * GET /api/admin/posts
      */
@@ -75,7 +70,7 @@ public class AdminPostController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        adminService.delete(id);
+        adminService.deleteUser(id);
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 }
