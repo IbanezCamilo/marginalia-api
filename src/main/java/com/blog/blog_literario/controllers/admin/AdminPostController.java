@@ -70,7 +70,7 @@ public class AdminPostController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        adminService.deleteUser(id);
+        adminService.delete(id);
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 }
