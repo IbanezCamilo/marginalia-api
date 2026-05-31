@@ -57,10 +57,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/images/**").permitAll()
                 //ADMIN endpoints-----------------------
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                //Authenticated author endpoints-----------------------
-                .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN")
-                //--------------------------------------
-                //--------------------------------------
+                //Authenticated Author endpoints-----------------------
+                .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN", "MODERATOR")
+                //Author request endpoints-----------------------
+                .requestMatchers("/api/me/author-request/**").authenticated()
+                //------------------------------------------------------------------------
 
                 //Fallback - All other endpoints require authentication
                 .anyRequest().authenticated()

@@ -50,7 +50,7 @@ public class AuthService {
                 request.name(),
                 request.email(),
                 request.password(),
-                Role.AUTHOR  // Default role for self-registered users
+                Role.READER  // Default role for self-registered users
         );
 
         // Generate JWT token

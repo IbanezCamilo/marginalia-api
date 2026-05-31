@@ -38,6 +38,7 @@ public class DataIniatializer implements CommandLineRunner {
         //creating roles
         createRoleIfNotExist(Role.READER);
         createRoleIfNotExist(Role.AUTHOR);
+        createRoleIfNotExist(Role.MODERATOR);
         createRoleIfNotExist(Role.ADMIN);
 
     }

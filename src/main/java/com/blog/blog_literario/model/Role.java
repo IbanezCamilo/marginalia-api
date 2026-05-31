@@ -1,6 +1,12 @@
 package com.blog.blog_literario.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,7 +31,7 @@ public class Role {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id") // ✅ Simplificado
+    @Column(name = "id")
     private Integer id;
 
     @Column(name = "name", nullable = false, unique = true, length = 50) // ✅ Longitud definida
@@ -35,10 +41,11 @@ public class Role {
     /**
      * ✅ Constantes para roles comunes Evita typos y facilita uso en código
      */
-    public static final String ADMIN = "ADMIN";
-    public static final String AUTHOR = "AUTHOR";
     public static final String READER = "READER";
-
+    public static final String AUTHOR = "AUTHOR";
+    public static final String MODERATOR = "MODERATOR";
+    public static final String ADMIN = "ADMIN";
+    
     // UTILITY METHODS
     /**
      * Constructor de conveniencia
