@@ -79,6 +79,12 @@ public class MyPostController {
         return ResponseEntity.ok(updated);
     }
 
+    @DeleteMapping("/{id}/cover-image")
+    public ResponseEntity<MyPostResponse> deleteCoverImage(@PathVariable Integer id, Authentication authentication) {
+        Integer userId = getUserId(authentication);
+        return ResponseEntity.ok(myService.deleteCoverImage(userId, id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, Authentication authetication) {
         Integer userId = getUserId(authetication);
