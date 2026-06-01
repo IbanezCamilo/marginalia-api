@@ -13,7 +13,8 @@ import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
-import com.blog.blog_literario.services.images.LocalStorageService;
+import com.blog.blog_literario.services.images.AvatarResolver;
+import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,14 +25,15 @@ public class PublicAuthorService {
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
-    private final LocalStorageService localStorageService;
+    private final StorageService storageService;
+    private final AvatarResolver avatarResolver;
 
     public PublicAuthorResponse getAuthorById(Integer id) {
-        User user = userRepository.findById(id)
+        User author = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Autor no encontrado con ID: " + id));
 
-        return toAuthorResponse(user);
+        return toAuthorResponse(author);
     }
 
     public Page<PublicPostResponse> getPublishedPostsByAuthor(Integer authorId, Pageable pageable) {
@@ -44,13 +46,12 @@ public class PublicAuthorService {
                 .map(this::toPostResponse);
     }
 
-    private PublicAuthorResponse toAuthorResponse(User user) {
-        String pictureUrl = resolveProfilePicture(user);
+    private PublicAuthorResponse toAuthorResponse(User author) {
         return new PublicAuthorResponse(
-                user.getId(),
-                user.getName(),
-                user.getDescription(),
-                pictureUrl
+                author.getId(),
+                author.getName(),
+                author.getDescription(),
+                avatarResolver.resolve(author.getProfilePicture(), author.getName())
         );
     }
 
@@ -63,18 +64,11 @@ public class PublicAuthorService {
                 author.getId(),
                 author.getName(),
                 author.getDescription(),
-                resolveProfilePicture(author),
+                avatarResolver.resolve(author.getProfilePicture(), author.getName()),
                 post.getCategory().getName(),
                 post.getCategory().getSlug(),
-                post.getCoverImage(),
+                storageService.buildUrl(post.getCoverImage()),
                 post.getCreatedAt()
         );
-    }
-
-    private String resolveProfilePicture(User user) {
-        if (user.getProfilePicture() != null && !user.getProfilePicture().isBlank()) {
-            return localStorageService.buildUrl(user.getProfilePicture());
-        }
-        return null;
     }
 }

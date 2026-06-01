@@ -10,7 +10,8 @@ import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
-import com.blog.blog_literario.services.images.LocalStorageService;
+import com.blog.blog_literario.services.images.AvatarResolver;
+import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,8 +20,9 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class PublicPostQueryService {
 
-    private final LocalStorageService localStorageService;
     private final PostRepository postRepository;
+    private final StorageService storageService;
+    private final AvatarResolver avatarResolver;
 
     //public list
     public Page<PublicPostResponse> listPublishedPosts(Integer categoryId, Pageable pageable) {
@@ -50,7 +52,6 @@ public class PublicPostQueryService {
 
     private PublicPostResponse toResponse(Post post) {
         User author = post.getAuthor();
-        String pictureUrl = resolveProfilePicture(author);
 
         return new PublicPostResponse(
                 post.getTitle(),
@@ -59,18 +60,11 @@ public class PublicPostQueryService {
                 author.getId(),
                 author.getName(),
                 author.getDescription(),
-                pictureUrl,
+                avatarResolver.resolve(author.getProfilePicture(), author.getName()),
                 post.getCategory().getName(),
                 post.getCategory().getSlug(),
-                post.getCoverImage(),
+                storageService.buildUrl(post.getCoverImage()),
                 post.getCreatedAt()
         );
-    }
-
-    private String resolveProfilePicture(User user){
-        if(user.getProfilePicture() != null && !user.getProfilePicture().isBlank()){
-            return localStorageService.buildUrl(user.getProfilePicture());
-        }
-        return null;
     }
 }

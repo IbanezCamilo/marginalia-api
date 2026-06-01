@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.blog.blog_literario.dto.posts.CreatePostRequest;
 import com.blog.blog_literario.dto.posts.MyPostResponse;
 import com.blog.blog_literario.dto.posts.UpdatePostRequest;
+import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
@@ -145,6 +146,18 @@ public class MyPostCommandService {
         postRepository.delete(post);
     }
 
+    public MyPostResponse deleteCoverImage(@NonNull Integer userId, @NonNull Integer postId) {
+        Post post = postRepository
+                .findByIdAndAuthorId(postId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
+
+        storageService.delete(post.getCoverImage());
+        post.setCoverImage(null);
+        postRepository.save(post);
+
+        return ToResponse(post);
+    }
+
     public MyPostResponse uploadCoverImage(@NonNull Integer userId, @NonNull Integer postId, MultipartFile image) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post no encontrado con id: " + postId));
@@ -199,7 +212,7 @@ public class MyPostCommandService {
                 post.getAuthor().getName(),
                 post.getCategory().getId(),
                 post.getCategory().getName(),
-                post.getCoverImage(),
+                storageService.buildUrl(post.getCoverImage()),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );

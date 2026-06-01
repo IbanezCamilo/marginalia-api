@@ -14,4 +14,5 @@ public interface StorageService {
     void delete(String fiileName);
 
     String buildUrl(String fileName);
+
 }

@@ -10,6 +10,7 @@ import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.repositories.PostRepository;
+import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminPostModerationService {
 
     private final PostRepository postRepository;
+    private final StorageService storageService;
 
     public Page<AdminPostResponse> listAll(PostStatus status, @NonNull Pageable pageable) {
         Page<Post> posts;
@@ -54,6 +56,7 @@ public class AdminPostModerationService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + postId));
 
+        storageService.delete(post.getCoverImage());
         postRepository.delete(post);
     }
 
@@ -68,7 +71,7 @@ public class AdminPostModerationService {
                 post.getAuthor().getName(),
                 post.getAuthor().getEmail(),
                 post.getCategory().getName(),
-                post.getCoverImage(),
+                storageService.buildUrl(post.getCoverImage()),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );

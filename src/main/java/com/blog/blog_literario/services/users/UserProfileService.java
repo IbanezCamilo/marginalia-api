@@ -1,8 +1,5 @@
 package com.blog.blog_literario.services.users;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -13,7 +10,8 @@ import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
-import com.blog.blog_literario.services.images.LocalStorageService;
+import com.blog.blog_literario.services.images.AvatarResolver;
+import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,7 +21,8 @@ import lombok.RequiredArgsConstructor;
 public class UserProfileService {
 
     private final UserRepository userRepository;
-    private final LocalStorageService localStorageService;
+    private final StorageService storageService;
+    private final AvatarResolver avatarResolver;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
@@ -46,16 +45,24 @@ public class UserProfileService {
     public String uploadProfileImage(UserDetails userDetails, MultipartFile imageFile) {
         User user = findByEmail(userDetails.getUsername());
 
-        String imageUrl = localStorageService.save(imageFile, user.getProfilePicture());
+        String imageUrl = storageService.save(imageFile, user.getProfilePicture());
 
         user.setProfilePicture(imageUrl);
         userRepository.save(user);
 
-        return localStorageService.buildUrl(imageUrl);
+        return storageService.buildUrl(imageUrl);
     }
 
-    // Validar la foto de perfil
-    // Si la foto es nula, vacía o igual a la foto por defecto, se devuelve la foto por defecto
+    public String deleteProfileImage(UserDetails userDetails) {
+        User user = findByEmail(userDetails.getUsername());
+
+        storageService.delete(user.getProfilePicture());
+        user.setProfilePicture("");
+        userRepository.save(user);
+
+        return avatarResolver.resolve(null, user.getName());
+    }
+
     public static String obtenerFotoValida(String foto, String fotoPorDefecto) {
         return (foto != null && !foto.isEmpty() && !foto.equals(fotoPorDefecto)) ? foto : fotoPorDefecto;
     }
@@ -65,16 +72,7 @@ public class UserProfileService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
     }
 
-    private String resolveProfilePicture(User user){
-        
-        if(user.getProfilePicture() != null){
-            return localStorageService.buildUrl(user.getProfilePicture());
-        }
-
-        String encodedName = URLEncoder.encode(user.getName(), StandardCharsets.UTF_8);
-        return "https://ui-avatars.com/api/?name=" + encodedName + "&background=random";
-        
-    }
+ 
 
     private UserProfileResponse toResponse(User user) {
         return new UserProfileResponse(
@@ -82,7 +80,7 @@ public class UserProfileService {
                 user.getName(),
                 user.getEmail(),
                 user.getDescription(),
-                resolveProfilePicture(user),
+                avatarResolver.resolve(user.getProfilePicture(), user.getName()),
                 user.getRole().getName(),
                 user.getCreatedAt()
         );
