@@ -72,7 +72,7 @@ public class MyPostController {
 
     // This endpoint is specifically for changing the status of a post, it will have more strict rules than the general update endpoint
     @PatchMapping("/{id}/status")
-    public ResponseEntity<MyPostResponse> updateStatus(Authentication authentication, @PathVariable Integer id, @RequestBody PatchStatusRequest request) {
+    public ResponseEntity<MyPostResponse> updateStatus(Authentication authentication, @PathVariable Integer id, @Valid @RequestBody PatchStatusRequest request) {
         Integer userId = getUserId(authentication);
         MyPostResponse updated = myService.updateStatus(userId, id, request.status());
 
