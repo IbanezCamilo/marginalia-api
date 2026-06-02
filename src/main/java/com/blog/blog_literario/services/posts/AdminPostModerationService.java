@@ -3,6 +3,7 @@ package com.blog.blog_literario.services.posts;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.blog.blog_literario.dto.admin.AdminPostResponse;
 import com.blog.blog_literario.dto.admin.AdminStatusUpdateRequest;
@@ -22,6 +23,7 @@ public class AdminPostModerationService {
     private final PostRepository postRepository;
     private final StorageService storageService;
 
+    @Transactional(readOnly = true)
     public Page<AdminPostResponse> listAll(PostStatus status, @NonNull Pageable pageable) {
         Page<Post> posts;
 
@@ -33,7 +35,7 @@ public class AdminPostModerationService {
         return posts.map(this::toResponse);
     }
 
-    //Change the post status for Global moderation
+    @Transactional
     public AdminPostResponse updateStatus(@NonNull Integer postId, AdminStatusUpdateRequest request) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
@@ -51,7 +53,7 @@ public class AdminPostModerationService {
         return toResponse(post);
     }
 
-    //Hard delete of a post
+    @Transactional
     public void delete(@NonNull Integer postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + postId));
