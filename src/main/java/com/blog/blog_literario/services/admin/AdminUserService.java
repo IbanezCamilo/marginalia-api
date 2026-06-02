@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.blog.blog_literario.dto.roles.RoleResponse;
 import com.blog.blog_literario.dto.users.CreateUserRequest;
 import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
@@ -47,7 +48,7 @@ public class AdminUserService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getRole(),
+                new RoleResponse(user.getRole().getId(), user.getRole().getName()),
                 user.getCreatedAt()
         );
     }

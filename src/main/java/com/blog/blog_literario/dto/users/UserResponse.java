@@ -2,14 +2,13 @@ package com.blog.blog_literario.dto.users;
 
 import java.time.LocalDateTime;
 
-import com.blog.blog_literario.model.Role;
+import com.blog.blog_literario.dto.roles.RoleResponse;
 
 public record UserResponse(
         Integer id,
         String name,
         String email,
-        Role role,
+        RoleResponse role,
         LocalDateTime createdAt
-        ) {
-
+) {
 }
