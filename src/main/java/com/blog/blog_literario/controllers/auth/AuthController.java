@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.blog.blog_literario.dto.auth.AuthResponse;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
 import com.blog.blog_literario.security.CookieUtil;
@@ -26,7 +25,7 @@ public class AuthController {
     private final CookieUtil cookieUtil;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
+    public ResponseEntity<Void> login(
         @RequestBody @Valid LoginRequest dto,
         HttpServletResponse response) {
         

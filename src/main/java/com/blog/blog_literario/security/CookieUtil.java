@@ -1,27 +1,31 @@
 package com.blog.blog_literario.security;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
+import com.blog.blog_literario.config.CookieProperties;
+import com.blog.blog_literario.config.JwtProperties;
+
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @Component
+@RequiredArgsConstructor
 public class CookieUtil {
 
-    @Value("${app.cookie.secure:true}")
-    private boolean secure; // false in dev, true en prod
+    private final CookieProperties cookieProperties;
+    private final JwtProperties jwtProperties;
 
-    private static final String NAME = "jwt";
-    private static final int MAX_AGE = 60 * 60 * 24; // 24 hours
+    static final String NAME = "jwt";
 
     public void addJwtCookie(HttpServletResponse res, String token) {
+        long maxAgeSeconds = jwtProperties.expiration() / 1000;
         ResponseCookie cookie = ResponseCookie.from(NAME, token)
-                .httpOnly(true)       
-                .secure(secure)
+                .httpOnly(true)
+                .secure(cookieProperties.secure())
                 .path("/")
-                .maxAge(MAX_AGE)
+                .maxAge(maxAgeSeconds)
                 .sameSite("Lax")
                 .build();
 
@@ -31,7 +35,7 @@ public class CookieUtil {
     public void clearJwtCookie(HttpServletResponse res) {
         ResponseCookie cookie = ResponseCookie.from(NAME, "")
                 .httpOnly(true)
-                .secure(secure)
+                .secure(cookieProperties.secure())
                 .path("/")
                 .maxAge(0)
                 .sameSite("Lax")

@@ -17,9 +17,11 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
-@RequiredArgsConstructor 
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -46,20 +48,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String userEmail = jwtService.extractUsername(jwt);
-            System.out.println("Usuario Extraido: " + userEmail);
+            log.debug("Usuario extraído del JWT: {}", userEmail);
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 var userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                if (jwtService.isTokenValid(jwt, userDetails)) {
+                boolean valid = jwtService.isTokenValid(jwt, userDetails);
+                log.debug("Token válido: {}", valid);
+                if (valid) {
                     var authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    System.out.println("Authorities: " + userDetails.getAuthorities());
+                    log.debug("Authorities: {}", userDetails.getAuthorities());
                 }
-                System.out.println("Token valido: " + jwtService.isTokenValid(jwt, userDetails));
             }
         } catch (Exception e) {
-            System.out.println("ERROR en JwtAuthenticationFilter: " + e.getMessage());
-            e.printStackTrace();
+            log.warn("Error en JwtAuthenticationFilter", e);
+            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+            return;
         }
         filterChain.doFilter(req, res);
 
@@ -80,14 +84,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String extractFromCookie(HttpServletRequest request) {
-    Cookie[] cookies = request.getCookies();
-    if (cookies == null) return null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
 
-    return Arrays.stream(cookies)
-            .filter(c -> "jwt".equals(c.getName()))
-            .map(Cookie::getValue)
-            .findFirst()
-            .orElse(null);
-}
+        return Arrays.stream(cookies)
+                .filter(c -> CookieUtil.NAME.equals(c.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
+    }
 
 }
