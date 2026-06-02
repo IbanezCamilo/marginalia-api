@@ -55,14 +55,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/images/**").permitAll()
-                //ADMIN endpoints-----------------------
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 //Authenticated endpoints
                 .requestMatchers("/api/me/profile/**").authenticated()
                 //Author request endpoints-----------------------
                 .requestMatchers("/api/me/author-request/**").authenticated()
                 //Authenticated Author endpoints-----------------------
                 .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN", "MODERATOR")
+                //ADMIN endpoints-----------------------
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 //------------------------------------------------------------------------
 
                 //Fallback - All other endpoints require authentication
@@ -88,7 +88,7 @@ public class SecurityConfig {
         return provider;
     }
 
-    @Bean // Encriptación de Contraseñas
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -98,10 +98,17 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(frontendUrl));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        //Cors-Allow-Header
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
-        configuration.setExposedHeaders(List.of("Authorization", "X-Total-Count"));
-        // configuration.setAllowCredentials(true); // SE UTILIZARA AL IMPLEMENTAR COOKIES
+        
+        //Cors-Allow-Headers
+        configuration.setAllowedHeaders(List.of("Content-Type", "Accept", "X-Requested-With"));
+        
+        //Cors-Exposed-Headers
+        configuration.setExposedHeaders(List.of("X-Total-Count"));
+
+        //Cookies implementation
+        configuration.setAllowCredentials(true);
+
+        //Cookie Time to live
         configuration.setMaxAge(3600L); // Authorize for 1 hour
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
