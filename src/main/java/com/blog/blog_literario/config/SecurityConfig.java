@@ -2,7 +2,6 @@ package com.blog.blog_literario.config;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.blog.blog_literario.config.properties.FrontendProperties;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.RateLimitFilter;
 
@@ -36,11 +36,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitFilter rateLimitFilter;
     private final UserDetailsService userDetailsService;
+    private final FrontendProperties frontendProperties;
 
-    @Value("${FRONTEND_URL}")
-    private String frontendUrl;
-
-    @Bean // Filter chain Configuration
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -48,24 +46,24 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                //Public endpoints--------------
+                // Public endpoints
                 .requestMatchers(HttpMethod.GET, "/api/public/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/public/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/public/authors/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/images/**").permitAll()
-                //Authenticated endpoints
+                // Actuator endpoints
+                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
+                // Authenticated endpoints
                 .requestMatchers("/api/me/profile/**").authenticated()
-                //Author request endpoints-----------------------
                 .requestMatchers("/api/me/author-request/**").authenticated()
-                //Authenticated Author endpoints-----------------------
+                // Author/Admin endpoints
                 .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN", "MODERATOR")
-                //ADMIN endpoints-----------------------
+                // Admin-only endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                //------------------------------------------------------------------------
-
-                //Fallback - All other endpoints require authentication
+                // Fallback
                 .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
@@ -96,20 +94,12 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(frontendUrl));
+        configuration.setAllowedOrigins(List.of(frontendProperties.url()));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        
-        //Cors-Allow-Headers
         configuration.setAllowedHeaders(List.of("Content-Type", "Accept", "X-Requested-With"));
-        
-        //Cors-Exposed-Headers
         configuration.setExposedHeaders(List.of("X-Total-Count"));
-
-        //Cookies implementation
         configuration.setAllowCredentials(true);
-
-        //Cookie Time to live
-        configuration.setMaxAge(3600L); // Authorize for 1 hour
+        configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

@@ -4,8 +4,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
-import com.blog.blog_literario.config.CookieProperties;
-import com.blog.blog_literario.config.JwtProperties;
+import com.blog.blog_literario.config.properties.CookieProperties;
+import com.blog.blog_literario.config.properties.JwtProperties;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

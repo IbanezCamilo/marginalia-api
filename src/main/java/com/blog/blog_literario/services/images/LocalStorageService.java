@@ -10,21 +10,22 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.blog.blog_literario.config.properties.AppProperties;
 import com.blog.blog_literario.utils.FileNameGenerator;
 import com.blog.blog_literario.utils.ImageValidator;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class LocalStorageService implements StorageService {
 
-    //Base directory for uploads, can be configured in application.properties
     @Value("${storage.local.upload-dir:uploads}")
     private String uploadDir;
 
-    @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    private final AppProperties appProperties;
 
     @Override
     public String save(MultipartFile file, String previousFile) {
@@ -94,7 +95,7 @@ public class LocalStorageService implements StorageService {
             return null;
         }
 
-        return baseUrl + "/api/images/" + fileName;
+        return appProperties.baseUrl() + "/api/images/" + fileName;
     }
 
 }
