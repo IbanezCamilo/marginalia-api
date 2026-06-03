@@ -13,20 +13,26 @@ import org.springframework.data.repository.query.Param;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 
+/**
+ * Repository for {@link Post} entities.
+ *
+ * Provides queries for three access patterns: public (published posts only),
+ * author-owned (all statuses for a given user), and admin moderation (filtered by
+ * status, date range, or full-text search).
+ */
 public interface PostRepository extends JpaRepository<Post, Integer> {
 
-    //Public --Read Only--
     Page<Post> findByStatus(PostStatus status, Pageable pageable);
 
     Page<Post> findByAuthorIdAndStatus(Integer authorId, PostStatus status, Pageable pageable);
 
     Optional<Post> findBySlugAndStatus(String slug, PostStatus status);
 
+    /** Convenience overload for the most common public lookup — finds a published post by slug. */
     default Optional<Post> findPublishedBySlug(String slug) {
         return findBySlugAndStatus(slug, PostStatus.PUBLISHED);
     }
 
-    //Private --Legacy--
     Page<Post> findByAuthorId(Integer authorId, Pageable pageable);
 
     Optional<Post> findByIdAndAuthorId(Integer id, Integer authorId);
@@ -35,44 +41,52 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
 
     Page<Post> findByCategoryIdAndStatus(Integer categoryId, PostStatus status, Pageable pageable);
 
-    // Search with custom query: paginated search by title for published posts
+    /**
+     * Full-text title search restricted to published posts.
+     *
+     * @param searchTerm substring to match (case-insensitive)
+     */
     @Query("SELECT p FROM Post p WHERE LOWER(p.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) AND p.status = com.blog.blog_literario.model.PostStatus.PUBLISHED")
     Page<Post> searchByTitle(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    // Search with custom query: paginated search by content for published posts
+    /**
+     * Full-text search across title and content, restricted to published posts.
+     *
+     * @param searchTerm substring to match (case-insensitive)
+     */
     @Query("SELECT p FROM Post p WHERE (LOWER(p.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR LOWER(p.content) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND p.status = com.blog.blog_literario.model.PostStatus.PUBLISHED")
     Page<Post> searchInTitleOrContent(@Param("searchTerm") String searchTerm, Pageable pageable);
 
     boolean existsBySlug(String slug);
 
-    // Check if a slug exists for another post (used in update to ensure uniqueness)
+    /**
+     * Checks whether a slug is already used by a different post.
+     * Used during updates to enforce slug uniqueness while excluding the post being edited.
+     */
     @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Post p WHERE p.slug = :slug AND p.id != :postId")
     boolean existsBySlugAndIdNot(@Param("slug") String slug, @Param("postId") Integer postId);
 
     /**
-     * Finds all posts by a specific user without pagination
+     * Returns all posts by a given author without pagination.
+     * Used for bulk operations such as cascading deletes.
      */
     @Query("SELECT p FROM Post p WHERE p.author.id = :authorId")
     List<Post> findAllByAuthorId(@Param("authorId") Integer authorId);
 
-    /**
-     * Deletes all posts authored by a specific author
-     */
+    /** Deletes all posts authored by the given user; used when an author account is removed. */
     void deleteAllByAuthorId(Integer authorId);
 
-    //AUDIT AND MODERATION
-    //filter multiples status
+    /** Returns a page of posts whose status is in the provided list; used for admin moderation views. */
     Page<Post> findByStatusIn(List<PostStatus> statuses, Pageable pageable);
 
-    //count by status in list
+    /** Counts posts whose status is in the provided list; used for admin dashboard metrics. */
     Long countByStatusIn(List<PostStatus> statuses);
 
-    //Search with Date Range
     List<Post> findByStatusAndCreatedAtAfter(PostStatus status, LocalDateTime date);
 
     List<Post> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
-    //Convinience methods
+    /** Convenience overload — returns all published posts; avoids repeating the status constant at call sites. */
     default Page<Post> findPublishedPosts(Pageable pageable) {
         return findByStatus(PostStatus.PUBLISHED, pageable);
     }

@@ -15,6 +15,10 @@ import com.blog.blog_literario.services.posts.PublicPostQueryService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Public read-only endpoints for the post feed. No authentication required.
+ * Only PUBLISHED posts are returned.
+ */
 @RestController
 @RequestMapping("/api/public/posts")
 @RequiredArgsConstructor
@@ -22,6 +26,7 @@ public class PublicPostController {
 
     private final PublicPostQueryService publicPostQueryService;
 
+    /** Returns a paginated feed of published posts, optionally filtered by {@code categoryId}. */
     @GetMapping
     public Page<PublicPostResponse> list(
             @RequestParam(required = false) Integer categoryId,

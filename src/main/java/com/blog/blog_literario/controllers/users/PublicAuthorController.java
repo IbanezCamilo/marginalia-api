@@ -16,6 +16,10 @@ import com.blog.blog_literario.services.users.PublicAuthorService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Public read-only endpoints for author profiles and their post feeds.
+ * No authentication required.
+ */
 @RestController
 @RequestMapping("/api/public/authors")
 @RequiredArgsConstructor

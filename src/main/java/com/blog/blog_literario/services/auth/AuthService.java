@@ -19,28 +19,29 @@ import com.blog.blog_literario.services.users.UserCreationService;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Service for user authentication and registration
- * Handles login and user self-registration (signup)
+ * Handles user self-registration and authentication.
+ *
+ * <p>Both operations return a signed JWT string which the caller is responsible for
+ * writing to the response cookie ({@link com.blog.blog_literario.security.CookieUtil}).
  */
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class AuthService {
-    
+
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final UserCreationService userCreationService;
 
     /**
-     * Registers a new user with self-signup
-     * Automatically assigns the AUTHOR role to new registrants
-     * 
-     * @param request the registration request with name, email, password
-     * @return AuthResponse with JWT token
+     * Creates a new user account with the READER role and returns a JWT for the session.
+     *
+     * @param request the registration payload (name, email, password)
+     * @return a signed JWT string
+     * @throws com.blog.blog_literario.exception.UserAlreadyExistsException if the email is already registered
      */
     public String register(RegisterRequest request) {
-        // Create user with default AUTHOR role
         User newUser = userCreationService.createUser(
                 request.name(),
                 request.email(),
@@ -48,18 +49,17 @@ public class AuthService {
                 Role.READER  // Default role for self-registered users
         );
 
-        // Generate JWT token
         UserDetails userDetails = userDetailsService.loadUserByUsername(newUser.getEmail());
-        
+
         return jwtService.generateToken(userDetails);
     }
 
     /**
-     * Authenticates a user with email and password
-     * 
-     * @param request the login request with email and password
-     * @return String with JWT token
-     * @throws BadCredentialsException if credentials are invalid
+     * Authenticates a user by email and password and returns a JWT for the session.
+     *
+     * @param request the login payload (email, password)
+     * @return a signed JWT string
+     * @throws BadCredentialsException if the email or password is incorrect
      */
     @Transactional(readOnly = true)
     public String login(LoginRequest request) {
@@ -68,11 +68,10 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
-            
+
             return jwtService.generateToken(userDetails);
         } catch (AuthenticationException e) {
             throw new BadCredentialsException("Credenciales inválidas");
         }
     }
 }
-

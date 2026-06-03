@@ -1,12 +1,20 @@
 package com.blog.blog_literario.model;
 
+/**
+ * Lifecycle states of a {@link Post}.
+ *
+ * Transitions:
+ *   DRAFT → PUBLISHED  (author submits; admin may also publish directly)
+ *   PUBLISHED → ARCHIVED  (admin archives)
+ *   DRAFT / PUBLISHED → REJECTED  (admin rejects)
+ *   REJECTED → DRAFT  (author revises and re-submits)
+ */
 public enum PostStatus {
     DRAFT("Borrador"),
     PUBLISHED("Publicado"),
     ARCHIVED("Archivado"),
     REJECTED("Rechazado");
 
-    //display name for UI
     private final String displayName;
 
     PostStatus(String displayName) {
@@ -17,22 +25,22 @@ public enum PostStatus {
         return displayName;
     }
 
-    //is this post visible to public?
+    /** Only PUBLISHED posts are visible in the public feed. */
     public boolean isVisibleToPublic() {
         return this == PUBLISHED;
     }
 
-    // can this post be edited by author?
+    /** Authors may only edit DRAFT or REJECTED posts; published/archived ones are locked. */
     public boolean canBeEditedByAuthor() {
         return this == DRAFT || this == REJECTED;
     }
 
-    // can this post be moderated by admin?
+    /** Admin moderation (approve/reject) applies only to DRAFT and PUBLISHED posts. */
     public boolean canBeModerated() {
         return this == DRAFT || this == PUBLISHED;
     }
 
-    // is this post active (not archived)?
+    /** Returns false only for ARCHIVED posts. */
     public boolean isActive() {
         return this != ARCHIVED;
     }

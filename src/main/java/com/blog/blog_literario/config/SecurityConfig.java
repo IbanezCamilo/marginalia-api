@@ -28,6 +28,14 @@ import com.blog.blog_literario.security.RateLimitFilter;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Spring Security configuration for the blog API.
+ *
+ * <p>Stateless JWT-based authentication; CSRF is disabled because the API is
+ * consumed by a separate SPA. CORS is restricted to the configured frontend origin.
+ * The {@link RateLimitFilter} runs before the {@link JwtAuthenticationFilter} so
+ * brute-force login attempts are rejected early.
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor

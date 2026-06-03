@@ -12,6 +12,9 @@ import com.blog.blog_literario.services.categories.PublicCategoryService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Public read-only endpoints for category browsing. No authentication required.
+ */
 @RestController
 @RequestMapping("api/public/categories")
 @RequiredArgsConstructor

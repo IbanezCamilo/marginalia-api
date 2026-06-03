@@ -16,6 +16,12 @@ import com.blog.blog_literario.services.images.StorageService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Admin service for post moderation: listing, status changes, and hard deletion.
+ *
+ * <p>All write operations are restricted to ADMIN-role users at the controller layer.
+ * Deleting a post also removes its cover image from storage to prevent orphaned files.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminPostModerationService {
@@ -23,6 +29,10 @@ public class AdminPostModerationService {
     private final PostRepository postRepository;
     private final StorageService storageService;
 
+    /**
+     * Returns a paginated list of posts, optionally filtered by {@code status}.
+     * Passing {@code null} returns posts of all statuses.
+     */
     @Transactional(readOnly = true)
     public Page<AdminPostResponse> listAll(PostStatus status, @NonNull Pageable pageable) {
         Page<Post> posts;
@@ -35,6 +45,12 @@ public class AdminPostModerationService {
         return posts.map(this::toResponse);
     }
 
+    /**
+     * Updates the status of a post to the value specified in {@code request}.
+     *
+     * @throws ResourceNotFoundException if no post exists with the given {@code postId}
+     * @throws IllegalArgumentException  if {@code request.status()} is not a valid {@link PostStatus} name
+     */
     @Transactional
     public AdminPostResponse updateStatus(@NonNull Integer postId, AdminStatusUpdateRequest request) {
         Post post = postRepository.findById(postId)
@@ -53,6 +69,11 @@ public class AdminPostModerationService {
         return toResponse(post);
     }
 
+    /**
+     * Permanently deletes a post and its cover image from storage.
+     *
+     * @throws ResourceNotFoundException if no post exists with the given {@code postId}
+     */
     @Transactional
     public void delete(@NonNull Integer postId) {
         Post post = postRepository.findById(postId)
@@ -62,7 +83,6 @@ public class AdminPostModerationService {
         postRepository.delete(post);
     }
 
-    //Private Helpers
     private AdminPostResponse toResponse(Post post) {
         return new AdminPostResponse(
                 post.getId(),

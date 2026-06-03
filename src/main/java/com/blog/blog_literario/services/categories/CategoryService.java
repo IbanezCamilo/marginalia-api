@@ -16,6 +16,13 @@ import com.blog.blog_literario.utils.SlugUtils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Admin-facing service for managing {@link Category} entities.
+ *
+ * <p>Handles the full CRUD lifecycle: listing, lookup, creation (with slug generation),
+ * update, and deletion. All write operations require the caller to hold an ADMIN role,
+ * enforced at the controller layer.
+ */
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -23,7 +30,6 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    // ─── Mapper ────────────────────────────────────────────────────────────────
     private CategoryResponse toResponse(Category category) {
         return new CategoryResponse(
                 category.getId(),
@@ -32,7 +38,6 @@ public class CategoryService {
         );
     }
 
-    // ─── Queries ────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public List<CategoryResponse> getAllCategories() {
         return categoryRepository.findAll()
@@ -41,6 +46,9 @@ public class CategoryService {
                 .toList();
     }
 
+    /**
+     * @throws ResourceNotFoundException if no category exists with the given {@code id}
+     */
     @Transactional(readOnly = true)
     public CategoryResponse getCategoryById(@NonNull Integer id) {
         return categoryRepository.findById(id)
@@ -48,13 +56,16 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la categoria con ID: " + id));
     }
 
-    // ─── Commands ────────────────────────────────────────────────────────────────
+    /**
+     * Creates a new category. The URL slug is derived automatically from the name.
+     *
+     * @throws RuntimeException if a category with the same name already exists
+     */
     public CategoryResponse createCategory(CreateCategoryRequest request) {
         if (categoryRepository.findByName(request.name()).isPresent()) {
             throw new RuntimeException("La categoria ya existe");
         }
 
-        //Create the category Slug
         String slug = SlugUtils.toSlug(request.name());
 
         Category newCategory = new Category(request.name(), slug);
@@ -62,6 +73,12 @@ public class CategoryService {
         return toResponse(categoryRepository.save(newCategory));
     }
 
+    /**
+     * Updates a category's name and regenerates its slug.
+     *
+     * @throws ResourceNotFoundException if no category exists with the given {@code id}
+     * @throws RuntimeException          if the new slug collides with an existing category
+     */
     public CategoryResponse updateCategory(@NonNull Integer id, UpdateCategoryRequest request) {
         Category existing = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -69,7 +86,7 @@ public class CategoryService {
 
         String newSlug = SlugUtils.toSlug(request.name());
 
-        // Avoid to create already existing slugs
+        // Avoid creating a duplicate slug — two different names can produce the same slug
         if (!existing.getSlug().equals(newSlug) && categoryRepository.existsBySlug(newSlug)) {
             throw new RuntimeException(
                     "El slug generado ya existe. Elige un nombre diferente.");
@@ -81,6 +98,9 @@ public class CategoryService {
         return toResponse(categoryRepository.save(existing));
     }
 
+    /**
+     * @throws ResourceNotFoundException if no category exists with the given {@code id}
+     */
     public void deleteCategory(@NonNull Integer id) {
         if (!categoryRepository.existsById(id)) {
             throw new ResourceNotFoundException(

@@ -1,6 +1,6 @@
 package com.blog.blog_literario.security;
 
-import java.io.IOException; 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.springframework.lang.NonNull;
@@ -19,6 +19,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Once-per-request filter that reads the JWT from the {@code jwt} cookie,
+ * validates it, and populates the {@link SecurityContextHolder} so that
+ * downstream filters and controllers see an authenticated principal.
+ *
+ * <p>Public routes (auth, images, GET /api/public/**) are passed through without
+ * token inspection.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -30,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest req,
             @NonNull HttpServletResponse res, @NonNull FilterChain filterChain) throws ServletException, IOException {
-                
+
         final String path = req.getServletPath();
         final String method = req.getMethod();
 
@@ -40,7 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String jwt = extractFromCookie(req);
-        
+
         if (jwt == null) {
             filterChain.doFilter(req, res);
             return;
@@ -61,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            log.warn("Error en JwtAuthenticationFilter", e);
+            log.warn("JWT authentication error", e);
             res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
             return;
         }

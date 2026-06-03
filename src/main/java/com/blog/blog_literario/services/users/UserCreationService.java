@@ -13,6 +13,11 @@ import com.blog.blog_literario.utils.UserValidator;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Shared service for creating new user accounts. Used by both the self-registration
+ * flow ({@link com.blog.blog_literario.services.auth.AuthService}) and the admin
+ * user-management flow.
+ */
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -23,9 +28,18 @@ public class UserCreationService {
     private final UserValidator userValidator;
     private final PasswordEncoder passwordEncoder;
 
-    public User createUser(String name, String email, 
-                           String password, String roleName) {    
-        // Validate and sanitize inputs
+    /**
+     * Creates and persists a new user after input sanitization and uniqueness checks.
+     *
+     * @param name     the user's display name (sanitized and validated)
+     * @param email    the user's email address (must be unique)
+     * @param password the raw password (will be BCrypt-encoded before storage)
+     * @param roleName the role to assign (must exist in the database)
+     * @throws RuntimeException          if the email is already in use
+     * @throws ResourceNotFoundException if {@code roleName} does not exist
+     */
+    public User createUser(String name, String email,
+                           String password, String roleName) {
         String sanitizedName = userValidator.validateAndSanitizeName(name);
         String sanitizedEmail = userValidator.validateAndSanitizeEmail(email);
         if (userRepository.existsByEmail(sanitizedEmail)) {

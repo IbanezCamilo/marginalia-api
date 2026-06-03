@@ -12,7 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Role entity for user authorization
+ * Role entity for user authorization.
  *
  * Defines user roles (ADMIN, AUTHOR, READER) for access control. Each user must
  * have exactly one role.
@@ -34,22 +34,15 @@ public class Role {
     @Column(name = "id")
     private Integer id;
 
-    @Column(name = "name", nullable = false, unique = true, length = 50) // ✅ Longitud definida
+    @Column(name = "name", nullable = false, unique = true, length = 50)
     private String name;
 
-    // CONSTANTS (Opcional pero muy útil)
-    /**
-     * ✅ Constantes para roles comunes Evita typos y facilita uso en código
-     */
     public static final String READER = "READER";
     public static final String AUTHOR = "AUTHOR";
     public static final String MODERATOR = "MODERATOR";
     public static final String ADMIN = "ADMIN";
-    
-    // UTILITY METHODS
-    /**
-     * Constructor de conveniencia
-     */
+
+    /** Creates a role with only the name set; used during data seeding. */
     public Role(String name) {
         this.name = name;
     }

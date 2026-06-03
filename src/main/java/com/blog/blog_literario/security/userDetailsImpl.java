@@ -9,7 +9,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import com.blog.blog_literario.model.User;
 
-
+/**
+ * {@link UserDetails} adapter that wraps a {@link User} entity for use by
+ * Spring Security. The authority is the user's role prefixed with {@code ROLE_}.
+ */
 public class UserDetailsImpl implements UserDetails {
 
     private final User user;
@@ -33,7 +36,6 @@ public class UserDetailsImpl implements UserDetails {
         return user.getEmail();
     }
 
-    // Override to apply business rules if needed
     @Override
     public boolean isAccountNonExpired() {
         return true;

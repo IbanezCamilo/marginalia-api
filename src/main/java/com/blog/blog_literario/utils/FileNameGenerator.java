@@ -5,9 +5,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
 
+/**
+ * Generates collision-free file names for uploaded images by combining a random UUID
+ * with an extension derived from the file's magic bytes.
+ *
+ * <p>{@link ImageValidator#validate} must be called before {@link #generate} so that
+ * an unrecognized format throws at validation time, not here.
+ */
 public class FileNameGenerator {
 
-    //Detects the file extension based on the magic bytes of the file
+    /**
+     * Returns a unique file name (UUID + extension) for the given upload.
+     *
+     * @throws IOException              if the file input stream cannot be read
+     * @throws IllegalStateException    if the magic bytes do not match a known format
+     *                                  (indicates {@link ImageValidator} was skipped)
+     */
     public static String generate(MultipartFile file) throws IOException {
         String extension = detectExtension(file);
         return UUID.randomUUID().toString() + extension;
@@ -37,7 +50,6 @@ public class FileNameGenerator {
             return ".webp";
         }
 
-        // If we reach here, the format is not recognized
         throw new IllegalStateException("Formato no reconocido. Asegúrate de llamar ImageValidator.validate() primero");
     }
 }

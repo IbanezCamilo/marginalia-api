@@ -16,6 +16,13 @@ import org.springframework.beans.factory.annotation.Value;
 
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 
+/**
+ * Serves locally stored images. The upload directory is read from
+ * {@code storage.local.upload-dir} (defaults to {@code uploads/}).
+ *
+ * <p>Path traversal is prevented by verifying that the resolved file path
+ * stays within the upload directory before serving the resource.
+ */
 @RestController
 @RequestMapping("/api/images")
 public class ImageController {
@@ -23,6 +30,12 @@ public class ImageController {
     @Value("${storage.local.upload-dir:uploads}")
     private String uploadDir;
 
+    /**
+     * Returns the raw image bytes with the correct {@code Content-Type}.
+     * Rejects requests whose filename would escape the upload directory.
+     *
+     * @throws ResourceNotFoundException if the file does not exist or is not readable
+     */
     @GetMapping("/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) {
         try {

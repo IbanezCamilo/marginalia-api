@@ -18,6 +18,10 @@ import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Read-only service for public author profiles and their published post feeds.
+ * No authentication is required to call these methods.
+ */
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -28,6 +32,9 @@ public class PublicAuthorService {
     private final StorageService storageService;
     private final AvatarResolver avatarResolver;
 
+    /**
+     * @throws ResourceNotFoundException if no user exists with the given {@code id}
+     */
     public PublicAuthorResponse getAuthorById(Integer id) {
         User author = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -36,6 +43,11 @@ public class PublicAuthorService {
         return toAuthorResponse(author);
     }
 
+    /**
+     * Returns a paginated list of published posts for the given author.
+     *
+     * @throws ResourceNotFoundException if no user exists with the given {@code authorId}
+     */
     public Page<PublicPostResponse> getPublishedPostsByAuthor(Integer authorId, Pageable pageable) {
         userRepository.findById(authorId)
                 .orElseThrow(() -> new ResourceNotFoundException(

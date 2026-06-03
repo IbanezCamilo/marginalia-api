@@ -17,6 +17,13 @@ import com.blog.blog_literario.utils.ImageValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Disk-backed implementation of {@link StorageService}.
+ *
+ * <p>Files are written under the directory configured by {@code storage.local.upload-dir}
+ * (defaults to {@code uploads/}). The upload path is normalized and validated before
+ * every write to prevent path traversal attacks.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -27,22 +34,25 @@ public class LocalStorageService implements StorageService {
 
     private final AppProperties appProperties;
 
+    /**
+     * Validates the file, removes the previous image if present, generates a unique
+     * name from the file's magic bytes, and writes it to the upload directory.
+     *
+     * @throws IllegalArgumentException if the file fails size or format validation
+     * @throws RuntimeException         if the file cannot be written to disk
+     */
     @Override
     public String save(MultipartFile file, String previousFile) {
         try {
 
-            //Validate the file (size, type, etc.)
             ImageValidator.validate(file);
 
-            //Clean up old file if exists
             if (previousFile != null && !previousFile.isBlank()) {
                 delete(previousFile);
             }
 
-            //Generate a unique file name based on the file's content (magic bytes) and original name
             String fileName = FileNameGenerator.generate(file);
 
-            // Ensure the upload directory exists and save the file
             Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Files.createDirectories(uploadPath);
             Path destination = uploadPath.resolve(fileName);
@@ -54,7 +64,6 @@ public class LocalStorageService implements StorageService {
 
             return fileName;
         } catch (IllegalArgumentException e) {
-            // Validation errors (e.g., invalid file type, size too large)
             throw e;
         } catch (IOException e) {
             log.error("Error saving image to disk", e);
@@ -62,6 +71,11 @@ public class LocalStorageService implements StorageService {
         }
     }
 
+    /**
+     * Deletes the file identified by {@code fileName} from the upload directory.
+     * Silently skips the operation if the file does not exist or the name is blank.
+     * Logs a warning and returns without throwing if the path escapes the upload directory.
+     */
     @Override
     public void delete(String fileName) {
         if (fileName == null || fileName.isBlank()) {

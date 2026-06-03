@@ -23,6 +23,17 @@ import com.blog.blog_literario.utils.SlugUtils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Author-facing CRUD service for posts.
+ *
+ * <p>Enforces author-level business rules:
+ * <ul>
+ *   <li>Authors may only read and write their own posts.</li>
+ *   <li>Status transitions are restricted: DRAFT → PUBLISHED → DRAFT and REJECTED → DRAFT.
+ *       Admins bypass these restrictions through {@link AdminPostModerationService}.</li>
+ *   <li>Deleting a post also removes its cover image from storage.</li>
+ * </ul>
+ */
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -52,14 +63,18 @@ public class MyPostCommandService {
         return ToResponse(post);
     }
 
+    /**
+     * Creates a new post for the given author. The slug is derived from the title
+     * and must be globally unique.
+     *
+     * @throws RuntimeException if the generated slug already exists or the user/category is not found
+     */
     public MyPostResponse create(@NonNull Integer userId, CreatePostRequest request) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + userId));
 
         Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new RuntimeException("Categoria no encontrada con ID: " + request.categoryId()));
 
-        //Generate Slug
         String slug = SlugUtils.toSlug(request.title());
-        //Validate Slug Uniqueness
         if (postRepository.existsBySlug(slug)) {
             throw new RuntimeException("El slug ya existe. Por favor, elige otro título.");
         }
@@ -67,7 +82,7 @@ public class MyPostCommandService {
         Post post = new Post(
                 request.title(),
                 request.content(),
-                PostStatus.valueOf(request.status()), // default status for new posts
+                PostStatus.valueOf(request.status()),
                 slug,
                 user,
                 category
@@ -77,6 +92,12 @@ public class MyPostCommandService {
         return ToResponse(post);
     }
 
+    /**
+     * Updates all mutable fields of a post. Rebuilds the slug when the title changes;
+     * validates author-permitted status transitions.
+     *
+     * @throws RuntimeException if the post does not belong to the user, or if the new slug collides
+     */
     public MyPostResponse update(Integer userId, Integer postId, UpdatePostRequest request) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
@@ -85,19 +106,18 @@ public class MyPostCommandService {
         post.setTitle(request.title());
         post.setContent(request.content());
 
-        //Category changed
+        // Category changed
         if(request.categoryId() != null){
             Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new RuntimeException("Categoria no encontrada con ID: " + request.categoryId()));
             post.setCategory(category);
         }
 
-        //Validate Slug Uniqueness if title changed
         PostStatus newStatus = PostStatus.valueOf(request.status());
         validateAuthorCanChangeStatus(post.getStatus(), newStatus);
 
         post.setStatus(newStatus);
 
-        //Title changed: Rebuild Slug
+        // Title changed: rebuild slug to stay consistent with the title
         String newSlug = SlugUtils.toSlug(request.title());
         if (!post.getSlug().equals(newSlug)) {
             if (postRepository.existsBySlugAndIdNot(newSlug, postId)) {
@@ -109,15 +129,20 @@ public class MyPostCommandService {
         return ToResponse(post);
     }
 
-    // This method is specifically for changing status, it will have more strict rules than the general update method
+    /**
+     * Changes only the status of a post, applying stricter transition rules than
+     * {@link #update} (which also updates content fields at the same time).
+     *
+     * @throws RuntimeException      if the post does not belong to the user or status is invalid
+     * @throws IllegalStateException if the requested transition is not permitted for authors
+     */
     public MyPostResponse updateStatus(Integer userId, Integer postId, String newStatusStr) {
 
-        //Verify if the post exist and belongs to the user
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
                 .orElseThrow(() -> new RuntimeException("Post no encontrado con ID: " + postId));
 
-        // Conver String to Enum
+        // Convert String to Enum
         PostStatus newStatus;
         try {
             newStatus = PostStatus.valueOf(newStatusStr);
@@ -125,22 +150,26 @@ public class MyPostCommandService {
             throw new RuntimeException("Estado no valido: " + newStatusStr);
         }
 
-        //Validate if the author can change to the new status
         validateAuthorCanChangeStatus(post.getStatus(), newStatus);
 
-        //Execute changes and save
         post.setStatus(newStatus);
         postRepository.save(post);
 
         return ToResponse(post);
     }
 
+    /**
+     * Deletes the post and its cover image from storage.
+     * Deleting the cover image first prevents orphaned files if the DB delete fails.
+     *
+     * @throws RuntimeException if the post does not belong to the user
+     */
     public void delete(@NonNull Integer userId, @NonNull Integer postId) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
                 .orElseThrow(() -> new RuntimeException("Post no encontrado"));
 
-        //Delete cover image before deleting the post to avoid orphaned files
+        // Delete cover image before the post to avoid orphaned files on storage
         storageService.delete(post.getCoverImage());
 
         postRepository.delete(post);
@@ -182,7 +211,7 @@ public class MyPostCommandService {
         if (currentStatus == newStatus) {
             return; // No status change, no validation needed
         }
-        //Only allow this list of status changes for authors
+        // Only these transitions are allowed for authors; admin-only changes go through AdminPostModerationService
         boolean isAllowed = switch (currentStatus) {
             case DRAFT ->
                 newStatus == PostStatus.PUBLISHED;

@@ -22,6 +22,10 @@ import com.blog.blog_literario.services.users.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Endpoints for an authenticated user to read and update their own profile,
+ * including profile picture upload and removal.
+ */
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/me/profile")
@@ -31,7 +35,7 @@ public class MyProfileController {
 
     @GetMapping
     public ResponseEntity<?> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(userProfileService.getUserProfile(userDetails)); // status 200 = ok
+        return ResponseEntity.ok(userProfileService.getUserProfile(userDetails));
     }
 
     @PutMapping
@@ -59,18 +63,20 @@ public class MyProfileController {
         return ResponseEntity.ok(Map.of("imageUrl", avatarUrl));
     }
 
+    /**
+     * Uploads a new profile picture. The Content-Type header is validated before
+     * delegating to the storage service, which also checks magic bytes.
+     */
     @PostMapping("/image")
     public ResponseEntity<?> uploadProfileImage(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam("image") MultipartFile imageFile) {
 
-        // Validate Empty File        
         if (imageFile.isEmpty()) {
             return ResponseEntity.badRequest().body("No se ha proporcionado ninguna imagen");
         }
 
         String contentType = imageFile.getContentType();
-        // Validate File Type
         if (contentType == null || !contentType.startsWith("image/")) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "El archivo debe ser una imagen"));

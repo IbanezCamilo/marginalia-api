@@ -17,10 +17,16 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Token-bucket rate limiter scoped to the login endpoint.
+ *
+ * <p>Each client IP gets its own {@link Bucket} capped at 10 login attempts per minute.
+ * All other paths are passed through without inspection.
+ */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    // Bucket IP: Max 10 login attempts per minute
+    // Bucket per IP: max 10 login attempts per minute
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
 
     private Bucket createBucket() {

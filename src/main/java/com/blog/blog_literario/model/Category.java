@@ -13,6 +13,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Post category entity. Each category has a unique name and a URL-safe slug
+ * derived from the name at creation time.
+ */
 @Entity
 @Data
 @NoArgsConstructor

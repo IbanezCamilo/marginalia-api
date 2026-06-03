@@ -15,6 +15,10 @@ import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Read-only service for the public post feed. Only PUBLISHED posts are exposed;
+ * no authentication is required to call these methods.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,7 +28,10 @@ public class PublicPostQueryService {
     private final StorageService storageService;
     private final AvatarResolver avatarResolver;
 
-    //public list
+    /**
+     * Returns a paginated page of published posts, optionally filtered by {@code categoryId}.
+     * Passing {@code null} returns posts from all categories.
+     */
     public Page<PublicPostResponse> listPublishedPosts(Integer categoryId, Pageable pageable) {
         if (categoryId != null) {
             return postRepository
@@ -41,7 +48,9 @@ public class PublicPostQueryService {
         return listPublishedPosts(null, pageable);
     }
 
-    // public details by slug
+    /**
+     * @throws RuntimeException if no published post exists with the given {@code slug}
+     */
     public PublicPostResponse getBySlug(String slug) {
         Post post = postRepository
                 .findBySlugAndStatus(slug, PostStatus.PUBLISHED)

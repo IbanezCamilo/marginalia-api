@@ -26,6 +26,11 @@ import com.blog.blog_literario.services.posts.MyPostCommandService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Author-facing CRUD endpoints for a user's own posts, scoped to the
+ * authenticated user's ID. All routes require {@code ROLE_AUTHOR} or higher
+ * (enforced in {@link com.blog.blog_literario.config.SecurityConfig}).
+ */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/me/posts")
@@ -70,7 +75,11 @@ public class MyPostController {
         return myService.update(userId, id, request);
     }
 
-    // This endpoint is specifically for changing the status of a post, it will have more strict rules than the general update endpoint
+    /**
+     * Changes the status of a post. Applies stricter transition rules than the
+     * general update endpoint: only DRAFT → PUBLISHED, PUBLISHED → DRAFT,
+     * and REJECTED → DRAFT are permitted for authors.
+     */
     @PatchMapping("/{id}/status")
     public ResponseEntity<MyPostResponse> updateStatus(Authentication authentication, @PathVariable Integer id, @Valid @RequestBody PatchStatusRequest request) {
         Integer userId = getUserId(authentication);

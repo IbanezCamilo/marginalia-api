@@ -70,7 +70,7 @@ public class UserUpdateService {
      * @throws ResourceNotFoundException if role doesn't exist
      */
     public void updateRole(@NonNull User user, String newRoleName) {
-        // Avoid innecesary query
+        // Avoid unnecessary query
         if (newRoleName.equals(user.getRole().getName())) {
             return;
         }

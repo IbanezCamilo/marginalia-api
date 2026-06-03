@@ -19,6 +19,10 @@ import com.blog.blog_literario.services.categories.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Admin endpoints for category management. All routes require {@code ROLE_ADMIN}
+ * (enforced in {@link com.blog.blog_literario.config.SecurityConfig}).
+ */
 @RestController
 @RequestMapping("/api/admin/categories")
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class AdminCategoryController {
 
     private final CategoryService categoryService;
 
+    /** Creates a new category. Returns 400 with field-error details on validation failure. */
     @PostMapping
     public ResponseEntity<?> createCategory(
             @Valid @RequestBody CreateCategoryRequest dto,
@@ -43,6 +48,7 @@ public class AdminCategoryController {
         return ResponseEntity.status(201).body(categoryService.createCategory(dto));
     }
 
+    /** Updates a category's name and regenerates its slug. Returns 400 on validation failure. */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateCategory(
             @PathVariable Integer id,

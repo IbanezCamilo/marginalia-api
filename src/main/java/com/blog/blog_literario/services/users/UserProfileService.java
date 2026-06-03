@@ -15,6 +15,10 @@ import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service for authenticated users managing their own profile: reading, updating
+ * profile data, and uploading or removing the profile picture.
+ */
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -31,7 +35,6 @@ public class UserProfileService {
         return toResponse(user);
     }
 
-    // Update user profile data
     public UserProfileResponse updateProfile(UserDetails userDetails, UserProfileUpdateRequest request) {
         User user = findByEmail(userDetails.getUsername());
 
@@ -42,6 +45,12 @@ public class UserProfileService {
 
     }
 
+    /**
+     * Replaces the user's profile picture. The previous image is deleted from storage
+     * before the new one is saved to prevent accumulating orphaned files.
+     *
+     * @return the absolute URL of the newly uploaded image
+     */
     public String uploadProfileImage(UserDetails userDetails, MultipartFile imageFile) {
         User user = findByEmail(userDetails.getUsername());
 
@@ -53,6 +62,9 @@ public class UserProfileService {
         return storageService.buildUrl(imageUrl);
     }
 
+    /**
+     * Removes the user's profile picture and returns the generated fallback avatar URL.
+     */
     public String deleteProfileImage(UserDetails userDetails) {
         User user = findByEmail(userDetails.getUsername());
 
@@ -72,7 +84,7 @@ public class UserProfileService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
     }
 
- 
+
 
     private UserProfileResponse toResponse(User user) {
         return new UserProfileResponse(

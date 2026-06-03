@@ -19,6 +19,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Blog post entity.
+ *
+ * A post belongs to exactly one author ({@link User}) and one {@link Category}.
+ * Status transitions are managed by the service layer; the entity only enforces
+ * timestamps via JPA lifecycle callbacks.
+ */
 @Entity
 @Data
 @NoArgsConstructor
@@ -56,20 +63,17 @@ public class Post {
     @Column(name = "cover_image", length = 500)
     private String coverImage;
 
-    // RELATIONSHIPS
-    @ManyToOne(fetch = FetchType.LAZY) // ✅ LAZY — loaded on demand
+    @ManyToOne(fetch = FetchType.LAZY) // LAZY — avoids N+1 on list queries
     @JoinColumn(name = "user_id", nullable = false)
     private User author;
 
-    @ManyToOne(fetch = FetchType.LAZY) // ✅ LAZY — loaded on demand
+    @ManyToOne(fetch = FetchType.LAZY) // LAZY — avoids N+1 on list queries
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    // ============================================
-    // LIFECYCLE CALLBACKS
-    // ============================================
     /**
-     * Sets timestamps automatically on entity creation
+     * Sets timestamps automatically on entity creation.
+     * Also records {@code publishedAt} when the initial status is PUBLISHED.
      */
     @PrePersist
     protected void onCreate() {
@@ -83,7 +87,8 @@ public class Post {
     }
 
     /**
-     * Updates the updatedAt timestamp on every modification
+     * Updates the {@code updatedAt} timestamp on every modification.
+     * Records {@code publishedAt} the first time the post transitions to PUBLISHED.
      */
     @PreUpdate
     protected void onUpdate() {
@@ -95,22 +100,16 @@ public class Post {
         }
     }
 
-    // ============================================
-    // CUSTOM CONSTRUCTOR (no timestamp fields)
-    // ============================================
     public Post(String title, String content, PostStatus status, String slug,
             User author, Category category) {
         this.title = title;
         this.content = content;
-        this.status = status != null ? status : PostStatus.DRAFT; //default status if not Null
+        this.status = status != null ? status : PostStatus.DRAFT;
         this.slug = slug;
         this.author = author;
         this.category = category;
     }
 
-    // ============================================
-    // UTILITY METHODS
-    // ============================================
     public boolean isPublished() {
         return this.status == PostStatus.PUBLISHED;
     }
@@ -124,7 +123,8 @@ public class Post {
     }
 
     /**
-     * Custom toString to avoid LazyInitializationException on lazy-loaded relations
+     * Custom toString to avoid {@link org.hibernate.LazyInitializationException}
+     * on lazy-loaded relations.
      */
     @Override
     public String toString() {

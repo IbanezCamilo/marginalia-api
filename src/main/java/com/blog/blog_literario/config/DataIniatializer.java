@@ -13,6 +13,13 @@ import com.blog.blog_literario.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Seeds the database with required reference data on startup.
+ *
+ * <p>Creates the four application roles (READER, AUTHOR, MODERATOR, ADMIN) and the
+ * default admin user if they do not already exist. Credentials are sourced from
+ * {@link AdminProperties} ({@code admin.*} in {@code application.yml}).
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor

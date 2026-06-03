@@ -11,6 +11,10 @@ import com.blog.blog_literario.repositories.CategoryRepository;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Read-only service for the public category feed. Exposes categories without
+ * any authentication requirement.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -18,7 +22,6 @@ public class PublicCategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    // public list
     public List<CategoryResponse> listCategories() {
         return categoryRepository
                 .findAll()
@@ -27,7 +30,9 @@ public class PublicCategoryService {
                 .toList();
     }
 
-    // public details by slug
+    /**
+     * @throws RuntimeException if no category exists with the given {@code slug}
+     */
     public CategoryResponse getBySlug(String slug) {
         Category category = categoryRepository
                 .findBySlug(slug)

@@ -17,6 +17,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Application user entity.
+ *
+ * Every user has exactly one {@link Role} (READER, AUTHOR, or ADMIN) which
+ * determines their access level. The role is loaded eagerly because it is
+ * required on every authenticated request.
+ */
 @Entity
 @Data
 @NoArgsConstructor
@@ -58,35 +65,33 @@ public class User {
         createdAt = LocalDateTime.now();
     }
 
-    // RELATIONSHIPS
-    @ManyToOne(fetch = FetchType.EAGER) // ✅ EAGER — role is always needed
+    @ManyToOne(fetch = FetchType.EAGER) // EAGER — role is always needed for every authenticated request
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-    // UTILITY METHODS
     /**
-     * Returns true if the user has the admin role
+     * Returns true if the user has the admin role.
      */
     public boolean isAdmin() {
         return role != null && role.isAdmin();
     }
 
     /**
-     * Returns true if the user has the author role
+     * Returns true if the user has the author role.
      */
     public boolean isAuthor() {
         return role != null && role.isAuthor();
     }
 
     /**
-     * Returns the role name, or "UNKNOWN" if no role is set
+     * Returns the role name, or {@code "UNKNOWN"} if no role is set.
      */
     public String getRoleName() {
         return role != null ? role.getName() : "UNKNOWN";
     }
 
     /**
-     * Constructor for read-only responses — no password field
+     * Constructor for read-only projections — omits password and audit fields.
      */
     public User(Integer id, String name, String email, Role role) {
         this.id = id;

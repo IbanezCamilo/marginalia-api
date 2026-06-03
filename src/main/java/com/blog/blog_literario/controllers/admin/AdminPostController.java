@@ -22,14 +22,20 @@ import com.blog.blog_literario.services.posts.AdminPostModerationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Admin endpoints for post moderation. All routes require {@code ROLE_ADMIN}
+ * (enforced in {@link com.blog.blog_literario.config.SecurityConfig}).
+ */
 @RestController
 @RequestMapping("/api/admin/posts")
 @RequiredArgsConstructor
 public class AdminPostController {
 
     private final AdminPostModerationService adminService;
+
     /**
-     * GET /api/admin/posts
+     * Returns a paginated list of posts. Optionally filter by {@code status}
+     * (DRAFT, PUBLISHED, ARCHIVED, REJECTED); omit to return all statuses.
      */
     @GetMapping
     public Page<AdminPostResponse> listAll(
@@ -51,9 +57,8 @@ public class AdminPostController {
     }
 
     /**
-     * PUT /api/admin/posts/{id}/status Changes the status of a post (approval,
-     * rejection, archived). Admin can perform any status transition. Requires
-     * ROLE_ADMIN (protected in SecurityConfig)
+     * Changes a post's status. Admins may perform any transition (including those
+     * not available to authors such as ARCHIVED or REJECTED).
      */
     @PutMapping("/{id}/status")
     public ResponseEntity<AdminPostResponse> updateStatus(
@@ -64,13 +69,10 @@ public class AdminPostController {
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * DELETE /api/admin/posts/{id} Administrative deletion (hard delete).
-     * Requires ROLE_ADMIN (protected in SecurityConfig)
-     */
+    /** Hard-deletes a post and its cover image from storage. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         adminService.delete(id);
-        return ResponseEntity.noContent().build(); // 204 No Content
+        return ResponseEntity.noContent().build();
     }
 }
