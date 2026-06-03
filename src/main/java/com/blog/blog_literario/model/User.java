@@ -41,7 +41,7 @@ public class User {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "profile_picture", nullable = false, length = 500)
+    @Column(name = "profile_picture", length = 500)
     private String profilePicture;
 
     @Column(name = "password", nullable = false, length = 255)
