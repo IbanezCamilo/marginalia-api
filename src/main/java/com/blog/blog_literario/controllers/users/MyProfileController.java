@@ -30,7 +30,6 @@ public class MyProfileController {
     private final UserProfileService userProfileService;
 
     @GetMapping
-    // param: Obtiene el usuario Autenticado
     public ResponseEntity<?> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userProfileService.getUserProfile(userDetails)); // status 200 = ok
     }

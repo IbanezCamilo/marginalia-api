@@ -2,9 +2,9 @@ package com.blog.blog_literario.model;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column; // Contiene todas las anotaciones de JPA
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;// Lombok para generar getters y setters automáticamente
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -59,34 +59,34 @@ public class User {
     }
 
     // RELATIONSHIPS
-    @ManyToOne(fetch = FetchType.EAGER) // ✅ EAGER porque siempre necesitas el rol
+    @ManyToOne(fetch = FetchType.EAGER) // ✅ EAGER — role is always needed
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
     // UTILITY METHODS
     /**
-     * Método para verificar si el usuario es admin
+     * Returns true if the user has the admin role
      */
     public boolean isAdmin() {
         return role != null && role.isAdmin();
     }
 
     /**
-     * Método para verificar si el usuario es autor
+     * Returns true if the user has the author role
      */
     public boolean isAuthor() {
         return role != null && role.isAuthor();
     }
 
     /**
-     * Método para obtener nombre de rol (útil en vistas)
+     * Returns the role name, or "UNKNOWN" if no role is set
      */
     public String getRoleName() {
         return role != null ? role.getName() : "UNKNOWN";
     }
 
     /**
-     * Constructor sin password (útil para respuestas)
+     * Constructor for read-only responses — no password field
      */
     public User(Integer id, String name, String email, Role role) {
         this.id = id;

@@ -50,14 +50,14 @@ public class LocalStorageService implements StorageService {
             // Ensure the destination path is within the upload directory to prevent path traversal
             Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
 
-            log.info("Imagen guardada exitosamente: {}", fileName);
+            log.info("Image saved successfully: {}", fileName);
 
             return fileName;
         } catch (IllegalArgumentException e) {
             // Validation errors (e.g., invalid file type, size too large)
             throw e;
         } catch (IOException e) {
-            log.error("Error al guardar imagen en disco", e);
+            log.error("Error saving image to disk", e);
             throw new RuntimeException("No se pudo guardar la imagen. Inténtalo de nuevo.", e);
         }
     }
@@ -73,19 +73,19 @@ public class LocalStorageService implements StorageService {
             Path filePath = uploadPath.resolve(fileName).normalize();
 
             if (!filePath.startsWith(uploadPath)) {
-                log.warn("Intento de acceso a archivo fuera del directorio permitido: " + fileName);
+                log.warn("Attempted access to file outside the allowed directory: " + fileName);
                 return;
             }
 
             boolean deleted = Files.deleteIfExists(filePath);
 
             if (deleted) {
-                log.info("Imagen eliminada: {}", fileName);
+                log.info("Image deleted: {}", fileName);
             } else {
-                log.warn("Se intentó eliminar una imagen que no existe: {}", fileName);
+                log.warn("Attempted to delete an image that does not exist: {}", fileName);
             }
         } catch (IOException e) {
-            log.error("No se pudo eliminar la imagen: {}", fileName, e);
+            log.error("Failed to delete image: {}", fileName, e);
         }
     }
 

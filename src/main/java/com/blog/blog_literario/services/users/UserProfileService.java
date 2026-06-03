@@ -31,7 +31,7 @@ public class UserProfileService {
         return toResponse(user);
     }
 
-    // Actualizar datos del perfil de usuario
+    // Update user profile data
     public UserProfileResponse updateProfile(UserDetails userDetails, UserProfileUpdateRequest request) {
         User user = findByEmail(userDetails.getUsername());
 
@@ -63,8 +63,8 @@ public class UserProfileService {
         return avatarResolver.resolve(null, user.getName());
     }
 
-    public static String obtenerFotoValida(String foto, String fotoPorDefecto) {
-        return (foto != null && !foto.isEmpty() && !foto.equals(fotoPorDefecto)) ? foto : fotoPorDefecto;
+    public static String getValidPhoto(String photo, String defaultPhoto) {
+        return (photo != null && !photo.isEmpty() && !photo.equals(defaultPhoto)) ? photo : defaultPhoto;
     }
 
     private User findByEmail(String email) {

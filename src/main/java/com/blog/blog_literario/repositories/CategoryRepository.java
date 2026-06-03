@@ -8,15 +8,11 @@ import java.util.Optional;
 
 public interface CategoryRepository extends JpaRepository<Category, Integer> {
 
-    // Método para encontrar una categoría por su nombre
     Optional<Category> findByName(String name);
 
-    // Método para verificar si una categoría existe por su nombre
     boolean existsByName(String name);
 
-    // Método para encontrar una categoría por su slug
     Optional<Category> findBySlug(String slug);
 
-    // Método para verificar si una categoría existe por su slug
     boolean existsBySlug(String slug);
 }

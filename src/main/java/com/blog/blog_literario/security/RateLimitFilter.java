@@ -25,7 +25,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private Bucket createBucket() {
         Bandwidth limit = Bandwidth.classic(
-                10, // 10 intentos
+                10,
                 Refill.greedy(10, Duration.ofMinutes(1)) // recharge every minute
         );
         return Bucket.builder().addLimit(limit).build();
@@ -37,7 +37,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        // Solo aplica a login
+        // Only applies to the login endpoint
         if (!request.getServletPath().equals("/api/auth/login")) {
             filterChain.doFilter(request, response);
             return;

@@ -1,13 +1,13 @@
 package com.blog.blog_literario.security;
 
-import java.util.Collection; //Importa la Entidad USER
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails; //para Colecciones
+import org.springframework.security.core.userdetails.UserDetails;
 
-import com.blog.blog_literario.model.User; // para Listas
+import com.blog.blog_literario.model.User;
 
 
 public class UserDetailsImpl implements UserDetails {
@@ -18,22 +18,22 @@ public class UserDetailsImpl implements UserDetails {
         this.user = user;
     }
 
-    @Override // Lista para conocer los permisos de usuario
+    @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()));
     }
 
     @Override
     public String getPassword() {
-        return user.getPassword(); // Retorna la contraseña del usuario
+        return user.getPassword();
     }
 
     @Override
     public String getUsername() {
-        return user.getEmail(); // Retorna el email para usar como usuario
+        return user.getEmail();
     }
 
-    // Opcional: Modificar según reglas de negocio
+    // Override to apply business rules if needed
     @Override
     public boolean isAccountNonExpired() {
         return true;
@@ -54,7 +54,6 @@ public class UserDetailsImpl implements UserDetails {
         return true;
     }
 
-    //Por si acaso
     public User getUser() {
         return user;
     }

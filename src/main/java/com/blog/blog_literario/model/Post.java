@@ -57,11 +57,11 @@ public class Post {
     private String coverImage;
 
     // RELATIONSHIPS
-    @ManyToOne(fetch = FetchType.LAZY) // ✅ LAZY para mejor performance
+    @ManyToOne(fetch = FetchType.LAZY) // ✅ LAZY — loaded on demand
     @JoinColumn(name = "user_id", nullable = false)
     private User author;
 
-    @ManyToOne(fetch = FetchType.LAZY) // ✅ LAZY para mejor performance
+    @ManyToOne(fetch = FetchType.LAZY) // ✅ LAZY — loaded on demand
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
@@ -69,7 +69,7 @@ public class Post {
     // LIFECYCLE CALLBACKS
     // ============================================
     /**
-     * Establece timestamps automáticamente al crear
+     * Sets timestamps automatically on entity creation
      */
     @PrePersist
     protected void onCreate() {
@@ -83,7 +83,7 @@ public class Post {
     }
 
     /**
-     * Actualiza timestamp automáticamente al modificar
+     * Updates the updatedAt timestamp on every modification
      */
     @PreUpdate
     protected void onUpdate() {
@@ -96,7 +96,7 @@ public class Post {
     }
 
     // ============================================
-    // CUSTOM CONSTRUCTOR (sin timestamps)
+    // CUSTOM CONSTRUCTOR (no timestamp fields)
     // ============================================
     public Post(String title, String content, PostStatus status, String slug,
             User author, Category category) {
@@ -124,8 +124,7 @@ public class Post {
     }
 
     /**
-     * toString personalizado (Lombok @Data lo genera, pero sin relaciones)
-     * Evita LazyInitializationException al hacer toString()
+     * Custom toString to avoid LazyInitializationException on lazy-loaded relations
      */
     @Override
     public String toString() {

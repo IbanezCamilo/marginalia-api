@@ -48,11 +48,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String userEmail = jwtService.extractUsername(jwt);
-            log.debug("Usuario extraído del JWT: {}", userEmail);
+            log.debug("User extracted from JWT: {}", userEmail);
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 var userDetails = this.userDetailsService.loadUserByUsername(userEmail);
                 boolean valid = jwtService.isTokenValid(jwt, userDetails);
-                log.debug("Token válido: {}", valid);
+                log.debug("Token valid: {}", valid);
                 if (valid) {
                     var authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
