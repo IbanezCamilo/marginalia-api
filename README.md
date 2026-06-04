@@ -168,4 +168,3 @@ Copy `.env.sample` → `.env` and fill in your values:
 ---
 
 © 2025 Camilo Ibáñez. All rights reserved.
-This repository is publicly visible for portfolio purposes only. Copying, reuse, or redistribution is not permitted.
