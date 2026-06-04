@@ -21,11 +21,13 @@ import com.blog.blog_literario.services.users.UserProfileService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Endpoints for an authenticated user to read and update their own profile,
  * including profile picture upload and removal.
  */
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/me/profile")
@@ -86,8 +88,9 @@ public class MyProfileController {
             String imageUrl = userProfileService.uploadProfileImage(userDetails, imageFile);
             return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
         } catch (Exception e) {
+            log.error("Error uploading profile image", e);
             return ResponseEntity.internalServerError()
-                    .body("Error al subir la imagen: " + e.getMessage());
+                    .body(Map.of("error", "No se pudo subir la imagen. Inténtalo de nuevo."));
         }
     }
 }

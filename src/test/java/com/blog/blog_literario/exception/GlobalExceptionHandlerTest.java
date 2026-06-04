@@ -2,6 +2,7 @@ package com.blog.blog_literario.exception;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -11,13 +12,18 @@ import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
 import com.blog.blog_literario.support.WebMvcTestConfig;
+import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,6 +35,8 @@ class GlobalExceptionHandlerTest {
 
     @RestController
     static class DummyController {
+        record ValidBody(@NotBlank String name) {}
+
         @GetMapping("/test/not-found")
         void notFound() { throw new ResourceNotFoundException("Resource not found"); }
 
@@ -40,6 +48,9 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/illegal-state")
         void illegalState() { throw new IllegalStateException("Illegal state"); }
+
+        @PostMapping("/test/validate")
+        void validate(@Validated @RequestBody ValidBody body) {}
     }
 
     @Autowired MockMvc mockMvc;
@@ -78,5 +89,17 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/conflict"))
                 .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void validationFailure_returns400WithValidationType() throws Exception {
+        mockMvc.perform(post("/test/validate")
+                .with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/validation"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").isString());
     }
 }

@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.blog.blog_literario.config.SecurityConfig;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
 import com.blog.blog_literario.security.CookieUtil;
+import org.springframework.security.authentication.BadCredentialsException;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
@@ -121,5 +122,17 @@ class AuthControllerTest {
                 .andExpect(status().isOk());
 
         verify(cookieUtil).clearJwtCookie(any(HttpServletResponse.class));
+    }
+
+    @Test
+    void login_badCredentials_returns401WithProblemDetail() throws Exception {
+        given(authService.login(any())).willThrow(new BadCredentialsException("bad credentials"));
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"user@test.com\",\"password\":\"wrongpassword\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/unauthorized"))
+                .andExpect(jsonPath("$.status").value(401));
     }
 }

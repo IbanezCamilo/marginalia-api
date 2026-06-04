@@ -2,10 +2,12 @@ package com.blog.blog_literario.security;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,21 +20,31 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Token-bucket rate limiter scoped to the login endpoint.
+ * Token-bucket rate limiter scoped to all auth endpoints.
  *
- * <p>Each client IP gets its own {@link Bucket} capped at 10 login attempts per minute.
+ * <p>Each client IP gets its own {@link Bucket} capped at 10 auth attempts per minute.
+ * Buckets inactive for more than 10 minutes are evicted to prevent unbounded memory growth.
  * All other paths are passed through without inspection.
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    // Bucket per IP: max 10 login attempts per minute
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> buckets = new ConcurrentHashMap<>();
+
+    private static final class BucketEntry {
+        final Bucket bucket;
+        volatile Instant lastUsed;
+
+        BucketEntry(Bucket bucket) {
+            this.bucket = bucket;
+            this.lastUsed = Instant.now();
+        }
+    }
 
     private Bucket createBucket() {
         Bandwidth limit = Bandwidth.classic(
                 10,
-                Refill.greedy(10, Duration.ofMinutes(1)) // recharge every minute
+                Refill.greedy(10, Duration.ofMinutes(1))
         );
         return Bucket.builder().addLimit(limit).build();
     }
@@ -43,16 +55,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        // Only applies to the login endpoint
-        if (!request.getServletPath().equals("/api/auth/login")) {
+        if (!request.getRequestURI().startsWith("/api/auth/")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String ip = getClientIp(request);
-        Bucket bucket = buckets.computeIfAbsent(ip, k -> createBucket());
+        BucketEntry entry = buckets.computeIfAbsent(ip, k -> new BucketEntry(createBucket()));
+        entry.lastUsed = Instant.now();
 
-        if (bucket.tryConsume(1)) {
+        if (entry.bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);
         } else {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
@@ -61,6 +73,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     "{\"error\": \"Demasiados intentos. Espera un minuto antes de volver a intentar.\"}"
             );
         }
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    void evictStaleBuckets() {
+        Instant threshold = Instant.now().minus(Duration.ofMinutes(10));
+        buckets.entrySet().removeIf(e -> e.getValue().lastUsed.isBefore(threshold));
     }
 
     private String getClientIp(HttpServletRequest request) {

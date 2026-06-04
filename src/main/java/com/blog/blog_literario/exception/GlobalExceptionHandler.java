@@ -1,9 +1,15 @@
 package com.blog.blog_literario.exception;
 
 import java.net.URI;
+import java.util.stream.Collectors;
 
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -13,6 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * Each handler maps one exception type to an HTTP status and a typed problem URI so
  * clients can distinguish errors programmatically.
  */
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -45,6 +52,25 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleIllegalState(IllegalStateException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         pd.setType(URI.create("https://blog-literario.com/errors/conflict"));
+        return pd;
+    }
+
+    /** 400 — bean validation failed; detail lists all field-level violation messages. */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+        String detail = ex.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        pd.setType(URI.create("https://blog-literario.com/errors/validation"));
+        return pd;
+    }
+
+    /** 401 — supplied credentials are incorrect. */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ProblemDetail handleBadCredentials(BadCredentialsException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        pd.setType(URI.create("https://blog-literario.com/errors/unauthorized"));
         return pd;
     }
 }
