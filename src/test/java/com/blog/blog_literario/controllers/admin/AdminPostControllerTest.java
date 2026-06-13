@@ -2,7 +2,10 @@ package com.blog.blog_literario.controllers.admin;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,15 +13,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.blog.blog_literario.config.SecurityConfig;
 import com.blog.blog_literario.dto.admin.AdminPostResponse;
+import com.blog.blog_literario.dto.admin.AdminStatusUpdateRequest;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
-import com.blog.blog_literario.services.posts.AdminPostModerationService;
+import com.blog.blog_literario.services.admin.AdminPostModerationService;
+import com.blog.blog_literario.support.TestSecurityFactory;
 import com.blog.blog_literario.support.WebMvcTestConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,8 +49,23 @@ class AdminPostControllerTest {
     @MockBean UserDetailsServiceImpl userDetailsService;
 
     private static final AdminPostResponse SAMPLE = new AdminPostResponse(
-            1, "Title", "title-slug", "PUBLISHED", "Publicado",
-            "Author", "author@test.com", "Fiction", null, null, null);
+            1,
+            "Title",
+            "title-slug",
+            "PUBLISHED",
+            "Publicado",
+            "Author",
+            "author@test.com",
+            "Fiction",
+            null,
+            null,
+            null,
+            LocalDateTime.now(),
+            0,
+            false,
+            LocalDateTime.now(),
+            LocalDateTime.now()
+    );
 
     @Test
     void listAll_asAdmin_returns200() throws Exception {
@@ -76,13 +97,15 @@ class AdminPostControllerTest {
 
     @Test
     void updateStatus_asAdmin_validStatus_returns200() throws Exception {
-        given(adminService.updateStatus(eq(1), any())).willReturn(SAMPLE);
+        given(adminService.updateStatus(eq(1), eq(1), any(AdminStatusUpdateRequest.class))).willReturn(SAMPLE);
 
         mockMvc.perform(put("/api/admin/posts/1/status")
-                .with(user("admin").roles("ADMIN"))
+                .with(authentication(TestSecurityFactory.asAdmin(1)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isOk());
+
+        verify(adminService).updateStatus(eq(1), eq(1), any(AdminStatusUpdateRequest.class));
     }
 
     @Test
@@ -92,6 +115,37 @@ class AdminPostControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resetPost_asAdmin_withNote_returns200() throws Exception {
+        given(adminService.resetPost(eq(1), eq(1), eq("Unlocked, try again"))).willReturn(SAMPLE);
+
+        mockMvc.perform(put("/api/admin/posts/1/reset")
+                .with(authentication(TestSecurityFactory.asAdmin(1)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"moderationNote\":\"Unlocked, try again\"}"))
+                .andExpect(status().isOk());
+
+        verify(adminService).resetPost(eq(1), eq(1), eq("Unlocked, try again"));
+    }
+
+    @Test
+    void resetPost_asAdmin_noBody_returns200() throws Exception {
+        given(adminService.resetPost(eq(1), eq(1), isNull())).willReturn(SAMPLE);
+
+        mockMvc.perform(put("/api/admin/posts/1/reset")
+                .with(authentication(TestSecurityFactory.asAdmin(1))))
+                .andExpect(status().isOk());
+
+        verify(adminService).resetPost(eq(1), eq(1), isNull());
+    }
+
+    @Test
+    void resetPost_asAuthor_returns403() throws Exception {
+        mockMvc.perform(put("/api/admin/posts/1/reset")
+                .with(user("author").roles("AUTHOR")))
+                .andExpect(status().isForbidden());
     }
 
     @Test
