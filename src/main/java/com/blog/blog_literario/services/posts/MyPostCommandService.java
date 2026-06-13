@@ -17,6 +17,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.CategoryRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.admin.AdminPostModerationService;
 import com.blog.blog_literario.services.images.StorageService;
 import com.blog.blog_literario.utils.SlugUtils;
 
@@ -29,8 +30,12 @@ import lombok.RequiredArgsConstructor;
  * <p>Enforces author-level business rules:
  * <ul>
  *   <li>Authors may only read and write their own posts.</li>
- *   <li>Status transitions are restricted: DRAFT → PUBLISHED → DRAFT and REJECTED → DRAFT.
- *       Admins bypass these restrictions through {@link AdminPostModerationService}.</li>
+ *   <li>Status transitions are restricted: DRAFT → PUBLISHED → DRAFT and REJECTED → DRAFT,
+ *       and a REJECTED → DRAFT resubmission is rejected once the post is permanently
+ *       blocked (3 accumulated rejections; see {@link com.blog.blog_literario.model.Post#canBeResubmitted()}).
+ *       Moderators and admins bypass these restrictions through
+ *       {@link com.blog.blog_literario.services.moderator.ModeratorPostService} and
+ *       {@link AdminPostModerationService} respectively.</li>
  *   <li>Deleting a post also removes its cover image from storage.</li>
  * </ul>
  */
@@ -134,7 +139,9 @@ public class MyPostCommandService {
      * {@link #update} (which also updates content fields at the same time).
      *
      * @throws RuntimeException      if the post does not belong to the user or status is invalid
-     * @throws IllegalStateException if the requested transition is not permitted for authors
+     * @throws IllegalStateException if the requested transition is not permitted for authors,
+     *                                or if resubmitting (REJECTED → DRAFT) a post that has been
+     *                                permanently blocked by 3 accumulated rejections
      */
     public MyPostResponse updateStatus(Integer userId, Integer postId, String newStatusStr) {
 
@@ -148,6 +155,17 @@ public class MyPostCommandService {
             newStatus = PostStatus.valueOf(newStatusStr);
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Estado no valido: " + newStatusStr);
+        }
+
+        // If the author is trying to republish a rejected post,
+        // check first that it hasn't been permanently blocked
+        if (post.getStatus() == PostStatus.REJECTED && newStatus == PostStatus.DRAFT) {
+            if (!post.canBeResubmitted()) {
+                throw new IllegalStateException(
+                        "Este post ha sido rechazado 3 veces y está bloqueado permanentemente. "
+                        + "Contactá al administrador para desbloquearlo."
+                );
+            }
         }
 
         validateAuthorCanChangeStatus(post.getStatus(), newStatus);
@@ -211,7 +229,7 @@ public class MyPostCommandService {
         if (currentStatus == newStatus) {
             return; // No status change, no validation needed
         }
-        // Only these transitions are allowed for authors; admin-only changes go through AdminPostModerationService
+
         boolean isAllowed = switch (currentStatus) {
             case DRAFT ->
                 newStatus == PostStatus.PUBLISHED;
@@ -226,7 +244,7 @@ public class MyPostCommandService {
         if (!isAllowed) {
             throw new IllegalStateException(
                     String.format("No puedes cambiar el estado de %s a %s. Solo administradores pueden hacer esto.",
-                            currentStatus, newStatus)
+                            currentStatus.getDisplayName(), newStatus.getDisplayName())
             );
         }
     }
@@ -243,7 +261,12 @@ public class MyPostCommandService {
                 post.getCategory().getName(),
                 storageService.buildUrl(post.getCoverImage()),
                 post.getCreatedAt(),
-                post.getUpdatedAt()
+                post.getUpdatedAt(),
+                //Moderation fields
+                post.getModerationNote(),
+                post.getRejectionCount(),
+                post.canBeResubmitted(),
+                post.isLastAttempt()
         );
     }
 }

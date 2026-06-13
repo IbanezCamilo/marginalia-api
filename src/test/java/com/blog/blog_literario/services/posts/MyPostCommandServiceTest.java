@@ -94,6 +94,45 @@ class MyPostCommandServiceTest {
     }
 
     @Test
+    void updateStatus_rejectedToDraft_belowThreshold_succeeds() {
+        Post post = new Post("Rejected Post", "Content", PostStatus.REJECTED, "rejected-post", author, category);
+        post.setRejectionCount(2);
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        MyPostResponse result = myService.updateStatus(1, 1, "DRAFT");
+
+        assertThat(result.status()).isEqualTo("DRAFT");
+        verify(postRepository).save(post);
+    }
+
+    @Test
+    void updateStatus_rejectedToDraft_permanentlyBlocked_throwsIllegalState() {
+        Post post = new Post("Rejected Post", "Content", PostStatus.REJECTED, "rejected-post", author, category);
+        post.setRejectionCount(3);
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> myService.updateStatus(1, 1, "DRAFT"))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_responseIncludesModerationFields() {
+        Post post = new Post("Rejected Post", "Content", PostStatus.REJECTED, "rejected-post", author, category);
+        post.setModerationNote("Needs more detail");
+        post.setRejectionCount(2);
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        MyPostResponse result = myService.updateStatus(1, 1, "DRAFT");
+
+        assertThat(result.moderationNote()).isEqualTo("Needs more detail");
+        assertThat(result.rejectionCount()).isEqualTo(2);
+        assertThat(result.canBeResubmitted()).isTrue();
+        assertThat(result.isLastAttempt()).isTrue();
+    }
+
+    @Test
     void create_uniqueSlug_savesPostAndReturnsResponse() {
         CreatePostRequest request = new CreatePostRequest("Test Title Post", "Content", 1, "DRAFT");
         given(userRepository.findById(1)).willReturn(Optional.of(author));

@@ -47,7 +47,13 @@ class MyPostControllerTest {
 
     private static final MyPostResponse SAMPLE_RESPONSE = new MyPostResponse(
             1, "Test Title", "Content", "DRAFT", "test-title",
-            "Test Author", 1, "Fiction", null, null, null);
+            "Test Author", 1, "Fiction", null, null, null,
+            // Moderation fields
+            null,
+            0,
+            true,
+            false
+    );
 
     @Test
     void list_asAuthor_returns200() throws Exception {
