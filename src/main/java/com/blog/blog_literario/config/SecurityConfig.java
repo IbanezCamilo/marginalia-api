@@ -67,8 +67,10 @@ public class SecurityConfig {
                 // Authenticated endpoints
                 .requestMatchers("/api/me/profile/**").authenticated()
                 .requestMatchers("/api/me/author-request/**").authenticated()
-                // Author/Admin endpoints
+                // Author/Moderator/Admin endpoints
                 .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN", "MODERATOR")
+                // Moderator endpoints (ModeratorPostController) — moderators and admins
+                .requestMatchers("/api/moderator/**").hasAnyRole("MODERATOR", "ADMIN")
                 // Admin-only endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Fallback
