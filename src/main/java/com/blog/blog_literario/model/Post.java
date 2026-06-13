@@ -63,6 +63,23 @@ public class Post {
     @Column(name = "cover_image", length = 500)
     private String coverImage;
 
+    /** Feedback left by a moderator/admin, shown to the author (e.g. why a post was rejected). */
+    @Column(name = "moderation_note", length=500)
+    private String moderationNote;
+
+    /** Number of times this post has been rejected; reaching 3 permanently blocks resubmission. */
+    @Column(name = "rejection_count", nullable = false)
+    private int rejectionCount = 0;
+
+    /** Timestamp of the most recent moderation action (status change, rejection, or reset). */
+    @Column(name = "moderated_at")
+    private LocalDateTime moderatedAt;
+
+    /** Moderator or admin who performed the most recent moderation action. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moderated_by")
+    private User moderatedBy;
+
     @ManyToOne(fetch = FetchType.LAZY) // LAZY — avoids N+1 on list queries
     @JoinColumn(name = "user_id", nullable = false)
     private User author;
@@ -118,8 +135,55 @@ public class Post {
         return this.status == PostStatus.DRAFT;
     }
 
+    public boolean isRejected() {
+        return this.status == PostStatus.REJECTED;
+    }
+
+    public boolean isArchived() {
+        return this.status == PostStatus.ARCHIVED;
+    }
+
+    /** True while the author may still resubmit a rejected post (fewer than 3 rejections, not archived). */
+    public boolean canBeResubmitted() {
+        return rejectionCount < 3 && status != PostStatus.ARCHIVED;
+    }
+
+    /** True once the post has accumulated 3 rejections; only an admin reset via {@link #resetForAuthor()} can unblock it. */
+    public boolean isPermanentlyBlocked() {
+        return rejectionCount >= 3;
+    }
+
+    /** True if the post has 2 rejections, meaning the next rejection will permanently block it. */
+    public boolean isLastAttempt() {
+        return rejectionCount == 2;
+    }
+
     public boolean canBeEditedByAuthor() {
         return this.status.canBeEditedByAuthor();
+    }
+
+    /** Records who performed the most recent moderation action, when, and any feedback for the author. */
+    public void recordModeration(User moderator, String note) {
+        this.moderatedBy  = moderator;
+        this.moderatedAt  = LocalDateTime.now();
+        this.moderationNote = note;
+    }
+
+    public void incrementRejectionCount() {
+        this.rejectionCount++;
+    }
+
+    /**
+     * Clears moderation state and returns the post to {@code DRAFT}, allowing the
+     * author to resubmit a post that was previously permanently blocked.
+     * Used by {@link com.blog.blog_literario.services.admin.AdminPostModerationService#resetPost}.
+     */
+    public void resetForAuthor() {
+        this.status = PostStatus.DRAFT;
+        this.rejectionCount = 0;
+        this.moderationNote = null;
+        this.moderatedBy    = null;
+        this.moderatedAt    = null;
     }
 
     /**
