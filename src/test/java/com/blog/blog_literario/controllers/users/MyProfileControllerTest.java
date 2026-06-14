@@ -46,8 +46,8 @@ class MyProfileControllerTest {
                 .file(imageFile)
                 .with(user("user@test.com").roles("READER")))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value("No se pudo subir la imagen. Inténtalo de nuevo."))
-                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.not(
+                .andExpect(jsonPath("$.detail").value("Ha ocurrido un error inesperado. Inténtalo de nuevo."))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.containsString("disk full"))));
     }
 

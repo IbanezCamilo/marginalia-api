@@ -13,12 +13,15 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Translates domain exceptions into RFC 9457 {@link ProblemDetail} responses.
  *
  * Each handler maps one exception type to an HTTP status and a typed problem URI so
  * clients can distinguish errors programmatically.
  */
+@Slf4j
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -71,6 +74,16 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleBadCredentials(BadCredentialsException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         pd.setType(URI.create("https://blog-literario.com/errors/unauthorized"));
+        return pd;
+    }
+
+    /** 500 — unexpected error; the original message is logged but never exposed to the client. */
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleUnexpectedError(Exception ex) {
+        log.error("Unexpected error", ex);
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Ha ocurrido un error inesperado. Inténtalo de nuevo.");
+        pd.setType(URI.create("https://blog-literario.com/errors/internal"));
         return pd;
     }
 }
