@@ -1,9 +1,6 @@
 package com.blog.blog_literario.controllers.admin;
 
-import java.util.List;
-
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.blog.blog_literario.dto.categories.CategoryResponse;
 import com.blog.blog_literario.dto.categories.CreateCategoryRequest;
 import com.blog.blog_literario.dto.categories.UpdateCategoryRequest;
 import com.blog.blog_literario.services.categories.CategoryService;
@@ -30,38 +28,17 @@ public class AdminCategoryController {
 
     private final CategoryService categoryService;
 
-    /** Creates a new category. Returns 400 with field-error details on validation failure. */
+    /** Creates a new category. Validation failures are reported as RFC 7807 ProblemDetail by {@link com.blog.blog_literario.exception.GlobalExceptionHandler}. */
     @PostMapping
-    public ResponseEntity<?> createCategory(
-            @Valid @RequestBody CreateCategoryRequest dto,
-            BindingResult result) {
-
-        if (result.hasErrors()) {
-            List<String> errors = result.getFieldErrors()
-                    .stream()
-                    .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                    .toList();
-
-            return ResponseEntity.badRequest().body(errors);
-        }
-
+    public ResponseEntity<CategoryResponse> createCategory(@Valid @RequestBody CreateCategoryRequest dto) {
         return ResponseEntity.status(201).body(categoryService.createCategory(dto));
     }
 
-    /** Updates a category's name and regenerates its slug. Returns 400 on validation failure. */
+    /** Updates a category's name and regenerates its slug. Validation failures are reported as RFC 7807 ProblemDetail by {@link com.blog.blog_literario.exception.GlobalExceptionHandler}. */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateCategory(
+    public ResponseEntity<CategoryResponse> updateCategory(
             @PathVariable Integer id,
-            @Valid @RequestBody UpdateCategoryRequest dto,
-            BindingResult result) {
-
-        if (result.hasErrors()) {
-            List<String> errors = result.getFieldErrors()
-                    .stream()
-                    .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                    .toList();
-            return ResponseEntity.badRequest().body(errors);
-        }
+            @Valid @RequestBody UpdateCategoryRequest dto) {
 
         return ResponseEntity.ok(categoryService.updateCategory(id, dto));
     }
