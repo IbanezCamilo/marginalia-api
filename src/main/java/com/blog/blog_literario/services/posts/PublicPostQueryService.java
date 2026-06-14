@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
+import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
@@ -49,12 +50,12 @@ public class PublicPostQueryService {
     }
 
     /**
-     * @throws RuntimeException if no published post exists with the given {@code slug}
+     * @throws ResourceNotFoundException if no published post exists with the given {@code slug}
      */
     public PublicPostResponse getBySlug(String slug) {
         Post post = postRepository
                 .findBySlugAndStatus(slug, PostStatus.PUBLISHED)
-                .orElseThrow(() -> new RuntimeException("Post not Found: " + slug));
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + slug));
 
         return toResponse(post);
     }

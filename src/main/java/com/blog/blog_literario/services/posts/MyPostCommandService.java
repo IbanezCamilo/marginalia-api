@@ -63,7 +63,7 @@ public class MyPostCommandService {
     public MyPostResponse getById(Integer userId, Integer postId) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
-                .orElseThrow(() -> new RuntimeException("Post no encontrado con ID: " + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
         return ToResponse(post);
     }
@@ -72,16 +72,17 @@ public class MyPostCommandService {
      * Creates a new post for the given author. The slug is derived from the title
      * and must be globally unique.
      *
-     * @throws RuntimeException if the generated slug already exists or the user/category is not found
+     * @throws ResourceNotFoundException if the user or category is not found
+     * @throws IllegalStateException     if the generated slug already exists
      */
     public MyPostResponse create(@NonNull Integer userId, CreatePostRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + userId));
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + userId));
 
-        Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new RuntimeException("Categoria no encontrada con ID: " + request.categoryId()));
+        Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada con ID: " + request.categoryId()));
 
         String slug = SlugUtils.toSlug(request.title());
         if (postRepository.existsBySlug(slug)) {
-            throw new RuntimeException("El slug ya existe. Por favor, elige otro título.");
+            throw new IllegalStateException("El slug ya existe. Por favor, elige otro título.");
         }
 
         Post post = new Post(
@@ -101,19 +102,20 @@ public class MyPostCommandService {
      * Updates all mutable fields of a post. Rebuilds the slug when the title changes;
      * validates author-permitted status transitions.
      *
-     * @throws RuntimeException if the post does not belong to the user, or if the new slug collides
+     * @throws ResourceNotFoundException if the post or category does not exist (or the post does not belong to the user)
+     * @throws IllegalStateException     if the new slug collides with an existing post
      */
     public MyPostResponse update(Integer userId, Integer postId, UpdatePostRequest request) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
-                .orElseThrow(() -> new RuntimeException("Post no encontrado con ID: " + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
         post.setTitle(request.title());
         post.setContent(request.content());
 
         // Category changed
         if(request.categoryId() != null){
-            Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new RuntimeException("Categoria no encontrada con ID: " + request.categoryId()));
+            Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada con ID: " + request.categoryId()));
             post.setCategory(category);
         }
 
@@ -126,7 +128,7 @@ public class MyPostCommandService {
         String newSlug = SlugUtils.toSlug(request.title());
         if (!post.getSlug().equals(newSlug)) {
             if (postRepository.existsBySlugAndIdNot(newSlug, postId)) {
-                throw new RuntimeException("Ya existe un post con tal slug");
+                throw new IllegalStateException("Ya existe un post con tal slug");
             }
             post.setSlug(newSlug);
         }
@@ -138,23 +140,24 @@ public class MyPostCommandService {
      * Changes only the status of a post, applying stricter transition rules than
      * {@link #update} (which also updates content fields at the same time).
      *
-     * @throws RuntimeException      if the post does not belong to the user or status is invalid
-     * @throws IllegalStateException if the requested transition is not permitted for authors,
-     *                                or if resubmitting (REJECTED → DRAFT) a post that has been
-     *                                permanently blocked by 3 accumulated rejections
+     * @throws ResourceNotFoundException if the post does not exist (or does not belong to the user)
+     * @throws IllegalArgumentException  if {@code newStatusStr} is not a valid {@link PostStatus} name
+     * @throws IllegalStateException     if the requested transition is not permitted for authors,
+     *                                    or if resubmitting (REJECTED → DRAFT) a post that has been
+     *                                    permanently blocked by 3 accumulated rejections
      */
     public MyPostResponse updateStatus(Integer userId, Integer postId, String newStatusStr) {
 
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
-                .orElseThrow(() -> new RuntimeException("Post no encontrado con ID: " + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
         // Convert String to Enum
         PostStatus newStatus;
         try {
             newStatus = PostStatus.valueOf(newStatusStr);
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Estado no valido: " + newStatusStr);
+            throw new IllegalArgumentException("Estado no válido: " + newStatusStr);
         }
 
         // If the author is trying to republish a rejected post,
@@ -180,12 +183,12 @@ public class MyPostCommandService {
      * Deletes the post and its cover image from storage.
      * Deleting the cover image first prevents orphaned files if the DB delete fails.
      *
-     * @throws RuntimeException if the post does not belong to the user
+     * @throws ResourceNotFoundException if the post does not exist (or does not belong to the user)
      */
     public void delete(@NonNull Integer userId, @NonNull Integer postId) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
-                .orElseThrow(() -> new RuntimeException("Post no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado"));
 
         // Delete cover image before the post to avoid orphaned files on storage
         storageService.delete(post.getCoverImage());
@@ -206,15 +209,11 @@ public class MyPostCommandService {
     }
 
     public MyPostResponse uploadCoverImage(@NonNull Integer userId, @NonNull Integer postId, MultipartFile image) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post no encontrado con id: " + postId));
-
-        if (!post.getAuthor().getId().equals(userId)) {
-            throw new RuntimeException("No tienes permisos para modificar este post");
-        }
+        Post post = postRepository.findByIdAndAuthorId(postId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + postId));
 
         if (image == null || image.isEmpty()) {
-            throw new RuntimeException("No se proporciono ninguna imagen");
+            throw new IllegalArgumentException("No se proporciono ninguna imagen");
         }
 
         String imageUrl = storageService.save(image, post.getCoverImage());

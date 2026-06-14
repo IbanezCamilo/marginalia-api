@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.blog.blog_literario.dto.categories.CategoryResponse;
+import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.repositories.CategoryRepository;
 
@@ -31,12 +32,12 @@ public class PublicCategoryService {
     }
 
     /**
-     * @throws RuntimeException if no category exists with the given {@code slug}
+     * @throws ResourceNotFoundException if no category exists with the given {@code slug}
      */
     public CategoryResponse getBySlug(String slug) {
         Category category = categoryRepository
                 .findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("Category no encontrada: " + slug));
+                .orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada: " + slug));
 
         return toResponse(category);
     }

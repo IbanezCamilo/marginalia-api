@@ -59,11 +59,11 @@ public class CategoryService {
     /**
      * Creates a new category. The URL slug is derived automatically from the name.
      *
-     * @throws RuntimeException if a category with the same name already exists
+     * @throws IllegalStateException if a category with the same name already exists
      */
     public CategoryResponse createCategory(CreateCategoryRequest request) {
         if (categoryRepository.findByName(request.name()).isPresent()) {
-            throw new RuntimeException("La categoria ya existe");
+            throw new IllegalStateException("La categoria ya existe");
         }
 
         String slug = SlugUtils.toSlug(request.name());
@@ -77,7 +77,7 @@ public class CategoryService {
      * Updates a category's name and regenerates its slug.
      *
      * @throws ResourceNotFoundException if no category exists with the given {@code id}
-     * @throws RuntimeException          if the new slug collides with an existing category
+     * @throws IllegalStateException     if the new slug collides with an existing category
      */
     public CategoryResponse updateCategory(@NonNull Integer id, UpdateCategoryRequest request) {
         Category existing = categoryRepository.findById(id)
@@ -88,7 +88,7 @@ public class CategoryService {
 
         // Avoid creating a duplicate slug — two different names can produce the same slug
         if (!existing.getSlug().equals(newSlug) && categoryRepository.existsBySlug(newSlug)) {
-            throw new RuntimeException(
+            throw new IllegalStateException(
                     "El slug generado ya existe. Elige un nombre diferente.");
         }
 
