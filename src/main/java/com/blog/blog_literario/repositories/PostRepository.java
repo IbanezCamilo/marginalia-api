@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,8 +23,12 @@ import com.blog.blog_literario.model.PostStatus;
  */
 public interface PostRepository extends JpaRepository<Post, Integer> {
 
+    /** Fetches author/category/moderatedBy eagerly to avoid N+1 queries when mapping to response DTOs. */
+    @EntityGraph(attributePaths = {"author", "category", "moderatedBy"})
     Page<Post> findByStatus(PostStatus status, Pageable pageable);
 
+    /** Fetches author/category eagerly to avoid N+1 queries when mapping to response DTOs. */
+    @EntityGraph(attributePaths = {"author", "category"})
     Page<Post> findByAuthorIdAndStatus(Integer authorId, PostStatus status, Pageable pageable);
 
     Optional<Post> findBySlugAndStatus(String slug, PostStatus status);
@@ -39,6 +44,8 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
 
     List<Post> findByCategoryId(Integer categoryId);
 
+    /** Fetches author/category eagerly to avoid N+1 queries when mapping to response DTOs. */
+    @EntityGraph(attributePaths = {"author", "category"})
     Page<Post> findByCategoryIdAndStatus(Integer categoryId, PostStatus status, Pageable pageable);
 
     /**
@@ -75,6 +82,15 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
 
     /** Deletes all posts authored by the given user; used when an author account is removed. */
     void deleteAllByAuthorId(Integer authorId);
+
+    /**
+     * Overrides {@link JpaRepository#findAll(Pageable)} to fetch author/category/moderatedBy
+     * eagerly, avoiding N+1 queries when mapping to response DTOs (used for unfiltered
+     * admin/moderator post listings).
+     */
+    @Override
+    @EntityGraph(attributePaths = {"author", "category", "moderatedBy"})
+    Page<Post> findAll(Pageable pageable);
 
     /** Returns a page of posts whose status is in the provided list; used for admin moderation views. */
     Page<Post> findByStatusIn(List<PostStatus> statuses, Pageable pageable);
