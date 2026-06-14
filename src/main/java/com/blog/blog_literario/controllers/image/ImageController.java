@@ -1,5 +1,6 @@
 package com.blog.blog_literario.controllers.image;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,32 +39,36 @@ public class ImageController {
      */
     @GetMapping("/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) {
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path filePath = uploadPath.resolve(filename).normalize();
+
+        // Don't reveal that a path-traversal attempt was detected — report it the
+        // same way as a missing file.
+        if (!filePath.startsWith(uploadPath)) {
+            throw new ResourceNotFoundException("Image not found: " + filename);
+        }
+
+        Resource resource;
+        String contentType;
         try {
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = uploadPath.resolve(filename).normalize();
-
-            if (!filePath.startsWith(uploadPath)) {
-                throw new RuntimeException("Acceso no permitido");
-            }
-
-            Resource resource = new UrlResource(filePath.toUri());
+            resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
                 throw new ResourceNotFoundException("Image not found: " + filename);
             }
 
-            String contentType = Files.probeContentType(filePath);
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .body(resource);
-
-        } catch (Exception e) {
+            contentType = Files.probeContentType(filePath);
+        } catch (IOException e) {
             throw new RuntimeException("Error retrieving image: " + filename, e);
         }
+
+        if (contentType == null) {
+            contentType = "application/octet-stream";
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
     }
 
 }
