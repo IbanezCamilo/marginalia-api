@@ -2,6 +2,7 @@ package com.blog.blog_literario.controllers.posts;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -54,9 +55,9 @@ public class MyPostController {
     }
 
     @PostMapping
-    public MyPostResponse create(Authentication authentication, @Valid @RequestBody CreatePostRequest request) {
+    public ResponseEntity<MyPostResponse> create(Authentication authentication, @Valid @RequestBody CreatePostRequest request) {
         Integer userId = getUserId(authentication);
-        return myService.create(userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(myService.create(userId, request));
     }
 
     @PostMapping("/{id}/cover-image")
@@ -69,10 +70,10 @@ public class MyPostController {
     }
 
     @PutMapping("/{id}")
-    public MyPostResponse update(Authentication authentication, @PathVariable Integer id,
+    public ResponseEntity<MyPostResponse> update(Authentication authentication, @PathVariable Integer id,
             @Valid @RequestBody UpdatePostRequest request) {
         Integer userId = getUserId(authentication);
-        return myService.update(userId, id, request);
+        return ResponseEntity.ok(myService.update(userId, id, request));
     }
 
     /**

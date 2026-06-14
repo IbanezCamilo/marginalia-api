@@ -85,7 +85,7 @@ class MyPostControllerTest {
                 .with(authentication(TestSecurityFactory.asAuthor(42)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Test Title Post\",\"content\":\"Content\",\"categoryId\":1,\"status\":\"DRAFT\"}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1));
 
         verify(myService).create(eq(42), any());
@@ -153,13 +153,13 @@ class MyPostControllerTest {
     }
 
     @Test
-    void create_asModerator_returns200() throws Exception {
+    void create_asModerator_returns201() throws Exception {
         given(myService.create(eq(5), any())).willReturn(SAMPLE_RESPONSE);
 
         mockMvc.perform(post("/api/me/posts")
                 .with(authentication(TestSecurityFactory.asModerator(5)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Test Title Post\",\"content\":\"Content\",\"categoryId\":1,\"status\":\"DRAFT\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
     }
 }
