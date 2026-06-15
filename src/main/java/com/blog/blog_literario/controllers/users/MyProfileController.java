@@ -2,6 +2,7 @@ package com.blog.blog_literario.controllers.users;
 
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -69,6 +70,6 @@ public class MyProfileController {
         }
 
         String imageUrl = userProfileService.uploadProfileImage(userDetails, imageFile);
-        return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("imageUrl", imageUrl));
     }
 }
