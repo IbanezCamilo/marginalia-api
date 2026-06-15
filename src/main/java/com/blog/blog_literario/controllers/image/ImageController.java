@@ -1,6 +1,7 @@
 package com.blog.blog_literario.controllers.image;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -59,7 +60,7 @@ public class ImageController {
 
             contentType = Files.probeContentType(filePath);
         } catch (IOException e) {
-            throw new RuntimeException("Error retrieving image: " + filename, e);
+            throw new UncheckedIOException("Error retrieving image: " + filename, e);
         }
 
         if (contentType == null) {
