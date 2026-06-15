@@ -65,20 +65,6 @@ class PostRepositoryTest {
     }
 
     @Test
-    void findByStatusIn_excludesNonMatchingStatus() {
-        persistPost("Draft", "draft-slug", PostStatus.DRAFT, category);
-        persistPost("Published", "published-slug", PostStatus.PUBLISHED, category);
-        persistPost("Archived", "archived-slug", PostStatus.ARCHIVED, category);
-
-        Page<Post> result = postRepository.findByStatusIn(
-                List.of(PostStatus.DRAFT, PostStatus.PUBLISHED), PageRequest.of(0, 10));
-
-        assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getContent()).extracting(Post::getStatus)
-                .doesNotContain(PostStatus.ARCHIVED);
-    }
-
-    @Test
     void existsBySlugAndIdNot_slugBelongsToOtherPost_returnsTrue() {
         Post post1 = persistPost("Post One", "post-one", PostStatus.DRAFT, category);
         Post post2 = persistPost("Post Two", "post-two", PostStatus.DRAFT, category);

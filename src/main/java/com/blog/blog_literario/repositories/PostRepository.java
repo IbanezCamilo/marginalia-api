@@ -1,6 +1,5 @@
 package com.blog.blog_literario.repositories;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,16 +92,6 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
     @Override
     @EntityGraph(attributePaths = {"author", "category", "moderatedBy"})
     Page<Post> findAll(Pageable pageable);
-
-    /** Returns a page of posts whose status is in the provided list; used for admin moderation views. */
-    Page<Post> findByStatusIn(List<PostStatus> statuses, Pageable pageable);
-
-    /** Counts posts whose status is in the provided list; used for admin dashboard metrics. */
-    Long countByStatusIn(List<PostStatus> statuses);
-
-    List<Post> findByStatusAndCreatedAtAfter(PostStatus status, LocalDateTime date);
-
-    List<Post> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     /** Convenience overload — returns all published posts; avoids repeating the status constant at call sites. */
     default Page<Post> findPublishedPosts(Pageable pageable) {
