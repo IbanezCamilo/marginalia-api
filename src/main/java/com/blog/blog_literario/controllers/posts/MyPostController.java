@@ -96,8 +96,8 @@ public class MyPostController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id, Authentication authetication) {
-        Integer userId = getUserId(authetication);
+    public ResponseEntity<Void> delete(@PathVariable Integer id, Authentication authentication) {
+        Integer userId = getUserId(authentication);
         myService.delete(userId, id);
         return ResponseEntity.noContent().build();
 
