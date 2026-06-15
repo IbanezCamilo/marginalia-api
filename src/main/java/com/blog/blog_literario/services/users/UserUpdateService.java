@@ -48,18 +48,19 @@ public class UserUpdateService {
      * @throws UserAlreadyExistsException if email is already used by another user
      */
     public void updateEmail(@NonNull User user, String newEmail) {
-        String sanitizedEmail = userValidator.validateAndSanitizeEmail(newEmail).toLowerCase();
-        
+        String sanitizedEmail = userValidator.sanitizeEmail(newEmail);
+        if (sanitizedEmail.isBlank()) {
+            throw new IllegalArgumentException("El correo no puede estar vacío");
+        }
+
         // Only validate uniqueness if email is actually changing
         if (!sanitizedEmail.equals(user.getEmail())) {
-            // Check if another user has this email
-            if (userRepository.findByEmail(sanitizedEmail).isPresent()) {
+            if (userRepository.existsByEmailExcludingId(sanitizedEmail, user.getId())) {
                 throw new UserAlreadyExistsException(
                     "El correo '" + sanitizedEmail + "' ya está en uso por otro usuario");
             }
+            user.setEmail(sanitizedEmail);
         }
-        
-        user.setEmail(sanitizedEmail);
     }
 
     /**
@@ -70,6 +71,10 @@ public class UserUpdateService {
      * @throws ResourceNotFoundException if role doesn't exist
      */
     public void updateRole(@NonNull User user, String newRoleName) {
+        if (newRoleName.isBlank()) {
+            throw new IllegalArgumentException("El rol no puede estar vacío");
+        }
+
         // Avoid unnecessary query
         if (newRoleName.equals(user.getRole().getName())) {
             return;

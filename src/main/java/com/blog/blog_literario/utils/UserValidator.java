@@ -50,6 +50,16 @@ public class UserValidator {
     }
 
     /**
+     * Sanitizes and normalizes an email address (trim + lowercase) without
+     * checking uniqueness.
+     * @param email the email to sanitize
+     * @return the sanitized, lowercased email
+     */
+    public String sanitizeEmail(String email) {
+        return sanitizeInput(email).toLowerCase();
+    }
+
+    /**
      * Validates and sanitizes user name
      * @param name the name to validate and sanitize
      * @return the sanitized name
