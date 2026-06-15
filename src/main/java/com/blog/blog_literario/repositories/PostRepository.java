@@ -38,6 +38,8 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
         return findBySlugAndStatus(slug, PostStatus.PUBLISHED);
     }
 
+    /** Fetches author/category/moderatedBy eagerly to avoid N+1 queries when mapping to response DTOs. */
+    @EntityGraph(attributePaths = {"author", "category", "moderatedBy"})
     Page<Post> findByAuthorId(Integer authorId, Pageable pageable);
 
     Optional<Post> findByIdAndAuthorId(Integer id, Integer authorId);
