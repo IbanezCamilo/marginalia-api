@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -28,6 +29,9 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    @Value("${app.rate-limit.trust-forwarded-for:false}")
+    private boolean trustForwardedFor;
 
     private final Map<String, BucketEntry> buckets = new ConcurrentHashMap<>();
 
@@ -82,9 +86,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isEmpty()) {
-            return forwarded.split(",")[0].trim();
+        if (trustForwardedFor) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isEmpty()) {
+                return forwarded.split(",")[0].trim();
+            }
         }
         return request.getRemoteAddr();
     }
