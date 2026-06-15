@@ -56,7 +56,7 @@ public class MyPostCommandService {
     public Page<MyPostResponse> list(Integer userId, Pageable pageable) {
         return postRepository
                 .findByAuthorId(userId, pageable)
-                .map(this::ToResponse);
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +65,7 @@ public class MyPostCommandService {
                 .findByIdAndAuthorId(postId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
-        return ToResponse(post);
+        return toResponse(post);
     }
 
     /**
@@ -95,7 +95,7 @@ public class MyPostCommandService {
         );
 
         postRepository.save(post);
-        return ToResponse(post);
+        return toResponse(post);
     }
 
     /**
@@ -133,7 +133,7 @@ public class MyPostCommandService {
             post.setSlug(newSlug);
         }
 
-        return ToResponse(post);
+        return toResponse(post);
     }
 
     /**
@@ -176,7 +176,7 @@ public class MyPostCommandService {
         post.setStatus(newStatus);
         postRepository.save(post);
 
-        return ToResponse(post);
+        return toResponse(post);
     }
 
     /**
@@ -205,7 +205,7 @@ public class MyPostCommandService {
         post.setCoverImage(null);
         postRepository.save(post);
 
-        return ToResponse(post);
+        return toResponse(post);
     }
 
     public MyPostResponse uploadCoverImage(@NonNull Integer userId, @NonNull Integer postId, MultipartFile image) {
@@ -221,7 +221,7 @@ public class MyPostCommandService {
         post.setCoverImage(imageUrl);
         postRepository.save(post);
 
-        return ToResponse(post);
+        return toResponse(post);
     }
 
     private void validateAuthorCanChangeStatus(PostStatus currentStatus, PostStatus newStatus) {
@@ -248,7 +248,7 @@ public class MyPostCommandService {
         }
     }
 
-    public MyPostResponse ToResponse(Post post) {
+    private MyPostResponse toResponse(Post post) {
         return new MyPostResponse(
                 post.getId(),
                 post.getTitle(),
