@@ -12,6 +12,7 @@ public record CreatePostRequest(
         String content,
         @NotNull(message = "La categoría es obligatoria")
         Integer categoryId,
+        @NotBlank(message = "El estado es obligatorio")
         String status
         ) {
 
