@@ -52,7 +52,7 @@ public class UserCreationService {
 
         User user = new User();
         user.setName(sanitizedName);
-        user.setEmail(email);
+        user.setEmail(sanitizedEmail);
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(role);
         user.setProfilePicture(null);
