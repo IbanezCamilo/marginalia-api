@@ -14,6 +14,8 @@ import com.blog.blog_literario.dto.categories.CreateCategoryRequest;
 import com.blog.blog_literario.dto.categories.UpdateCategoryRequest;
 import com.blog.blog_literario.services.categories.CategoryService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -21,6 +23,8 @@ import lombok.RequiredArgsConstructor;
  * Admin endpoints for category management. All routes require {@code ROLE_ADMIN}
  * (enforced in {@link com.blog.blog_literario.config.SecurityConfig}).
  */
+@Tag(name = "Admin - Categories")
+@SecurityRequirement(name = "cookieAuth")
 @RestController
 @RequestMapping("/api/admin/categories")
 @RequiredArgsConstructor

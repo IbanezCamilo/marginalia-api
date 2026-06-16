@@ -13,12 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.services.posts.PublicPostQueryService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
  * Public read-only endpoints for the post feed. No authentication required.
  * Only PUBLISHED posts are returned.
  */
+@Tag(name = "Public Posts")
 @RestController
 @RequestMapping("/api/public/posts")
 @RequiredArgsConstructor

@@ -16,6 +16,8 @@ import com.blog.blog_literario.dto.authorrequest.CreateAuthorRequest;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.services.authorrequest.AuthorRequestService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -32,6 +34,8 @@ import lombok.RequiredArgsConstructor;
  *
  * Base path: /api/me/author-request
  */
+@Tag(name = "My Author Request")
+@SecurityRequirement(name = "cookieAuth")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/me/author-request")

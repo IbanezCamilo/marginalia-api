@@ -20,6 +20,8 @@ import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
 import com.blog.blog_literario.services.users.UserProfileService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +29,8 @@ import lombok.RequiredArgsConstructor;
  * Endpoints for an authenticated user to read and update their own profile,
  * including profile picture upload and removal.
  */
+@Tag(name = "My Profile")
+@SecurityRequirement(name = "cookieAuth")
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/me/profile")

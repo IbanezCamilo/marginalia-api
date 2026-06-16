@@ -20,6 +20,8 @@ import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.services.moderator.ModeratorPostService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +34,8 @@ import lombok.RequiredArgsConstructor;
  * see {@link com.blog.blog_literario.services.moderator.ModeratorPostService} for the
  * allowed status transitions.
  */
+@Tag(name = "Moderator - Posts")
+@SecurityRequirement(name = "cookieAuth")
 @RestController
 @RequestMapping("/api/moderator/posts")
 @RequiredArgsConstructor

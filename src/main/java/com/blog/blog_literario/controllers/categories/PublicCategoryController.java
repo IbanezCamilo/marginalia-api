@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.blog.blog_literario.dto.categories.CategoryResponse;
 import com.blog.blog_literario.services.categories.PublicCategoryService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
  * Public read-only endpoints for category browsing. No authentication required.
  */
+@Tag(name = "Public Categories")
 @RestController
 @RequestMapping("api/public/categories")
 @RequiredArgsConstructor

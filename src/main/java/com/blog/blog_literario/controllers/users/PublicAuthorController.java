@@ -14,12 +14,14 @@ import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.dto.users.PublicAuthorResponse;
 import com.blog.blog_literario.services.users.PublicAuthorService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
  * Public read-only endpoints for author profiles and their post feeds.
  * No authentication required.
  */
+@Tag(name = "Public Authors")
 @RestController
 @RequestMapping("/api/public/authors")
 @RequiredArgsConstructor

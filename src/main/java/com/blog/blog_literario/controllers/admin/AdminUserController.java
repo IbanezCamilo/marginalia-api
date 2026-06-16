@@ -20,6 +20,8 @@ import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
 import com.blog.blog_literario.services.admin.AdminUserService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +32,8 @@ import lombok.RequiredArgsConstructor;
  * 
  * Base path: /api/admin/users
  */
+@Tag(name = "Admin - Users")
+@SecurityRequirement(name = "cookieAuth")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/users")

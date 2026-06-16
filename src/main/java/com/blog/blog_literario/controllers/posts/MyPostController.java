@@ -24,6 +24,8 @@ import com.blog.blog_literario.dto.posts.UpdatePostRequest;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.services.posts.MyPostCommandService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +34,8 @@ import lombok.RequiredArgsConstructor;
  * authenticated user's ID. All routes require {@code ROLE_AUTHOR} or higher
  * (enforced in {@link com.blog.blog_literario.config.SecurityConfig}).
  */
+@Tag(name = "My Posts")
+@SecurityRequirement(name = "cookieAuth")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/me/posts")
