@@ -5,12 +5,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.blog.blog_literario.config.properties.RateLimitProperties;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
@@ -19,21 +21,26 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 /**
- * Token-bucket rate limiter scoped to all auth endpoints.
+ * Token-bucket rate limiter with profile-based limits per endpoint group.
  *
- * <p>Each client IP gets its own {@link Bucket} capped at 10 auth attempts per minute.
+ * <p>Each client IP gets an independent {@link Bucket} per profile. Limits:
+ * AUTH — 10/min, PUBLIC — 60/min, IMAGES — 30/min, UPLOAD — 10/hr.
  * Buckets inactive for more than 10 minutes are evicted to prevent unbounded memory growth.
- * All other paths are passed through without inspection.
+ * Paths that do not match any profile are passed through without inspection.
  */
 @Component
+@RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    @Value("${app.rate-limit.trust-forwarded-for:false}")
-    private boolean trustForwardedFor;
+    private final RateLimitProperties rateLimitProperties;
 
     private final Map<String, BucketEntry> buckets = new ConcurrentHashMap<>();
+
+    private static final Pattern COVER_IMAGE_PATTERN =
+            Pattern.compile("/api/me/posts/\\d+/cover-image");
 
     private static final class BucketEntry {
         final Bucket bucket;
@@ -45,10 +52,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    private Bucket createBucket() {
+    private Bucket createBucket(RateLimitProfile profile) {
         Bandwidth limit = Bandwidth.classic(
-                10,
-                Refill.greedy(10, Duration.ofMinutes(1))
+                profile.capacity,
+                Refill.greedy(profile.capacity, profile.refillPeriod)
         );
         return Bucket.builder().addLimit(limit).build();
     }
@@ -59,13 +66,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        if (!request.getRequestURI().startsWith("/api/auth/")) {
+        String uri = request.getRequestURI();
+        String method = request.getMethod();
+
+        RateLimitProfile profile = resolveProfile(uri, method);
+        if (profile == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String ip = getClientIp(request);
-        BucketEntry entry = buckets.computeIfAbsent(ip, k -> new BucketEntry(createBucket()));
+        String bucketKey = ip + ":" + profile.name();
+        BucketEntry entry = buckets.computeIfAbsent(bucketKey, k -> new BucketEntry(createBucket(profile)));
         entry.lastUsed = Instant.now();
 
         if (entry.bucket.tryConsume(1)) {
@@ -79,6 +91,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
+    RateLimitProfile resolveProfile(String uri, String method) {
+        if (uri.startsWith("/api/auth/"))   return RateLimitProfile.AUTH;
+        if (uri.startsWith("/api/images/")) return RateLimitProfile.IMAGES;
+        if (isUploadEndpoint(uri, method))  return RateLimitProfile.UPLOAD;
+        if (uri.startsWith("/api/public/")) return RateLimitProfile.PUBLIC;
+        return null;
+    }
+
+    private boolean isUploadEndpoint(String uri, String method) {
+        return "POST".equals(method) && (
+                COVER_IMAGE_PATTERN.matcher(uri).matches() ||
+                "/api/me/profile/image".equals(uri)
+        );
+    }
+
     @Scheduled(fixedDelay = 60_000)
     void evictStaleBuckets() {
         Instant threshold = Instant.now().minus(Duration.ofMinutes(10));
@@ -86,7 +113,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        if (trustForwardedFor) {
+        if (rateLimitProperties.trustForwardedFor()) {
             String forwarded = request.getHeader("X-Forwarded-For");
             if (forwarded != null && !forwarded.isEmpty()) {
                 return forwarded.split(",")[0].trim();
