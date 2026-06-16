@@ -88,6 +88,18 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    /**
+     * Extracts the {@code sub} claim from a token that may be expired.
+     * Used during logout to identify the user even when the access token has lapsed.
+     */
+    public String extractUsernameAllowExpired(String token) {
+        try {
+            return extractClaim(token, Claims::getSubject);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims().getSubject();
+        }
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);

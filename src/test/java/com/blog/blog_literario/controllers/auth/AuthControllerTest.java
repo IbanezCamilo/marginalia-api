@@ -3,12 +3,17 @@ package com.blog.blog_literario.controllers.auth;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.lang.reflect.Field;
+import java.util.Map;
+
 import com.blog.blog_literario.config.SecurityConfig;
+import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
 import com.blog.blog_literario.security.CookieUtil;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -18,7 +23,9 @@ import com.blog.blog_literario.security.RateLimitFilter;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
 import com.blog.blog_literario.services.auth.AuthService;
 import com.blog.blog_literario.support.WebMvcTestConfig;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -34,22 +41,34 @@ import org.springframework.test.web.servlet.MockMvc;
 class AuthControllerTest {
 
     @Autowired MockMvc mockMvc;
+    @Autowired RateLimitFilter rateLimitFilter;
 
     @MockBean AuthService authService;
-    @MockBean CookieUtil cookieUtil;
+    @Autowired CookieUtil cookieUtil;
     @MockBean JwtService jwtService;
     @MockBean UserDetailsServiceImpl userDetailsService;
 
+    private static final AuthTokenPair TOKENS = new AuthTokenPair("test-jwt", "test-refresh");
+
+    @BeforeEach
+    @SuppressWarnings("unchecked")
+    void resetRateLimitBuckets() throws Exception {
+        Field bucketsField = RateLimitFilter.class.getDeclaredField("buckets");
+        bucketsField.setAccessible(true);
+        ((Map<?, ?>) bucketsField.get(rateLimitFilter)).clear();
+    }
+
     @Test
-    void login_validCredentials_returns200AndSetsCookie() throws Exception {
-        given(authService.login(any())).willReturn("test-jwt-token");
+    void login_validCredentials_returns200AndSetsBothCookies() throws Exception {
+        given(authService.login(any())).willReturn(TOKENS);
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"user@test.com\",\"password\":\"password123\"}"))
                 .andExpect(status().isOk());
 
-        verify(cookieUtil).addJwtCookie(any(HttpServletResponse.class), eq("test-jwt-token"));
+        verify(cookieUtil).addJwtCookie(any(HttpServletResponse.class), eq("test-jwt"));
+        verify(cookieUtil).addRefreshTokenCookie(any(HttpServletResponse.class), eq("test-refresh"));
     }
 
     @Test
@@ -69,15 +88,16 @@ class AuthControllerTest {
     }
 
     @Test
-    void register_validRequest_returns201AndSetsCookie() throws Exception {
-        given(authService.register(any())).willReturn("test-jwt-token");
+    void register_validRequest_returns201AndSetsBothCookies() throws Exception {
+        given(authService.register(any())).willReturn(TOKENS);
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"John\",\"email\":\"john@test.com\",\"password\":\"password123\"}"))
                 .andExpect(status().isCreated());
 
-        verify(cookieUtil).addJwtCookie(any(HttpServletResponse.class), eq("test-jwt-token"));
+        verify(cookieUtil).addJwtCookie(any(HttpServletResponse.class), eq("test-jwt"));
+        verify(cookieUtil).addRefreshTokenCookie(any(HttpServletResponse.class), eq("test-refresh"));
     }
 
     @Test
@@ -117,11 +137,63 @@ class AuthControllerTest {
     }
 
     @Test
-    void logout_returns200AndClearsCookie() throws Exception {
+    void refresh_validCookie_returns200AndSetsBothCookies() throws Exception {
+        given(cookieUtil.extractFromRequest(any(), eq(CookieUtil.REFRESH_COOKIE_NAME))).willReturn("raw-refresh");
+        given(authService.refresh("raw-refresh")).willReturn(TOKENS);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                .cookie(new Cookie(CookieUtil.REFRESH_COOKIE_NAME, "raw-refresh")))
+                .andExpect(status().isOk());
+
+        verify(cookieUtil).addJwtCookie(any(HttpServletResponse.class), eq("test-jwt"));
+        verify(cookieUtil).addRefreshTokenCookie(any(HttpServletResponse.class), eq("test-refresh"));
+    }
+
+    @Test
+    void refresh_missingCookie_returns401() throws Exception {
+        given(cookieUtil.extractFromRequest(any(), eq(CookieUtil.REFRESH_COOKIE_NAME))).willReturn(null);
+
+        mockMvc.perform(post("/api/auth/refresh"))
+                .andExpect(status().isUnauthorized());
+
+        verify(authService, never()).refresh(any());
+    }
+
+    @Test
+    void refresh_invalidToken_returns401() throws Exception {
+        given(cookieUtil.extractFromRequest(any(), eq(CookieUtil.REFRESH_COOKIE_NAME))).willReturn("bad-token");
+        given(authService.refresh("bad-token")).willThrow(new BadCredentialsException("Refresh token inválido"));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                .cookie(new Cookie(CookieUtil.REFRESH_COOKIE_NAME, "bad-token")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logout_withRefreshCookie_returns200AndClearsBothCookies() throws Exception {
+        given(cookieUtil.extractFromRequest(any(), eq(CookieUtil.REFRESH_COOKIE_NAME))).willReturn("raw-refresh");
+        given(cookieUtil.extractFromRequest(any(), eq(CookieUtil.NAME))).willReturn(null);
+
+        mockMvc.perform(post("/api/auth/logout")
+                .cookie(new Cookie(CookieUtil.REFRESH_COOKIE_NAME, "raw-refresh")))
+                .andExpect(status().isOk());
+
+        verify(authService).logout("raw-refresh", null);
+        verify(cookieUtil).clearJwtCookie(any(HttpServletResponse.class));
+        verify(cookieUtil).clearRefreshTokenCookie(any(HttpServletResponse.class));
+    }
+
+    @Test
+    void logout_withoutRefreshCookie_returns200AndStillClearsCookies() throws Exception {
+        given(cookieUtil.extractFromRequest(any(), eq(CookieUtil.REFRESH_COOKIE_NAME))).willReturn(null);
+        given(cookieUtil.extractFromRequest(any(), eq(CookieUtil.NAME))).willReturn(null);
+
         mockMvc.perform(post("/api/auth/logout"))
                 .andExpect(status().isOk());
 
+        verify(authService).logout(null, null);
         verify(cookieUtil).clearJwtCookie(any(HttpServletResponse.class));
+        verify(cookieUtil).clearRefreshTokenCookie(any(HttpServletResponse.class));
     }
 
     @Test

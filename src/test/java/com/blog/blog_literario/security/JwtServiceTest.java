@@ -23,7 +23,7 @@ class JwtServiceTest {
 
     @BeforeEach
     void setUp() {
-        jwtService = new JwtService(new JwtProperties(SECRET, 86_400_000L));
+        jwtService = new JwtService(new JwtProperties(SECRET, 86_400_000L, 604_800_000L));
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.AUTHOR));
         userDetails = new UserDetailsImpl(user);
     }
@@ -61,7 +61,7 @@ class JwtServiceTest {
 
     @Test
     void isTokenValid_expiredToken_throwsExpiredJwtException() {
-        JwtService shortLivedJwtService = new JwtService(new JwtProperties(SECRET, -1000L));
+        JwtService shortLivedJwtService = new JwtService(new JwtProperties(SECRET, -1000L, 604_800_000L));
         String token = shortLivedJwtService.generateToken(userDetails);
 
         assertThatThrownBy(() -> shortLivedJwtService.isTokenValid(token, userDetails))

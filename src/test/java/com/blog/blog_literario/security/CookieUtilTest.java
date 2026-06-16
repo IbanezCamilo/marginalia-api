@@ -22,7 +22,7 @@ class CookieUtilTest {
 
     @Test
     void addJwtCookie_setsHttpOnlyCookieWithToken() {
-        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L));
+        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L, 604_800_000L));
 
         cookieUtil.addJwtCookie(response, "test-token");
 
@@ -35,8 +35,8 @@ class CookieUtilTest {
 
     @Test
     void addJwtCookie_secureFlagReflectsCookieProperties() {
-        CookieUtil secureCookieUtil = new CookieUtil(new CookieProperties(true, null), new JwtProperties(SECRET, 86_400_000L));
-        CookieUtil insecureCookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L));
+        CookieUtil secureCookieUtil = new CookieUtil(new CookieProperties(true, null), new JwtProperties(SECRET, 86_400_000L, 604_800_000L));
+        CookieUtil insecureCookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L, 604_800_000L));
 
         secureCookieUtil.addJwtCookie(response, "test-token");
         assertThat(response.getHeader("Set-Cookie")).contains("Secure");
@@ -48,7 +48,7 @@ class CookieUtilTest {
 
     @Test
     void addJwtCookie_maxAgeDerivedFromJwtExpiration() {
-        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 60_000L));
+        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 60_000L, 604_800_000L));
 
         cookieUtil.addJwtCookie(response, "test-token");
 
@@ -57,7 +57,7 @@ class CookieUtilTest {
 
     @Test
     void clearJwtCookie_setsEmptyValueAndMaxAgeZero() {
-        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L));
+        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L, 604_800_000L));
 
         cookieUtil.clearJwtCookie(response);
 
@@ -65,5 +65,43 @@ class CookieUtilTest {
         assertThat(cookieHeader)
                 .startsWith("jwt=;")
                 .contains("Max-Age=0");
+    }
+
+    @Test
+    void addRefreshTokenCookie_setsNewCookieAtRootAndClearsLegacyPath() {
+        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L, 604_800_000L));
+
+        cookieUtil.addRefreshTokenCookie(response, "raw-refresh-token");
+
+        var headers = response.getHeaders("Set-Cookie");
+        assertThat(headers).hasSize(2);
+        assertThat(headers).anySatisfy(h -> assertThat(h)
+                .contains("refresh_token=raw-refresh-token")
+                .contains("Path=/")
+                .contains("HttpOnly")
+                .contains("SameSite=Lax"));
+        assertThat(headers).anySatisfy(h -> assertThat(h)
+                .startsWith("refresh_token=;")
+                .contains("Path=/api/auth")
+                .contains("Max-Age=0"));
+    }
+
+    @Test
+    void clearRefreshTokenCookie_clearsRootPathAndLegacyPath() {
+        CookieUtil cookieUtil = new CookieUtil(new CookieProperties(false, null), new JwtProperties(SECRET, 86_400_000L, 604_800_000L));
+
+        cookieUtil.clearRefreshTokenCookie(response);
+
+        var headers = response.getHeaders("Set-Cookie");
+        assertThat(headers).hasSize(2);
+        assertThat(headers).anySatisfy(h -> assertThat(h)
+                .startsWith("refresh_token=;")
+                .contains("Max-Age=0")
+                .contains("Path=/")
+                .doesNotContain("Path=/api/auth"));
+        assertThat(headers).anySatisfy(h -> assertThat(h)
+                .startsWith("refresh_token=;")
+                .contains("Max-Age=0")
+                .contains("Path=/api/auth"));
     }
 }

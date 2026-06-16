@@ -15,6 +15,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
+import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
@@ -32,11 +33,12 @@ class AuthServiceTest {
     @Mock JwtService jwtService;
     @Mock AuthenticationManager authenticationManager;
     @Mock UserCreationService userCreationService;
+    @Mock RefreshTokenService refreshTokenService;
 
     @InjectMocks AuthService authService;
 
     @Test
-    void register_validRequest_createsUserAndReturnsJwt() {
+    void register_validRequest_createsUserAndReturnsTokenPair() {
         var request = new RegisterRequest("Alice", "alice@test.com", "password123");
         User newUser = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
         UserDetailsImpl userDetails = new UserDetailsImpl(newUser);
@@ -45,11 +47,14 @@ class AuthServiceTest {
                 .willReturn(newUser);
         given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
         given(jwtService.generateToken(userDetails)).willReturn("jwt-token");
+        given(refreshTokenService.create(newUser)).willReturn("raw-refresh-token");
 
-        String token = authService.register(request);
+        AuthTokenPair result = authService.register(request);
 
-        assertThat(token).isEqualTo("jwt-token");
+        assertThat(result.accessToken()).isEqualTo("jwt-token");
+        assertThat(result.refreshToken()).isEqualTo("raw-refresh-token");
         verify(userCreationService).createUser("Alice", "alice@test.com", "password123", Role.READER);
+        verify(refreshTokenService).create(newUser);
     }
 
     @Test
@@ -65,7 +70,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void login_validCredentials_returnsJwt() {
+    void login_validCredentials_returnsTokenPair() {
         var request = new LoginRequest("alice@test.com", "password123");
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
@@ -74,10 +79,13 @@ class AuthServiceTest {
                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
         given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
         given(jwtService.generateToken(userDetails)).willReturn("jwt-token");
+        given(refreshTokenService.create(user)).willReturn("raw-refresh-token");
 
-        String token = authService.login(request);
+        AuthTokenPair result = authService.login(request);
 
-        assertThat(token).isEqualTo("jwt-token");
+        assertThat(result.accessToken()).isEqualTo("jwt-token");
+        assertThat(result.refreshToken()).isEqualTo("raw-refresh-token");
+        verify(refreshTokenService).create(user);
     }
 
     @Test
@@ -90,5 +98,40 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(BadCredentialsException.class)
                 .hasMessage("Credenciales inválidas");
+    }
+
+    @Test
+    void refresh_validToken_rotatesAndReturnsNewTokenPair() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        UserDetailsImpl userDetails = new UserDetailsImpl(user);
+        var rotationResult = new RefreshTokenService.RotationResult(user, "new-raw-refresh");
+
+        given(refreshTokenService.rotate("old-raw-refresh")).willReturn(rotationResult);
+        given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
+        given(jwtService.generateToken(userDetails)).willReturn("new-jwt-token");
+
+        AuthTokenPair result = authService.refresh("old-raw-refresh");
+
+        assertThat(result.accessToken()).isEqualTo("new-jwt-token");
+        assertThat(result.refreshToken()).isEqualTo("new-raw-refresh");
+    }
+
+    @Test
+    void logout_withRawToken_deletesRefreshToken() {
+        authService.logout("raw-refresh-token", null);
+        verify(refreshTokenService).deleteByRawToken("raw-refresh-token");
+    }
+
+    @Test
+    void logout_withJwt_deletesRefreshTokenByUser() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        UserDetailsImpl userDetails = new UserDetailsImpl(user);
+
+        given(jwtService.extractUsernameAllowExpired("jwt-token")).willReturn("alice@test.com");
+        given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
+
+        authService.logout(null, "jwt-token");
+
+        verify(refreshTokenService).deleteAllByUser(user);
     }
 }
