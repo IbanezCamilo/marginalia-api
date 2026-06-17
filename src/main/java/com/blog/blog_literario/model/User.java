@@ -60,6 +60,9 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion = 0;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -88,6 +91,15 @@ public class User {
      */
     public String getRoleName() {
         return role != null ? role.getName() : "UNKNOWN";
+    }
+
+    /**
+     * Invalidates every access token issued before this call. Must be invoked
+     * whenever the role or password changes, so {@code JwtService} rejects
+     * tokens minted under the old state even if they haven't expired yet.
+     */
+    public void incrementTokenVersion() {
+        this.tokenVersion = (this.tokenVersion == null ? 0 : this.tokenVersion) + 1;
     }
 
     /**

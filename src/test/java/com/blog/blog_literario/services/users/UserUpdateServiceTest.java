@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
@@ -29,6 +30,7 @@ class UserUpdateServiceTest {
     @Mock UserRepository userRepository;
     @Mock RoleRepository roleRepository;
     @Mock UserValidator userValidator;
+    @Mock PasswordEncoder passwordEncoder;
 
     @InjectMocks UserUpdateService userUpdateService;
 
@@ -99,6 +101,7 @@ class UserUpdateServiceTest {
 
         verify(roleRepository, never()).findByName(any());
         assertThat(user.getRole().getName()).isEqualTo(Role.READER);
+        assertThat(user.getTokenVersion()).isEqualTo(0);
     }
 
     @Test
@@ -118,6 +121,18 @@ class UserUpdateServiceTest {
         userUpdateService.updateRole(user, Role.AUTHOR);
 
         assertThat(user.getRole().getName()).isEqualTo(Role.AUTHOR);
+        assertThat(user.getTokenVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void updatePassword_encodesAndBumpsTokenVersion() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        given(passwordEncoder.encode("newPassword123")).willReturn("encoded-hash");
+
+        userUpdateService.updatePassword(user, "newPassword123");
+
+        assertThat(user.getPassword()).isEqualTo("encoded-hash");
+        assertThat(user.getTokenVersion()).isEqualTo(1);
     }
 
     @Test

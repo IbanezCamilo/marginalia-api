@@ -28,6 +28,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JwtService {
 
+    private static final String TOKEN_VERSION_CLAIM = "tokenVersion";
+
     private final JwtProperties jwtProperties;
 
     private SecretKey getSigningKey() {
@@ -36,13 +38,17 @@ public class JwtService {
     }
 
     /**
-     * Generates a signed JWT for the given user with no extra claims.
+     * Generates a signed JWT for the given user, embedding {@code tokenVersion} so
+     * {@link #isTokenValid} can reject it once the user's role or password changes.
      *
-     * @param userDetails the authenticated user (username = email)
+     * @param userDetails  the authenticated user (username = email)
+     * @param tokenVersion the user's current {@code tokenVersion} at issuance time
      * @return a compact, signed JWT string
      */
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+    public String generateToken(UserDetails userDetails, Integer tokenVersion) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_VERSION_CLAIM, tokenVersion);
+        return generateToken(claims, userDetails);
     }
 
     /**
@@ -73,12 +79,31 @@ public class JwtService {
     }
 
     /**
+     * Extracts the {@code tokenVersion} claim embedded at issuance time.
+     */
+    public Integer extractTokenVersion(String token) {
+        return extractClaim(token, claims -> claims.get(TOKEN_VERSION_CLAIM, Integer.class));
+    }
+
+    /**
      * Returns {@code true} if the token signature is valid, the subject matches
-     * {@code userDetails}, and the token has not expired.
+     * {@code userDetails}, the token has not expired, and its {@code tokenVersion}
+     * claim still matches the user's current value in the database. The last check
+     * makes a role or password change reject any access token issued before it,
+     * even though that token remains cryptographically valid until its natural expiry.
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        if (!username.equals(userDetails.getUsername()) || isTokenExpired(token)) {
+            return false;
+        }
+
+        Integer tokenVersion = extractTokenVersion(token);
+        Integer currentVersion = (userDetails instanceof UserDetailsImpl impl)
+                ? impl.getUser().getTokenVersion()
+                : null;
+
+        return tokenVersion != null && tokenVersion.equals(currentVersion);
     }
 
     private boolean isTokenExpired(String token) {

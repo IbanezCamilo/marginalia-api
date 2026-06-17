@@ -1,5 +1,6 @@
 package com.blog.blog_literario.services.users;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class UserUpdateService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserValidator userValidator;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Updates a user's name safely with sanitization
@@ -83,6 +85,7 @@ public class UserUpdateService {
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Rol no encontrado: " + newRoleName));
         user.setRole(role);
+        user.incrementTokenVersion();
     }
 
     /**
@@ -106,5 +109,15 @@ public class UserUpdateService {
             updateRole(user, newRoleName);
         }
         return user;
+    }
+
+    /**
+     * Encodes and sets a new password on {@code user}. Does not verify the current
+     * password — callers needing that check (e.g. self-service password change)
+     * must perform it before calling this method.
+     */
+    public void updatePassword(@NonNull User user, String newRawPassword) {
+        user.setPassword(passwordEncoder.encode(newRawPassword));
+        user.incrementTokenVersion();
     }
 }

@@ -163,6 +163,7 @@ public class AuthorRequestService {
                         "AUTHOR role not found. Check seed data."));
 
         request.getRequester().setRole(authorRole);
+        request.getRequester().incrementTokenVersion();
         userRepository.save(request.getRequester());
 
         // Mark the request as resolved

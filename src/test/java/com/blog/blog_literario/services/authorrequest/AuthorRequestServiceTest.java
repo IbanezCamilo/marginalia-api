@@ -103,6 +103,7 @@ class AuthorRequestServiceTest {
 
         assertThat(result.status()).isEqualTo("APPROVED");
         verify(userRepository).save(any(User.class));
+        assertThat(reader.getTokenVersion()).isEqualTo(1);
     }
 
     @Test

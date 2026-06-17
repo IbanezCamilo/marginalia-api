@@ -46,7 +46,7 @@ class AuthServiceTest {
         given(userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER))
                 .willReturn(newUser);
         given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
-        given(jwtService.generateToken(userDetails)).willReturn("jwt-token");
+        given(jwtService.generateToken(userDetails, newUser.getTokenVersion())).willReturn("jwt-token");
         given(refreshTokenService.create(newUser)).willReturn("raw-refresh-token");
 
         AuthTokenPair result = authService.register(request);
@@ -78,7 +78,7 @@ class AuthServiceTest {
         given(authenticationManager.authenticate(any())).willReturn(
                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
         given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
-        given(jwtService.generateToken(userDetails)).willReturn("jwt-token");
+        given(jwtService.generateToken(userDetails, user.getTokenVersion())).willReturn("jwt-token");
         given(refreshTokenService.create(user)).willReturn("raw-refresh-token");
 
         AuthTokenPair result = authService.login(request);
@@ -108,7 +108,7 @@ class AuthServiceTest {
 
         given(refreshTokenService.rotate("old-raw-refresh")).willReturn(rotationResult);
         given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
-        given(jwtService.generateToken(userDetails)).willReturn("new-jwt-token");
+        given(jwtService.generateToken(userDetails, user.getTokenVersion())).willReturn("new-jwt-token");
 
         AuthTokenPair result = authService.refresh("old-raw-refresh");
 

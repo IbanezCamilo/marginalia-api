@@ -104,8 +104,6 @@ public class UserProfileService {
         }
 
         userUpdateService.updatePassword(user, request.newPassword());
-        // TODO: once User.tokenVersion exists, bump it here so JwtAuthenticationFilter
-        // rejects access tokens issued before this change.
         userRepository.save(user);
     }
 

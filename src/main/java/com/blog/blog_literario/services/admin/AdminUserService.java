@@ -204,9 +204,6 @@ public class AdminUserService {
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el usuario con ID: " + id));
 
         userUpdateService.updatePassword(user, request.newPassword());
-        // TODO: bump user.tokenVersion here too — arguably more important here than
-        // in self-service, since a reset often means the old credentials are no
-        // longer trustworthy.
         userRepository.save(user);
 
         return toResponse(user);

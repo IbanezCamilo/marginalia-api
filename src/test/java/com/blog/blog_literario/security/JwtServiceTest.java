@@ -30,7 +30,7 @@ class JwtServiceTest {
 
     @Test
     void generateToken_returnsNonNullSignedToken() {
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(userDetails, 0);
 
         assertThat(token).isNotBlank();
         assertThat(token.split("\\.")).hasSize(3);
@@ -38,21 +38,21 @@ class JwtServiceTest {
 
     @Test
     void extractUsername_returnsSubjectFromToken() {
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(userDetails, 0);
 
         assertThat(jwtService.extractUsername(token)).isEqualTo("alice@test.com");
     }
 
     @Test
     void isTokenValid_matchingUserAndNotExpired_returnsTrue() {
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(userDetails, userDetails.getUser().getTokenVersion());
 
         assertThat(jwtService.isTokenValid(token, userDetails)).isTrue();
     }
 
     @Test
     void isTokenValid_usernameMismatch_returnsFalse() {
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(userDetails, 0);
         User otherUser = new User(2, "Bob", "bob@test.com", new Role(Role.READER));
         UserDetailsImpl otherUserDetails = new UserDetailsImpl(otherUser);
 
@@ -60,9 +60,17 @@ class JwtServiceTest {
     }
 
     @Test
+    void isTokenValid_tokenVersionMismatch_returnsFalse() {
+        String token = jwtService.generateToken(userDetails, 0);
+        userDetails.getUser().setTokenVersion(1);
+
+        assertThat(jwtService.isTokenValid(token, userDetails)).isFalse();
+    }
+
+    @Test
     void isTokenValid_expiredToken_throwsExpiredJwtException() {
         JwtService shortLivedJwtService = new JwtService(new JwtProperties(SECRET, -1000L, 604_800_000L));
-        String token = shortLivedJwtService.generateToken(userDetails);
+        String token = shortLivedJwtService.generateToken(userDetails, 0);
 
         assertThatThrownBy(() -> shortLivedJwtService.isTokenValid(token, userDetails))
                 .isInstanceOf(ExpiredJwtException.class);
@@ -70,11 +78,18 @@ class JwtServiceTest {
 
     @Test
     void extractClaim_withCustomResolver_extractsArbitraryClaim() {
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(userDetails, 0);
 
         String subject = jwtService.extractClaim(token, claims -> claims.getSubject());
 
         assertThat(subject).isEqualTo("alice@test.com");
+    }
+
+    @Test
+    void extractTokenVersion_returnsEmbeddedVersion() {
+        String token = jwtService.generateToken(userDetails, 7);
+
+        assertThat(jwtService.extractTokenVersion(token)).isEqualTo(7);
     }
 
     @Test

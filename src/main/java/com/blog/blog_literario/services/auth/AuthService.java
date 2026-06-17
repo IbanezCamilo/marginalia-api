@@ -48,7 +48,7 @@ public class AuthService {
         );
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(newUser.getEmail());
-        String accessToken = jwtService.generateToken(userDetails);
+        String accessToken = jwtService.generateToken(userDetails, newUser.getTokenVersion());
         String refreshToken = refreshTokenService.create(newUser);
 
         return new AuthTokenPair(accessToken, refreshToken);
@@ -60,8 +60,8 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
-            String accessToken = jwtService.generateToken(userDetails);
             User user = ((UserDetailsImpl) userDetails).getUser();
+            String accessToken = jwtService.generateToken(userDetails, user.getTokenVersion());
             String refreshToken = refreshTokenService.create(user);
 
             return new AuthTokenPair(accessToken, refreshToken);
@@ -73,7 +73,7 @@ public class AuthService {
     public AuthTokenPair refresh(String rawRefreshToken) {
         RefreshTokenService.RotationResult result = refreshTokenService.rotate(rawRefreshToken);
         UserDetails userDetails = userDetailsService.loadUserByUsername(result.user().getEmail());
-        String newAccessToken = jwtService.generateToken(userDetails);
+        String newAccessToken = jwtService.generateToken(userDetails, result.user().getTokenVersion());
         return new AuthTokenPair(newAccessToken, result.newRawToken());
     }
 
