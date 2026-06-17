@@ -19,6 +19,7 @@ import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.admin.AdminPostModerationService;
 import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.utils.PostContentSanitizer;
 import com.blog.blog_literario.utils.SlugUtils;
 
 import lombok.NonNull;
@@ -87,7 +88,7 @@ public class MyPostCommandService {
 
         Post post = new Post(
                 request.title(),
-                request.content(),
+                PostContentSanitizer.sanitize(request.content()),
                 PostStatus.valueOf(request.status()),
                 slug,
                 user,
@@ -111,7 +112,7 @@ public class MyPostCommandService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
         post.setTitle(request.title());
-        post.setContent(request.content());
+        post.setContent(PostContentSanitizer.sanitize(request.content()));
 
         // Category changed
         if(request.categoryId() != null){
