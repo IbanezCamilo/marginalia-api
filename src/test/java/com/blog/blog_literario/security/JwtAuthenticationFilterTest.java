@@ -137,7 +137,7 @@ class JwtAuthenticationFilterTest {
         request.setCookies(new Cookie("jwt", "expired-token"));
 
         given(jwtService.extractUsername("expired-token"))
-                .willThrow(new ExpiredJwtException((Header<?>) null, (Claims) null, "expired"));
+                .willThrow(new ExpiredJwtException((Header) null, (Claims) null, "expired"));
 
         filter.doFilter(request, response, chain);
 
