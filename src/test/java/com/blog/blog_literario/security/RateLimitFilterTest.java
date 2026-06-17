@@ -117,14 +117,26 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void resolveProfile_adminEndpoint_returnsNull() {
+    void resolveProfile_adminEndpoint_returnsAuthenticated() {
         assertThat(rateLimitFilter.resolveProfile("/api/admin/users", "GET"))
-                .isNull();
+                .isEqualTo(RateLimitProfile.AUTHENTICATED);
     }
 
     @Test
-    void resolveProfile_profileImageGet_returnsNull() {
+    void resolveProfile_profileImageGet_returnsAuthenticated() {
         assertThat(rateLimitFilter.resolveProfile("/api/me/profile/image", "GET"))
+                .isEqualTo(RateLimitProfile.AUTHENTICATED);
+    }
+
+    @Test
+    void resolveProfile_moderatorEndpoint_returnsAuthenticated() {
+        assertThat(rateLimitFilter.resolveProfile("/api/moderator/posts", "GET"))
+                .isEqualTo(RateLimitProfile.AUTHENTICATED);
+    }
+
+    @Test
+    void resolveProfile_unmatchedEndpoint_returnsNull() {
+        assertThat(rateLimitFilter.resolveProfile("/actuator/health", "GET"))
                 .isNull();
     }
 }
