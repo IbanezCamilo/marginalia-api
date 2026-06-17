@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.blog.blog_literario.dto.admin.AdminResetPasswordRequest;
 import com.blog.blog_literario.dto.roles.RoleResponse;
 import com.blog.blog_literario.dto.users.CreateUserRequest;
 import com.blog.blog_literario.dto.users.UpdateUserRequest;
@@ -192,5 +193,22 @@ public class AdminUserService {
     @Transactional(readOnly = true)
     public long countUserPosts(@NonNull Integer userId) {
         return userRepository.countPostsByAuthor(userId);
+    }
+
+    /**
+     * Resets a user's password without requiring their current one. Intended for
+     * support flows where a user has lost access to their account.
+     */
+    public UserResponse resetPassword(@NonNull Integer id, @NonNull AdminResetPasswordRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el usuario con ID: " + id));
+
+        userUpdateService.updatePassword(user, request.newPassword());
+        // TODO: bump user.tokenVersion here too — arguably more important here than
+        // in self-service, since a reset often means the old credentials are no
+        // longer trustworthy.
+        userRepository.save(user);
+
+        return toResponse(user);
     }
 }

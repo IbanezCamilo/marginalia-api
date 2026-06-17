@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.blog.blog_literario.dto.users.ChangePasswordRequest;
 import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
 import com.blog.blog_literario.services.users.UserProfileService;
@@ -76,4 +77,14 @@ public class MyProfileController {
         String imageUrl = userProfileService.uploadProfileImage(userDetails, imageFile);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("imageUrl", imageUrl));
     }
+
+    @PutMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request) {
+
+        userProfileService.changePassword(userDetails, request);
+        return ResponseEntity.ok().build();
+    }
+    
 }

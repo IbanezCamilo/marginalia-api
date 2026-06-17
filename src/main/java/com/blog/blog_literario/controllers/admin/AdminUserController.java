@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.blog.blog_literario.dto.admin.AdminResetPasswordRequest;
 import com.blog.blog_literario.dto.users.CreateUserRequest;
 import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
@@ -133,6 +134,17 @@ public class AdminUserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
         adminUserService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Resets a user's password. Does not require the user's current password —
+     * for use when a user has lost access and contacted support.
+     */
+    @PutMapping("/{id}/password")
+    public ResponseEntity<UserResponse> resetPassword(
+            @PathVariable Integer id,
+            @Valid @RequestBody AdminResetPasswordRequest dto) {
+        return ResponseEntity.ok(adminUserService.resetPassword(id, dto));
     }
 }
 

@@ -1,11 +1,14 @@
 package com.blog.blog_literario.services.users;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.blog.blog_literario.dto.users.ChangePasswordRequest;
 import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
 import com.blog.blog_literario.model.User;
@@ -27,6 +30,8 @@ public class UserProfileService {
     private final UserRepository userRepository;
     private final StorageService storageService;
     private final AvatarResolver avatarResolver;
+    private final PasswordEncoder passwordEncoder;     // for verifying currentPassword
+    private final UserUpdateService userUpdateService; // new dependency
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
@@ -84,7 +89,25 @@ public class UserProfileService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
     }
 
+    /**
+     * Changes the authenticated user's password after verifying their current one.
+     */
+    public void changePassword(UserDetails userDetails, ChangePasswordRequest request) {
+        User user = findByEmail(userDetails.getUsername());
 
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BadCredentialsException("La contraseña actual es incorrecta");
+        }
+
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("La nueva contraseña debe ser diferente a la actual");
+        }
+
+        userUpdateService.updatePassword(user, request.newPassword());
+        // TODO: once User.tokenVersion exists, bump it here so JwtAuthenticationFilter
+        // rejects access tokens issued before this change.
+        userRepository.save(user);
+    }
 
     private UserProfileResponse toResponse(User user) {
         return new UserProfileResponse(
