@@ -30,8 +30,8 @@ public class UserProfileService {
     private final UserRepository userRepository;
     private final StorageService storageService;
     private final AvatarResolver avatarResolver;
-    private final PasswordEncoder passwordEncoder;     // for verifying currentPassword
-    private final UserUpdateService userUpdateService; // new dependency
+    private final PasswordEncoder passwordEncoder;
+    private final UserUpdateService userUpdateService;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {

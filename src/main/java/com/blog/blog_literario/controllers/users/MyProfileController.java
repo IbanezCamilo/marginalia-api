@@ -78,6 +78,10 @@ public class MyProfileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("imageUrl", imageUrl));
     }
 
+    /**
+     * Changes the authenticated user's password. Requires the current password
+     * for verification.
+     */
     @PutMapping("/password")
     public ResponseEntity<Void> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -86,5 +90,4 @@ public class MyProfileController {
         userProfileService.changePassword(userDetails, request);
         return ResponseEntity.ok().build();
     }
-    
 }
