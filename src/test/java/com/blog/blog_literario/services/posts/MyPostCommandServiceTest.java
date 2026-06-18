@@ -36,6 +36,9 @@ import org.mockito.quality.Strictness;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class MyPostCommandServiceTest {
 
+    private static final String TIPTAP_CONTENT =
+            "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Content\"}]}]}";
+
     @Mock PostRepository postRepository;
     @Mock UserRepository userRepository;
     @Mock CategoryRepository categoryRepository;
@@ -134,7 +137,7 @@ class MyPostCommandServiceTest {
 
     @Test
     void create_uniqueSlug_savesPostAndReturnsResponse() {
-        CreatePostRequest request = new CreatePostRequest("Test Title Post", "Content", 1, "DRAFT");
+        CreatePostRequest request = new CreatePostRequest("Test Title Post", TIPTAP_CONTENT, 1, "DRAFT");
         given(userRepository.findById(1)).willReturn(Optional.of(author));
         given(categoryRepository.findById(1)).willReturn(Optional.of(category));
         given(postRepository.existsBySlug("test-title-post")).willReturn(false);
