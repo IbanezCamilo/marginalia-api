@@ -97,8 +97,9 @@ public class AdminPostController {
 
     /** Hard-deletes a post and its cover image from storage. */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        adminService.delete(id);
+    public ResponseEntity<Void> delete(Authentication authentication, @PathVariable Integer id) {
+        Integer adminId = getAdminId(authentication);
+        adminService.delete(adminId, id);
         return ResponseEntity.noContent().build();
     }
 

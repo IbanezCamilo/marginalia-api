@@ -24,9 +24,12 @@ import lombok.RequiredArgsConstructor;
  *
  * <p>All write operations are restricted to ADMIN-role users at the controller layer.
  * Admins may perform any status transition (including those unavailable to moderators,
- * such as touching {@code ARCHIVED} posts) and can unblock a post that has accumulated
- * 3 rejections via {@link #resetPost}. Deleting a post also removes its cover image
- * from storage to prevent orphaned files.
+ * such as touching {@code ARCHIVED} posts), <strong>except</strong> on a post that is
+ * already permanently blocked (3+ rejections) — that state can only be cleared via
+ * {@link #resetPost}, which clears the rejection count and moderation metadata
+ * consistently. Deleting a post also removes its cover image from storage to prevent
+ * orphaned files. Every override and destructive action here is recorded via
+ * {@link AdminActionLogService}.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ public class AdminPostModerationService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final StorageService storageService;
+    private final AdminActionLogService adminActionLogService;
 
     /**
      * Returns a paginated list of posts, optionally filtered by {@code status}.
@@ -57,6 +61,8 @@ public class AdminPostModerationService {
      *
      * @throws ResourceNotFoundException if no post exists with the given {@code postId}
      * @throws IllegalArgumentException  if {@code request.status()} is not a valid {@link PostStatus} name
+     * @throws IllegalStateException     if the post is permanently blocked (3+ rejections) —
+     *                                    use {@link #resetPost} to clear that state first
      */
     @Transactional
     public AdminPostResponse updateStatus(
@@ -68,6 +74,14 @@ public class AdminPostModerationService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Post no encontrado con ID: " + postId));
 
+        if (post.isPermanentlyBlocked()) {
+            throw new IllegalStateException(
+                    "El post con ID " + postId + " está bloqueado permanentemente. "
+                    + "Usá el endpoint de reset para desbloquearlo antes de cambiar su estado."
+            );
+        }
+
+        PostStatus previousStatus = post.getStatus();
         PostStatus newStatus = parseStatus(request.status());
 
         if (newStatus == PostStatus.REJECTED) {
@@ -79,6 +93,16 @@ public class AdminPostModerationService {
         }
 
         postRepository.save(post);
+
+        // Fetched after the validations above so a not-found admin never masks a more
+        // specific error (e.g. a blank moderation note) — matches the order callers expect.
+        User admin = getUser(adminId);
+        adminActionLogService.record(
+                adminId, admin.getEmail(), "POST_STATUS_FORCE", "POST", postId,
+                previousStatus.name() + " -> " + post.getStatus().name()
+                        + (request.moderationNote() != null ? " (" + request.moderationNote() + ")" : "")
+        );
+
         return toResponse(post);
     }
 
@@ -108,6 +132,8 @@ public class AdminPostModerationService {
             );
         }
 
+        int rejectionCountBeforeReset = post.getRejectionCount();
+
         // resetForAuthor() sets status=DRAFT, rejectionCount=0, clears note and moderation metadata
         post.resetForAuthor();
 
@@ -116,6 +142,13 @@ public class AdminPostModerationService {
         post.recordModeration(admin, moderationNote);
 
         postRepository.save(post);
+
+        adminActionLogService.record(
+                adminId, admin.getEmail(), "POST_RESET", "POST", postId,
+                "rejectionCount " + rejectionCountBeforeReset + " -> 0"
+                        + (moderationNote != null ? " (" + moderationNote + ")" : "")
+        );
+
         return toResponse(post);
     }
 
@@ -125,12 +158,19 @@ public class AdminPostModerationService {
      * @throws ResourceNotFoundException if no post exists with the given {@code postId}
      */
     @Transactional
-    public void delete(@NonNull Integer postId) {
+    public void delete(@NonNull Integer adminId, @NonNull Integer postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + postId));
 
+        User admin = getUser(adminId);
+
         storageService.delete(post.getCoverImage());
         postRepository.delete(post);
+
+        adminActionLogService.record(
+                adminId, admin.getEmail(), "POST_DELETE", "POST", postId,
+                "title=" + post.getTitle()
+        );
     }
 
     /**

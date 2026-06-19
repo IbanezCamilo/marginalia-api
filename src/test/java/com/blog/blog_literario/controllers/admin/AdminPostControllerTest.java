@@ -150,8 +150,10 @@ class AdminPostControllerTest {
 
     @Test
     void delete_asAdmin_returns204() throws Exception {
-        mockMvc.perform(delete("/api/admin/posts/1").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(delete("/api/admin/posts/1").with(authentication(TestSecurityFactory.asAdmin(1))))
                 .andExpect(status().isNoContent());
+
+        verify(adminService).delete(eq(1), eq(1));
     }
 
     @Test

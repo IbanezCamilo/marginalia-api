@@ -42,6 +42,7 @@ class AdminPostModerationServiceTest {
     @Mock PostRepository postRepository;
     @Mock UserRepository userRepository;
     @Mock StorageService storageService;
+    @Mock AdminActionLogService adminActionLogService;
 
     @InjectMocks AdminPostModerationService adminService;
 
@@ -208,11 +209,38 @@ class AdminPostModerationServiceTest {
         Post post = newPost(PostStatus.DRAFT);
         post.setCoverImage("cover.jpg");
         given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(admin));
 
-        adminService.delete(1);
+        adminService.delete(1, 1);
 
         InOrder order = inOrder(storageService, postRepository);
         order.verify(storageService).delete("cover.jpg");
         order.verify(postRepository).delete(post);
+        verify(adminActionLogService).record(1, admin.getEmail(), "POST_DELETE", "POST", 1, "title=Title");
+    }
+
+    @Test
+    void updateStatus_permanentlyBlockedPost_throwsIllegalState_andDoesNotSave() {
+        Post post = newPost(PostStatus.ARCHIVED);
+        post.setRejectionCount(3);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> adminService.updateStatus(1, 1, new AdminStatusUpdateRequest("PUBLISHED", null)))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_permanentlyBlockedPost_rejectingAgainAlsoBlocked() {
+        Post post = newPost(PostStatus.ARCHIVED);
+        post.setRejectionCount(3);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> adminService.updateStatus(1, 1, new AdminStatusUpdateRequest("REJECTED", "note")))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(post.getRejectionCount()).isEqualTo(3);
+        verify(postRepository, never()).save(any());
     }
 }
