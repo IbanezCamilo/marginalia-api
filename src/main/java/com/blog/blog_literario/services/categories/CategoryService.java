@@ -11,6 +11,7 @@ import com.blog.blog_literario.dto.categories.UpdateCategoryRequest;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.repositories.CategoryRepository;
+import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.utils.SlugUtils;
 
 import lombok.NonNull;
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final PostRepository postRepository;
 
     private CategoryResponse toResponse(Category category) {
         return new CategoryResponse(
@@ -100,12 +102,20 @@ public class CategoryService {
 
     /**
      * @throws ResourceNotFoundException if no category exists with the given {@code id}
+     * @throws IllegalStateException if posts still reference this category
      */
     public void deleteCategory(@NonNull Integer id) {
         if (!categoryRepository.existsById(id)) {
             throw new ResourceNotFoundException(
                     "No se encontró la Categoría con ID: " + id);
         }
+
+        long postCount = postRepository.countByCategoryId(id);
+        if (postCount > 0) {
+            throw new IllegalStateException(
+                    "No se puede eliminar la categoría: tiene " + postCount + " post(s) asociados");
+        }
+
         categoryRepository.deleteById(id);
     }
 }

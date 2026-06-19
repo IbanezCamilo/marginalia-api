@@ -128,6 +128,20 @@ class PostRepositoryTest {
     }
 
     @Test
+    void countByCategoryId_returnsNumberOfPostsInCategory() {
+        persistPost("Post One", "post-one", PostStatus.DRAFT, category);
+        persistPost("Post Two", "post-two", PostStatus.DRAFT, category);
+        em.flush();
+
+        assertThat(postRepository.countByCategoryId(category.getId())).isEqualTo(2L);
+    }
+
+    @Test
+    void countByCategoryId_noPosts_returnsZero() {
+        assertThat(postRepository.countByCategoryId(category.getId())).isZero();
+    }
+
+    @Test
     void clearModeratedByForUser_nullsOutReferenceOnAllModeratedPosts() {
         Role adminRole = roleRepository.save(new Role("ADMIN"));
         User moderatorUser = new User();

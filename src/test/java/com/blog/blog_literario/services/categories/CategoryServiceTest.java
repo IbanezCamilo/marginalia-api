@@ -22,11 +22,13 @@ import com.blog.blog_literario.dto.categories.UpdateCategoryRequest;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.repositories.CategoryRepository;
+import com.blog.blog_literario.repositories.PostRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryServiceTest {
 
     @Mock CategoryRepository categoryRepository;
+    @Mock PostRepository postRepository;
 
     @InjectMocks CategoryService categoryService;
 
@@ -134,8 +136,9 @@ class CategoryServiceTest {
     }
 
     @Test
-    void deleteCategory_existing_deletesById() {
+    void deleteCategory_existingNoPosts_deletesById() {
         given(categoryRepository.existsById(1)).willReturn(true);
+        given(postRepository.countByCategoryId(1)).willReturn(0L);
 
         categoryService.deleteCategory(1);
 
@@ -148,6 +151,17 @@ class CategoryServiceTest {
 
         assertThatThrownBy(() -> categoryService.deleteCategory(99))
                 .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(categoryRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteCategory_hasReferencingPosts_throwsIllegalState_andDoesNotDelete() {
+        given(categoryRepository.existsById(1)).willReturn(true);
+        given(postRepository.countByCategoryId(1)).willReturn(3L);
+
+        assertThatThrownBy(() -> categoryService.deleteCategory(1))
+                .isInstanceOf(IllegalStateException.class);
 
         verify(categoryRepository, never()).deleteById(any());
     }

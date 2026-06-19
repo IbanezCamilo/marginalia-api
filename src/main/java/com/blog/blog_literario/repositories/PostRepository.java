@@ -46,6 +46,9 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
 
     List<Post> findByCategoryId(Integer categoryId);
 
+    /** Used to guard against deleting a category that still has posts referencing it. */
+    long countByCategoryId(Integer categoryId);
+
     /** Fetches author/category eagerly to avoid N+1 queries when mapping to response DTOs. */
     @EntityGraph(attributePaths = {"author", "category"})
     Page<Post> findByCategoryIdAndStatus(Integer categoryId, PostStatus status, Pageable pageable);
