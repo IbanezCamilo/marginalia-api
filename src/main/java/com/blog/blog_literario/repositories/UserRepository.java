@@ -83,11 +83,21 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     /**
      * Counts the number of posts authored by a specific user
      * Used to check if a user can be safely deleted
-     * 
+     *
      * @param userId the user's ID
      * @return the count of posts by the user
      */
     @Query("SELECT COUNT(p) FROM Post p WHERE p.author.id = :userId")
     long countPostsByAuthor(@Param("userId") Integer userId);
+
+    /**
+     * Counts how many users currently hold the given role.
+     * Used to guard against demoting or deleting the last remaining ADMIN.
+     *
+     * @param roleName the role name to count (e.g. "ADMIN")
+     * @return the number of users with that role
+     */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role.name = :roleName")
+    long countByRoleName(@Param("roleName") String roleName);
 }
 

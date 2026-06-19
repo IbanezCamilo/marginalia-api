@@ -22,6 +22,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import com.blog.blog_literario.dto.admin.AdminResetPasswordRequest;
 import com.blog.blog_literario.dto.users.CreateUserRequest;
 import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
@@ -29,6 +30,7 @@ import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
+import com.blog.blog_literario.repositories.AuthorRequestRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
@@ -43,14 +45,17 @@ class AdminUserServiceTest {
     @Mock UserRepository userRepository;
     @Mock RoleRepository roleRepository;
     @Mock PostRepository postRepository;
+    @Mock AuthorRequestRepository authorRequestRepository;
     @Mock UserCreationService userCreationService;
     @Mock UserUpdateService userUpdateService;
     @Mock UserValidator userValidator;
     @Mock StorageService storageService;
+    @Mock AdminActionLogService adminActionLogService;
 
     @InjectMocks AdminUserService adminUserService;
 
     private final Pageable pageable = PageRequest.of(0, 10);
+    private final User admin = new User(2, "Admin", "admin@test.com", new Role(2, Role.ADMIN));
 
     @Test
     void getAllUsers_returnsMappedPage() {
@@ -147,11 +152,26 @@ class AdminUserServiceTest {
         given(userRepository.findById(1)).willReturn(Optional.of(existingUser));
         given(userRepository.save(existingUser)).willReturn(existingUser);
 
-        UserResponse result = adminUserService.update(1, request);
+        UserResponse result = adminUserService.update(2, 1, request);
 
         verify(userUpdateService).performUpdate(existingUser, "Bob", null, null);
         verify(userRepository).save(existingUser);
         assertThat(result.id()).isEqualTo(1);
+        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_roleChanged_recordsAuditLog() {
+        User existingUser = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
+        UpdateUserRequest request = new UpdateUserRequest(null, null, Role.AUTHOR);
+        given(userRepository.findById(1)).willReturn(Optional.of(existingUser));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+        given(userRepository.save(existingUser)).willReturn(existingUser);
+
+        adminUserService.update(2, 1, request);
+
+        verify(adminActionLogService).record(2, admin.getEmail(), "USER_ROLE_CHANGE", "USER", 1,
+                Role.READER + " -> " + Role.AUTHOR);
     }
 
     @Test
@@ -159,7 +179,7 @@ class AdminUserServiceTest {
         UpdateUserRequest request = new UpdateUserRequest("Bob", null, null);
         given(userRepository.findById(99)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> adminUserService.update(99, request))
+        assertThatThrownBy(() -> adminUserService.update(2, 99, request))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userUpdateService, never()).performUpdate(any(), any(), any(), any());
@@ -176,28 +196,73 @@ class AdminUserServiceTest {
         post2.setCoverImage("cover2.jpg");
 
         given(userRepository.findById(1)).willReturn(Optional.of(user));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
         given(postRepository.findAllByAuthorId(1)).willReturn(List.of(post1, post2));
 
-        adminUserService.deleteUser(1);
+        adminUserService.deleteUser(2, 1);
 
         verify(storageService).delete("cover1.jpg");
         verify(storageService).delete("cover2.jpg");
         verify(storageService).delete("profile.jpg");
+        verify(postRepository).clearModeratedByForUser(1);
+        verify(authorRequestRepository).clearResolvedByForUser(1);
 
         InOrder order = inOrder(postRepository, userRepository);
         order.verify(postRepository).deleteAllByAuthorId(1);
         order.verify(userRepository).deleteById(1);
+
+        verify(adminActionLogService).record(2, admin.getEmail(), "USER_DELETE", "USER", 1,
+                "email=alice@test.com, role=" + Role.READER);
     }
 
     @Test
     void deleteUser_nonExistentUser_throwsResourceNotFoundException() {
         given(userRepository.findById(99)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> adminUserService.deleteUser(99))
+        assertThatThrownBy(() -> adminUserService.deleteUser(2, 99))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(postRepository, never()).findAllByAuthorId(any());
         verify(userRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteUser_lastRemainingAdmin_throwsIllegalState_andDoesNotDelete() {
+        User lastAdmin = new User(1, "Admin", "admin1@test.com", new Role(1, Role.ADMIN));
+        given(userRepository.findById(1)).willReturn(Optional.of(lastAdmin));
+        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(1L);
+
+        assertThatThrownBy(() -> adminUserService.deleteUser(2, 1))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).deleteById(any());
+        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void resetPassword_existingUser_updatesPasswordAndRecordsAuditLog() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
+        AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
+        given(userRepository.findById(1)).willReturn(Optional.of(user));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+
+        adminUserService.resetPassword(2, 1, request);
+
+        verify(userUpdateService).updatePassword(user, "newPassword123");
+        verify(userRepository).save(user);
+        verify(adminActionLogService).record(2, admin.getEmail(), "USER_PASSWORD_RESET", "USER", 1,
+                "email=alice@test.com");
+    }
+
+    @Test
+    void resetPassword_nonExistentUser_throwsResourceNotFoundException() {
+        AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
+        given(userRepository.findById(99)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adminUserService.resetPassword(2, 99, request))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(userUpdateService, never()).updatePassword(any(), any());
     }
 
     @Test

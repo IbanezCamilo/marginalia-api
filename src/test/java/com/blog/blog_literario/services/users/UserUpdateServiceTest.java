@@ -125,6 +125,29 @@ class UserUpdateServiceTest {
     }
 
     @Test
+    void updateRole_lastRemainingAdmin_throwsIllegalState_andDoesNotChangeRole() {
+        User admin = new User(1, "Admin", "admin@test.com", new Role(Role.ADMIN));
+        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(1L);
+
+        assertThatThrownBy(() -> userUpdateService.updateRole(admin, Role.AUTHOR))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(admin.getRole().getName()).isEqualTo(Role.ADMIN);
+        verify(roleRepository, never()).findByName(any());
+    }
+
+    @Test
+    void updateRole_notLastAdmin_demotesSuccessfully() {
+        User admin = new User(1, "Admin", "admin@test.com", new Role(Role.ADMIN));
+        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(2L);
+        given(roleRepository.findByName(Role.AUTHOR)).willReturn(Optional.of(new Role(Role.AUTHOR)));
+
+        userUpdateService.updateRole(admin, Role.AUTHOR);
+
+        assertThat(admin.getRole().getName()).isEqualTo(Role.AUTHOR);
+    }
+
+    @Test
     void updatePassword_encodesAndBumpsTokenVersion() {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
         given(passwordEncoder.encode("newPassword123")).willReturn("encoded-hash");

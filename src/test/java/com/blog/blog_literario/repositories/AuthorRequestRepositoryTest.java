@@ -143,6 +143,30 @@ class AuthorRequestRepositoryTest {
     }
 
     @Test
+    void clearResolvedByForUser_nullsOutReferenceOnAllResolvedRequests() {
+        Role adminRole = roleRepository.save(new Role("ADMIN"));
+        User adminUser = new User();
+        adminUser.setName("Admin");
+        adminUser.setEmail("admin@test.com");
+        adminUser.setPassword("hashed");
+        adminUser.setProfilePicture("");
+        adminUser.setRole(adminRole);
+        em.persist(adminUser);
+
+        AuthorRequest request = persistRequest(AuthorRequestStatus.PENDING);
+        request.approve(adminUser, "Welcome aboard");
+        em.persist(request);
+        em.flush();
+
+        authorRequestRepository.clearResolvedByForUser(adminUser.getId());
+        em.flush();
+        em.clear();
+
+        AuthorRequest reloaded = authorRequestRepository.findById(request.getId()).orElseThrow();
+        assertThat(reloaded.getResolvedBy()).isNull();
+    }
+
+    @Test
     void findAllByStatus_orderedByCreatedAtAscending() throws InterruptedException {
         AuthorRequest first = persistRequest(AuthorRequestStatus.PENDING);
         em.flush();

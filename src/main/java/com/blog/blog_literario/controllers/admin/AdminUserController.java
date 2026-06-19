@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +20,7 @@ import com.blog.blog_literario.dto.admin.AdminResetPasswordRequest;
 import com.blog.blog_literario.dto.users.CreateUserRequest;
 import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
+import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.services.admin.AdminUserService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -125,14 +127,17 @@ public class AdminUserController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(
+            Authentication authentication,
             @PathVariable Integer id,
             @Valid @RequestBody UpdateUserRequest dto) {
-        return ResponseEntity.ok(adminUserService.update(id, dto));
+        Integer adminId = getAdminId(authentication);
+        return ResponseEntity.ok(adminUserService.update(adminId, id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
-        adminUserService.deleteUser(id);
+    public ResponseEntity<Void> deleteUser(Authentication authentication, @PathVariable Integer id) {
+        Integer adminId = getAdminId(authentication);
+        adminUserService.deleteUser(adminId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -142,9 +147,15 @@ public class AdminUserController {
      */
     @PutMapping("/{id}/password")
     public ResponseEntity<UserResponse> resetPassword(
+            Authentication authentication,
             @PathVariable Integer id,
             @Valid @RequestBody AdminResetPasswordRequest dto) {
-        return ResponseEntity.ok(adminUserService.resetPassword(id, dto));
+        Integer adminId = getAdminId(authentication);
+        return ResponseEntity.ok(adminUserService.resetPassword(adminId, id, dto));
+    }
+
+    private Integer getAdminId(Authentication authentication) {
+        return ((UserDetailsImpl) authentication.getPrincipal()).getUser().getId();
     }
 }
 

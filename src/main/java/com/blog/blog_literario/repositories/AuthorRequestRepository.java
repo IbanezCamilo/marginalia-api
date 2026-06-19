@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -69,4 +70,12 @@ public interface AuthorRequestRepository extends JpaRepository<AuthorRequest, In
      * cheaper than loading a full paginated result just to count.
      */
     long countByStatus(AuthorRequestStatus status);
+
+    /**
+     * Clears the {@code resolvedBy} reference on any request resolved by the given
+     * admin, preventing an orphaned foreign key when that admin account is deleted.
+     */
+    @Modifying
+    @Query("UPDATE AuthorRequest r SET r.resolvedBy = NULL WHERE r.resolvedBy.id = :userId")
+    void clearResolvedByForUser(@Param("userId") Integer userId);
 }

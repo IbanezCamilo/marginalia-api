@@ -12,7 +12,9 @@ import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
+import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
+import com.blog.blog_literario.repositories.AuthorRequestRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
@@ -38,10 +40,12 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PostRepository postRepository;
+    private final AuthorRequestRepository authorRequestRepository;
     private final UserCreationService userCreationService;
     private final UserUpdateService userUpdateService;
     private final UserValidator userValidator;
     private final StorageService storageService;
+    private final AdminActionLogService adminActionLogService;
 
     // ─── Mapper ────────────────────────────────────────────────────────────────
     private UserResponse toResponse(User user) {
@@ -134,17 +138,21 @@ public class AdminUserService {
      * Updates an existing user's information
      * Uses UserUpdateService to safely validate and update each field
      * Ensures email uniqueness across the system
-     * 
+     *
+     * @param adminId the ID of the admin performing the update (for audit logging)
      * @param id the user's ID
      * @param request the update request with new name, email, and/or role
      * @return UserResponse with updated user details
      * @throws ResourceNotFoundException if user or role doesn't exist
      * @throws UserAlreadyExistsException if new email is already used
+     * @throws IllegalStateException if the change would demote the last remaining ADMIN
      */
-    public UserResponse update(@NonNull Integer id, UpdateUserRequest request) {
+    public UserResponse update(@NonNull Integer adminId, @NonNull Integer id, UpdateUserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Usuario no encontrado con ID: " + id));
+
+        String previousRole = user.getRole().getName();
 
         // Update fields using dedicated service
         userUpdateService.performUpdate(
@@ -155,22 +163,55 @@ public class AdminUserService {
         );
 
         // Persist changes
-        return toResponse(userRepository.save(user));
+        UserResponse response = toResponse(userRepository.save(user));
+
+        if (request.roleName() != null && !request.roleName().equals(previousRole)) {
+            User admin = getRequiredUser(adminId);
+            adminActionLogService.record(
+                    adminId, admin.getEmail(), "USER_ROLE_CHANGE", "USER", id,
+                    previousRole + " -> " + request.roleName()
+            );
+        }
+
+        return response;
     }
 
-    public void deleteUser(@NonNull Integer id) {
-    User user = userRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + id));
+    /**
+     * @param adminId the ID of the admin performing the deletion (for audit logging)
+     * @param id the user's ID to delete
+     * @throws ResourceNotFoundException if the user doesn't exist
+     * @throws IllegalStateException if the user is the last remaining ADMIN
+     */
+    public void deleteUser(@NonNull Integer adminId, @NonNull Integer id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + id));
 
-    // Clean up post images
-    postRepository.findAllByAuthorId(id)
-            .forEach(p -> storageService.delete(p.getCoverImage()));
-    postRepository.deleteAllByAuthorId(id);
+        if (user.getRole().isAdmin() && userRepository.countByRoleName(Role.ADMIN) <= 1) {
+            throw new IllegalStateException(
+                    "No se puede eliminar al último administrador del sistema");
+        }
 
-    // Clean up profile picture
-    storageService.delete(user.getProfilePicture());
-    userRepository.deleteById(id);
-}
+        User admin = getRequiredUser(adminId);
+
+        // Clear references from other users' rows so deleting this user doesn't
+        // leave a dangling moderatedBy/resolvedBy foreign key behind
+        postRepository.clearModeratedByForUser(id);
+        authorRequestRepository.clearResolvedByForUser(id);
+
+        // Clean up post images
+        postRepository.findAllByAuthorId(id)
+                .forEach(p -> storageService.delete(p.getCoverImage()));
+        postRepository.deleteAllByAuthorId(id);
+
+        // Clean up profile picture
+        storageService.delete(user.getProfilePicture());
+        userRepository.deleteById(id);
+
+        adminActionLogService.record(
+                adminId, admin.getEmail(), "USER_DELETE", "USER", id,
+                "email=" + user.getEmail() + ", role=" + user.getRole().getName()
+        );
+    }
 
     /**
      * Gets the total count of users in the system
@@ -198,14 +239,27 @@ public class AdminUserService {
     /**
      * Resets a user's password without requiring their current one. Intended for
      * support flows where a user has lost access to their account.
+     *
+     * @param adminId the ID of the admin performing the reset (for audit logging)
      */
-    public UserResponse resetPassword(@NonNull Integer id, @NonNull AdminResetPasswordRequest request) {
+    public UserResponse resetPassword(@NonNull Integer adminId, @NonNull Integer id, @NonNull AdminResetPasswordRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el usuario con ID: " + id));
 
         userUpdateService.updatePassword(user, request.newPassword());
         userRepository.save(user);
 
+        User admin = getRequiredUser(adminId);
+        adminActionLogService.record(
+                adminId, admin.getEmail(), "USER_PASSWORD_RESET", "USER", id,
+                "email=" + user.getEmail()
+        );
+
         return toResponse(user);
+    }
+
+    private User getRequiredUser(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + userId));
     }
 }

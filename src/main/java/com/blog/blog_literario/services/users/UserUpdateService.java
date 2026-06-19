@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
+import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
@@ -67,10 +68,11 @@ public class UserUpdateService {
 
     /**
      * Updates a user's role with validation
-     * 
+     *
      * @param user the user entity to update
      * @param newRoleName the new role name
      * @throws ResourceNotFoundException if role doesn't exist
+     * @throws IllegalStateException if {@code user} is the last remaining ADMIN
      */
     public void updateRole(@NonNull User user, String newRoleName) {
         if (newRoleName.isBlank()) {
@@ -81,6 +83,12 @@ public class UserUpdateService {
         if (newRoleName.equals(user.getRole().getName())) {
             return;
         }
+
+        if (user.getRole().isAdmin() && userRepository.countByRoleName(Role.ADMIN) <= 1) {
+            throw new IllegalStateException(
+                "No se puede quitar el rol de administrador al último admin del sistema");
+        }
+
         var role = roleRepository.findByName(newRoleName)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Rol no encontrado: " + newRoleName));

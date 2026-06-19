@@ -102,6 +102,18 @@ class UserRepositoryTest {
         assertThat(result).isFalse();
     }
 
+    @Test
+    void countByRoleName_countsOnlyMatchingRole() {
+        Role adminRole = roleRepository.save(new Role("ADMIN"));
+        persistUser("Admin1", "admin1@example.com", adminRole);
+        persistUser("Admin2", "admin2@example.com", adminRole);
+        persistUser("Reader", "reader@example.com", readerRole);
+        em.flush();
+
+        assertThat(userRepository.countByRoleName("ADMIN")).isEqualTo(2L);
+        assertThat(userRepository.countByRoleName("READER")).isEqualTo(1L);
+    }
+
     private User persistUser(String name, String email, Role role) {
         User user = new User();
         user.setName(name);

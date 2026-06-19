@@ -127,6 +127,30 @@ class PostRepositoryTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void clearModeratedByForUser_nullsOutReferenceOnAllModeratedPosts() {
+        Role adminRole = roleRepository.save(new Role("ADMIN"));
+        User moderatorUser = new User();
+        moderatorUser.setName("Mod");
+        moderatorUser.setEmail("mod@test.com");
+        moderatorUser.setPassword("hashed");
+        moderatorUser.setProfilePicture("");
+        moderatorUser.setRole(adminRole);
+        em.persist(moderatorUser);
+
+        Post post = persistPost("Reviewed Post", "reviewed-post", PostStatus.PUBLISHED, category);
+        post.recordModeration(moderatorUser, "Looks good");
+        em.persist(post);
+        em.flush();
+
+        postRepository.clearModeratedByForUser(moderatorUser.getId());
+        em.flush();
+        em.clear();
+
+        Post reloaded = postRepository.findById(post.getId()).orElseThrow();
+        assertThat(reloaded.getModeratedBy()).isNull();
+    }
+
     private Post persistPost(String title, String slug, PostStatus status, Category cat) {
         Post post = new Post(title, "Content body", status, slug, author, cat);
         return em.persist(post);

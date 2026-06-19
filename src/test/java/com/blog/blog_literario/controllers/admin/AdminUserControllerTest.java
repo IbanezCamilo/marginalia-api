@@ -4,10 +4,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,7 +17,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.blog.blog_literario.config.SecurityConfig;
+import com.blog.blog_literario.dto.admin.AdminResetPasswordRequest;
 import com.blog.blog_literario.dto.roles.RoleResponse;
+import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
@@ -23,6 +27,7 @@ import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
 import com.blog.blog_literario.services.admin.AdminUserService;
+import com.blog.blog_literario.support.TestSecurityFactory;
 import com.blog.blog_literario.support.WebMvcTestConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -100,7 +105,36 @@ class AdminUserControllerTest {
 
     @Test
     void deleteUser_asAdmin_returns204() throws Exception {
-        mockMvc.perform(delete("/api/admin/users/1").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(delete("/api/admin/users/1").with(authentication(TestSecurityFactory.asAdmin(2))))
                 .andExpect(status().isNoContent());
+
+        verify(adminUserService).deleteUser(eq(2), eq(1));
+    }
+
+    @Test
+    void updateUser_asAdmin_validRequest_returns200() throws Exception {
+        given(adminUserService.update(eq(2), eq(1), any(UpdateUserRequest.class))).willReturn(SAMPLE_USER);
+
+        mockMvc.perform(put("/api/admin/users/1")
+                .with(authentication(TestSecurityFactory.asAdmin(2)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Bob\",\"email\":null,\"roleName\":null}"))
+                .andExpect(status().isOk());
+
+        verify(adminUserService).update(eq(2), eq(1), any(UpdateUserRequest.class));
+    }
+
+    @Test
+    void resetPassword_asAdmin_validRequest_returns200() throws Exception {
+        given(adminUserService.resetPassword(eq(2), eq(1), any(AdminResetPasswordRequest.class)))
+                .willReturn(SAMPLE_USER);
+
+        mockMvc.perform(put("/api/admin/users/1/password")
+                .with(authentication(TestSecurityFactory.asAdmin(2)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPassword\":\"newPassword123\"}"))
+                .andExpect(status().isOk());
+
+        verify(adminUserService).resetPassword(eq(2), eq(1), any(AdminResetPasswordRequest.class));
     }
 }

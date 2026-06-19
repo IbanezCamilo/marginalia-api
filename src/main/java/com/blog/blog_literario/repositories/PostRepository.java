@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -83,6 +84,14 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
 
     /** Deletes all posts authored by the given user; used when an author account is removed. */
     void deleteAllByAuthorId(Integer authorId);
+
+    /**
+     * Clears the {@code moderatedBy} reference on any post moderated by the given user,
+     * preventing an orphaned foreign key when that user account is deleted.
+     */
+    @Modifying
+    @Query("UPDATE Post p SET p.moderatedBy = NULL WHERE p.moderatedBy.id = :userId")
+    void clearModeratedByForUser(@Param("userId") Integer userId);
 
     /**
      * Overrides {@link JpaRepository#findAll(Pageable)} to fetch author/category/moderatedBy
