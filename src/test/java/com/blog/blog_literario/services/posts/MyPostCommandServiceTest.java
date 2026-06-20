@@ -13,6 +13,7 @@ import java.util.Optional;
 
 import com.blog.blog_literario.dto.posts.CreatePostRequest;
 import com.blog.blog_literario.dto.posts.MyPostResponse;
+import com.blog.blog_literario.dto.posts.UpdatePostRequest;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
@@ -158,6 +159,42 @@ class MyPostCommandServiceTest {
         assertThatThrownBy(() -> myService.create(1, request))
                 .isInstanceOf(RuntimeException.class);
         verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void update_draftPost_updatesTitleContentAndStatus() {
+        Post post = new Post("Old Title", "Old Content", PostStatus.DRAFT, "old-title", author, category);
+        UpdatePostRequest request = new UpdatePostRequest("New Title Here", TIPTAP_CONTENT, null, "DRAFT");
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+        given(postRepository.existsBySlugAndIdNot(anyString(), any())).willReturn(false);
+
+        MyPostResponse result = myService.update(1, 1, request);
+
+        assertThat(result.title()).isEqualTo("New Title Here");
+    }
+
+    @Test
+    void update_publishedPost_throwsIllegalState_andDoesNotMutate() {
+        Post post = new Post("Published Post", "Content", PostStatus.PUBLISHED, "published-post", author, category);
+        UpdatePostRequest request = new UpdatePostRequest("Published Post", "Sneaky edit", null, "PUBLISHED");
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> myService.update(1, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(post.getContent()).isEqualTo("Content");
+    }
+
+    @Test
+    void update_archivedPost_throwsIllegalState_andDoesNotMutate() {
+        Post post = new Post("Archived Post", "Content", PostStatus.ARCHIVED, "archived-post", author, category);
+        UpdatePostRequest request = new UpdatePostRequest("Archived Post", "Sneaky edit", null, "ARCHIVED");
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> myService.update(1, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(post.getContent()).isEqualTo("Content");
     }
 
     @Test

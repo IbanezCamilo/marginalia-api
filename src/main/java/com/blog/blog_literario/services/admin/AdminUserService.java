@@ -124,14 +124,20 @@ public class AdminUserService {
 
     // ─── Commands ────────────────────────────────────────────────────────────────
 
-        public UserResponse createUser(CreateUserRequest request) {
-            return toResponse(
-                userCreationService.createUser(
-                    request.name(),
-                    request.email(),
-                    request.password(),
-                    request.roleName()
-                ));
+    public UserResponse createUser(@NonNull Integer adminId, CreateUserRequest request) {
+        User createdUser = userCreationService.createUser(
+                request.name(),
+                request.email(),
+                request.password(),
+                request.roleName());
+
+        User admin = getRequiredUser(adminId);
+        adminActionLogService.record(
+                adminId, admin.getEmail(), "USER_CREATE", "USER", createdUser.getId(),
+                "email=" + createdUser.getEmail() + ", role=" + createdUser.getRole().getName()
+        );
+
+        return toResponse(createdUser);
     }
 
     /**
@@ -152,28 +158,17 @@ public class AdminUserService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Usuario no encontrado con ID: " + id));
 
-        String previousRole = user.getRole().getName();
-
-        // Update fields using dedicated service
+        // Update fields using dedicated service; role changes are audit-logged
+        // internally by UserUpdateService.updateRole()
         userUpdateService.performUpdate(
                 user,
                 request.name(),
                 request.email(),
-                request.roleName()
+                request.roleName(),
+                adminId
         );
 
-        // Persist changes
-        UserResponse response = toResponse(userRepository.save(user));
-
-        if (request.roleName() != null && !request.roleName().equals(previousRole)) {
-            User admin = getRequiredUser(adminId);
-            adminActionLogService.record(
-                    adminId, admin.getEmail(), "USER_ROLE_CHANGE", "USER", id,
-                    previousRole + " -> " + request.roleName()
-            );
-        }
-
-        return response;
+        return toResponse(userRepository.save(user));
     }
 
     /**

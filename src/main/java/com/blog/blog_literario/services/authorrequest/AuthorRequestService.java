@@ -12,8 +12,8 @@ import com.blog.blog_literario.model.AuthorRequestStatus;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.AuthorRequestRepository;
-import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.users.UserUpdateService;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ public class AuthorRequestService {
 
     private final AuthorRequestRepository authorRequestRepository;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final UserUpdateService userUpdateService;
 
     // ─── READER operations ─────────────────────────────────────────────────────
 
@@ -157,13 +157,9 @@ public class AuthorRequestService {
         AuthorRequest request = findPendingRequest(requestId);
         User admin = findUserById(adminId);
 
-        // Promote the requester's role to AUTHOR
-        Role authorRole = roleRepository.findByName(Role.AUTHOR)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "AUTHOR role not found. Check seed data."));
-
-        request.getRequester().setRole(authorRole);
-        request.getRequester().incrementTokenVersion();
+        // Promote the requester's role to AUTHOR — delegates to UserUpdateService so
+        // the same guard and audit-log behavior used by direct admin role edits applies here too
+        userUpdateService.updateRole(request.getRequester(), Role.AUTHOR, adminId);
         userRepository.save(request.getRequester());
 
         // Mark the request as resolved

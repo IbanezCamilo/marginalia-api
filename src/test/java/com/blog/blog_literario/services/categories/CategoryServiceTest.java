@@ -89,6 +89,18 @@ class CategoryServiceTest {
     }
 
     @Test
+    void createCategory_nameUniqueButSlugCollides_throwsIllegalStateException() {
+        // "Sci-Fi" and "Sci Fi" are different names but normalize to the same slug
+        given(categoryRepository.findByName("Sci-Fi")).willReturn(Optional.empty());
+        given(categoryRepository.existsBySlug("sci-fi")).willReturn(true);
+
+        assertThatThrownBy(() -> categoryService.createCategory(new CreateCategoryRequest("Sci-Fi")))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(categoryRepository, never()).save(any());
+    }
+
+    @Test
     void updateCategory_nonExistentId_throwsResourceNotFoundException() {
         given(categoryRepository.findById(99)).willReturn(Optional.empty());
 
@@ -101,7 +113,23 @@ class CategoryServiceTest {
         Category existing = new Category("Fiction", "fiction");
         existing.setId(1);
         given(categoryRepository.findById(1)).willReturn(Optional.of(existing));
+        given(categoryRepository.findByName("Drama")).willReturn(Optional.empty());
         given(categoryRepository.existsBySlug("drama")).willReturn(true);
+
+        assertThatThrownBy(() -> categoryService.updateCategory(1, new UpdateCategoryRequest("Drama")))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(categoryRepository, never()).save(any());
+    }
+
+    @Test
+    void updateCategory_newNameCollidesWithAnotherCategory_throwsIllegalStateException() {
+        Category existing = new Category("Fiction", "fiction");
+        existing.setId(1);
+        Category other = new Category("Drama", "drama");
+        other.setId(2);
+        given(categoryRepository.findById(1)).willReturn(Optional.of(existing));
+        given(categoryRepository.findByName("Drama")).willReturn(Optional.of(other));
 
         assertThatThrownBy(() -> categoryService.updateCategory(1, new UpdateCategoryRequest("Drama")))
                 .isInstanceOf(IllegalStateException.class);
@@ -126,6 +154,7 @@ class CategoryServiceTest {
         Category existing = new Category("Fiction", "fiction");
         existing.setId(1);
         given(categoryRepository.findById(1)).willReturn(Optional.of(existing));
+        given(categoryRepository.findByName("Drama")).willReturn(Optional.empty());
         given(categoryRepository.existsBySlug("drama")).willReturn(false);
         given(categoryRepository.save(existing)).willReturn(existing);
 

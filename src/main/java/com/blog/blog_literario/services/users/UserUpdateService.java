@@ -10,6 +10,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.admin.AdminActionLogService;
 import com.blog.blog_literario.utils.UserValidator;
 
 import lombok.NonNull;
@@ -29,6 +30,7 @@ public class UserUpdateService {
     private final RoleRepository roleRepository;
     private final UserValidator userValidator;
     private final PasswordEncoder passwordEncoder;
+    private final AdminActionLogService adminActionLogService;
 
     /**
      * Updates a user's name safely with sanitization
@@ -67,20 +69,27 @@ public class UserUpdateService {
     }
 
     /**
-     * Updates a user's role with validation
+     * Updates a user's role with validation, recording the change to the admin audit
+     * trail. This is the single source of truth for role changes — every write path
+     * that promotes or demotes a user (direct admin edit, author-request approval,
+     * etc.) must go through this method so the "last admin" guard and the audit log
+     * apply uniformly regardless of which endpoint triggered the change.
      *
      * @param user the user entity to update
      * @param newRoleName the new role name
-     * @throws ResourceNotFoundException if role doesn't exist
+     * @param actorId the ID of the admin performing the change (for audit logging)
+     * @throws ResourceNotFoundException if the role or the actor doesn't exist
      * @throws IllegalStateException if {@code user} is the last remaining ADMIN
      */
-    public void updateRole(@NonNull User user, String newRoleName) {
+    public void updateRole(@NonNull User user, String newRoleName, @NonNull Integer actorId) {
         if (newRoleName.isBlank()) {
             throw new IllegalArgumentException("El rol no puede estar vacío");
         }
 
+        String previousRoleName = user.getRole().getName();
+
         // Avoid unnecessary query
-        if (newRoleName.equals(user.getRole().getName())) {
+        if (newRoleName.equals(previousRoleName)) {
             return;
         }
 
@@ -94,19 +103,28 @@ public class UserUpdateService {
                 "Rol no encontrado: " + newRoleName));
         user.setRole(role);
         user.incrementTokenVersion();
+
+        User actor = userRepository.findById(actorId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Usuario no encontrado con ID: " + actorId));
+        adminActionLogService.record(
+                actorId, actor.getEmail(), "USER_ROLE_CHANGE", "USER", user.getId(),
+                previousRoleName + " -> " + newRoleName
+        );
     }
 
     /**
      * Performs a complete user update with all validations
      * Can be called with null values to skip updates for specific fields
-     * 
+     *
      * @param user the user entity to update
      * @param newName the new name (null to skip)
      * @param newEmail the new email (null to skip)
      * @param newRoleName the new role name (null to skip)
+     * @param actorId the ID of the admin performing the update (for audit logging of role changes)
      * @return the updated user entity (not persisted)
      */
-    public User performUpdate(@NonNull User user, String newName, String newEmail, String newRoleName) {
+    public User performUpdate(@NonNull User user, String newName, String newEmail, String newRoleName, @NonNull Integer actorId) {
         if (newName != null) {
             updateName(user, newName);
         }
@@ -114,15 +132,17 @@ public class UserUpdateService {
             updateEmail(user, newEmail);
         }
         if (newRoleName != null) {
-            updateRole(user, newRoleName);
+            updateRole(user, newRoleName, actorId);
         }
         return user;
     }
 
     /**
      * Encodes and sets a new password on {@code user}. Does not verify the current
-     * password — callers needing that check (e.g. self-service password change)
-     * must perform it before calling this method.
+     * password, nor whether it's different from the new one — callers needing those
+     * checks (e.g. self-service password change) must perform them before calling
+     * this method. Deliberately permissive for the admin-reset path: an admin never
+     * sees the plaintext current password, so there's nothing to protect against here.
      */
     public void updatePassword(@NonNull User user, String newRawPassword) {
         user.setPassword(passwordEncoder.encode(newRawPassword));

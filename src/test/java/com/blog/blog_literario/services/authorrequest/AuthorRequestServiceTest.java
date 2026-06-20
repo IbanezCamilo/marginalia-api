@@ -16,8 +16,8 @@ import com.blog.blog_literario.model.AuthorRequestStatus;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.AuthorRequestRepository;
-import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.users.UserUpdateService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,19 +30,17 @@ class AuthorRequestServiceTest {
 
     @Mock AuthorRequestRepository authorRequestRepository;
     @Mock UserRepository userRepository;
-    @Mock RoleRepository roleRepository;
+    @Mock UserUpdateService userUpdateService;
 
     @InjectMocks AuthorRequestService service;
 
     private User reader;
     private User adminUser;
-    private Role authorRole;
 
     @BeforeEach
     void setUp() {
         reader = new User(1, "Reader", "reader@test.com", new Role("READER"));
         adminUser = new User(2, "Admin", "admin@test.com", new Role("ADMIN"));
-        authorRole = new Role("AUTHOR");
     }
 
     @Test
@@ -92,18 +90,19 @@ class AuthorRequestServiceTest {
 
     @Test
     void approve_pendingRequest_promotesRoleAndSetsApproved() {
+        // Role promotion (guard + mutation + audit log) is delegated to
+        // UserUpdateService.updateRole() — see UserUpdateServiceTest for that behavior.
         AuthorRequest request = buildPendingRequest();
         given(authorRequestRepository.findById(1)).willReturn(Optional.of(request));
         given(userRepository.findById(2)).willReturn(Optional.of(adminUser));
-        given(roleRepository.findByName(Role.AUTHOR)).willReturn(Optional.of(authorRole));
         given(userRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(authorRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         AuthorRequestResponse result = service.approve(1, 2, "Welcome!");
 
         assertThat(result.status()).isEqualTo("APPROVED");
-        verify(userRepository).save(any(User.class));
-        assertThat(reader.getTokenVersion()).isEqualTo(1);
+        verify(userUpdateService).updateRole(reader, Role.AUTHOR, 2);
+        verify(userRepository).save(reader);
     }
 
     @Test

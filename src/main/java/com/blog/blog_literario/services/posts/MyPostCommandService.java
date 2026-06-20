@@ -104,12 +104,17 @@ public class MyPostCommandService {
      * validates author-permitted status transitions.
      *
      * @throws ResourceNotFoundException if the post or category does not exist (or the post does not belong to the user)
-     * @throws IllegalStateException     if the new slug collides with an existing post
+     * @throws IllegalStateException     if the post is not editable by its author (published/archived),
+     *                                    or if the new slug collides with an existing post
      */
     public MyPostResponse update(Integer userId, Integer postId, UpdatePostRequest request) {
         Post post = postRepository
                 .findByIdAndAuthorId(postId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
+
+        if (!post.canBeEditedByAuthor()) {
+            throw new IllegalStateException("No puedes editar un post publicado o archivado.");
+        }
 
         post.setTitle(request.title());
         post.setContent(PostContentSanitizer.sanitize(request.content()));

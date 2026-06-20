@@ -114,8 +114,11 @@ public class AdminUserController {
      * Admin can assign any role during creation
      */
     @PostMapping
-    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest dto) {
-        return ResponseEntity.status(201).body(adminUserService.createUser(dto));
+    public ResponseEntity<UserResponse> createUser(
+            Authentication authentication,
+            @Valid @RequestBody CreateUserRequest dto) {
+        Integer adminId = getAdminId(authentication);
+        return ResponseEntity.status(201).body(adminUserService.createUser(adminId, dto));
     }
 
     // ─── Update Operation ──────────────────────────────────────────────────────

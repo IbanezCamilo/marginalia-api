@@ -94,13 +94,15 @@ class AdminUserControllerTest {
 
     @Test
     void createUser_asAdmin_validRequest_returns201() throws Exception {
-        given(adminUserService.createUser(any())).willReturn(SAMPLE_USER);
+        given(adminUserService.createUser(eq(2), any())).willReturn(SAMPLE_USER);
 
         mockMvc.perform(post("/api/admin/users")
-                .with(user("admin").roles("ADMIN"))
+                .with(authentication(TestSecurityFactory.asAdmin(2)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Bob\",\"email\":\"bob@test.com\",\"password\":\"password123\",\"roleName\":\"READER\"}"))
                 .andExpect(status().isCreated());
+
+        verify(adminUserService).createUser(eq(2), any());
     }
 
     @Test

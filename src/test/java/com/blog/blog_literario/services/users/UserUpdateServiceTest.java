@@ -22,15 +22,19 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.admin.AdminActionLogService;
 import com.blog.blog_literario.utils.UserValidator;
 
 @ExtendWith(MockitoExtension.class)
 class UserUpdateServiceTest {
 
+    private static final Integer ACTOR_ID = 99;
+
     @Mock UserRepository userRepository;
     @Mock RoleRepository roleRepository;
     @Mock UserValidator userValidator;
     @Mock PasswordEncoder passwordEncoder;
+    @Mock AdminActionLogService adminActionLogService;
 
     @InjectMocks UserUpdateService userUpdateService;
 
@@ -89,7 +93,7 @@ class UserUpdateServiceTest {
     void updateRole_blankRole_throwsIllegalArgumentException() {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
 
-        assertThatThrownBy(() -> userUpdateService.updateRole(user, "   "))
+        assertThatThrownBy(() -> userUpdateService.updateRole(user, "   ", ACTOR_ID))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -97,9 +101,10 @@ class UserUpdateServiceTest {
     void updateRole_sameRoleName_skipsRepositoryLookup() {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
 
-        userUpdateService.updateRole(user, Role.READER);
+        userUpdateService.updateRole(user, Role.READER, ACTOR_ID);
 
         verify(roleRepository, never()).findByName(any());
+        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
         assertThat(user.getRole().getName()).isEqualTo(Role.READER);
         assertThat(user.getTokenVersion()).isEqualTo(0);
     }
@@ -109,19 +114,34 @@ class UserUpdateServiceTest {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
         given(roleRepository.findByName("UNKNOWN")).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userUpdateService.updateRole(user, "UNKNOWN"))
+        assertThatThrownBy(() -> userUpdateService.updateRole(user, "UNKNOWN", ACTOR_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
-    void updateRole_validNewRole_setsRole() {
+    void updateRole_validNewRole_setsRoleAndRecordsAuditLog() {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        User actor = new User(ACTOR_ID, "Admin", "admin@test.com", new Role(Role.ADMIN));
         given(roleRepository.findByName(Role.AUTHOR)).willReturn(Optional.of(new Role(Role.AUTHOR)));
+        given(userRepository.findById(ACTOR_ID)).willReturn(Optional.of(actor));
 
-        userUpdateService.updateRole(user, Role.AUTHOR);
+        userUpdateService.updateRole(user, Role.AUTHOR, ACTOR_ID);
 
         assertThat(user.getRole().getName()).isEqualTo(Role.AUTHOR);
         assertThat(user.getTokenVersion()).isEqualTo(1);
+        verify(adminActionLogService).record(
+                ACTOR_ID, "admin@test.com", "USER_ROLE_CHANGE", "USER", 1,
+                Role.READER + " -> " + Role.AUTHOR);
+    }
+
+    @Test
+    void updateRole_unknownActor_throwsResourceNotFoundException() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        given(roleRepository.findByName(Role.AUTHOR)).willReturn(Optional.of(new Role(Role.AUTHOR)));
+        given(userRepository.findById(ACTOR_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userUpdateService.updateRole(user, Role.AUTHOR, ACTOR_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -129,7 +149,7 @@ class UserUpdateServiceTest {
         User admin = new User(1, "Admin", "admin@test.com", new Role(Role.ADMIN));
         given(userRepository.countByRoleName(Role.ADMIN)).willReturn(1L);
 
-        assertThatThrownBy(() -> userUpdateService.updateRole(admin, Role.AUTHOR))
+        assertThatThrownBy(() -> userUpdateService.updateRole(admin, Role.AUTHOR, ACTOR_ID))
                 .isInstanceOf(IllegalStateException.class);
 
         assertThat(admin.getRole().getName()).isEqualTo(Role.ADMIN);
@@ -139,10 +159,12 @@ class UserUpdateServiceTest {
     @Test
     void updateRole_notLastAdmin_demotesSuccessfully() {
         User admin = new User(1, "Admin", "admin@test.com", new Role(Role.ADMIN));
+        User actor = new User(ACTOR_ID, "OtherAdmin", "other-admin@test.com", new Role(Role.ADMIN));
         given(userRepository.countByRoleName(Role.ADMIN)).willReturn(2L);
         given(roleRepository.findByName(Role.AUTHOR)).willReturn(Optional.of(new Role(Role.AUTHOR)));
+        given(userRepository.findById(ACTOR_ID)).willReturn(Optional.of(actor));
 
-        userUpdateService.updateRole(admin, Role.AUTHOR);
+        userUpdateService.updateRole(admin, Role.AUTHOR, ACTOR_ID);
 
         assertThat(admin.getRole().getName()).isEqualTo(Role.AUTHOR);
     }
@@ -159,10 +181,26 @@ class UserUpdateServiceTest {
     }
 
     @Test
+    void updatePassword_samePasswordAsCurrent_doesNotThrow() {
+        // Deliberately permissive: this is the shared method behind the admin-reset
+        // path too, where there's no plaintext current password to compare against.
+        // The "new != current" UX guard lives only in the self-service caller
+        // (UserProfileService.changePassword()).
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setPassword("current-hash");
+        given(passwordEncoder.encode("samePassword123")).willReturn("current-hash");
+
+        userUpdateService.updatePassword(user, "samePassword123");
+
+        assertThat(user.getPassword()).isEqualTo("current-hash");
+        assertThat(user.getTokenVersion()).isEqualTo(1);
+    }
+
+    @Test
     void performUpdate_allNullFields_returnsUserUnchanged() {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
 
-        User result = userUpdateService.performUpdate(user, null, null, null);
+        User result = userUpdateService.performUpdate(user, null, null, null, ACTOR_ID);
 
         assertThat(result).isSameAs(user);
         assertThat(result.getName()).isEqualTo("Alice");
@@ -178,7 +216,7 @@ class UserUpdateServiceTest {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
         given(userValidator.validateAndSanitizeName("Bob")).willReturn("Bob");
 
-        User result = userUpdateService.performUpdate(user, "Bob", null, null);
+        User result = userUpdateService.performUpdate(user, "Bob", null, null, ACTOR_ID);
 
         assertThat(result.getName()).isEqualTo("Bob");
         assertThat(result.getEmail()).isEqualTo("alice@test.com");

@@ -132,17 +132,20 @@ class AdminUserServiceTest {
     }
 
     @Test
-    void createUser_delegatesToUserCreationService_andMapsResponse() {
+    void createUser_delegatesToUserCreationService_andRecordsAuditLog() {
         CreateUserRequest request = new CreateUserRequest("Alice", "alice@test.com", "password123", Role.READER);
         User createdUser = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
         given(userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER))
                 .willReturn(createdUser);
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
 
-        UserResponse result = adminUserService.createUser(request);
+        UserResponse result = adminUserService.createUser(2, request);
 
         assertThat(result.id()).isEqualTo(1);
         assertThat(result.name()).isEqualTo("Alice");
         assertThat(result.role().name()).isEqualTo(Role.READER);
+        verify(adminActionLogService).record(2, admin.getEmail(), "USER_CREATE", "USER", 1,
+                "email=alice@test.com, role=" + Role.READER);
     }
 
     @Test
@@ -154,24 +157,25 @@ class AdminUserServiceTest {
 
         UserResponse result = adminUserService.update(2, 1, request);
 
-        verify(userUpdateService).performUpdate(existingUser, "Bob", null, null);
+        verify(userUpdateService).performUpdate(existingUser, "Bob", null, null, 2);
         verify(userRepository).save(existingUser);
         assertThat(result.id()).isEqualTo(1);
         verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    void update_roleChanged_recordsAuditLog() {
+    void update_roleChanged_passesActorIdToPerformUpdate() {
+        // Audit logging for role changes is UserUpdateService.updateRole()'s
+        // responsibility now (see UserUpdateServiceTest) — this only verifies
+        // AdminUserService threads the acting admin's ID through correctly.
         User existingUser = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
         UpdateUserRequest request = new UpdateUserRequest(null, null, Role.AUTHOR);
         given(userRepository.findById(1)).willReturn(Optional.of(existingUser));
-        given(userRepository.findById(2)).willReturn(Optional.of(admin));
         given(userRepository.save(existingUser)).willReturn(existingUser);
 
         adminUserService.update(2, 1, request);
 
-        verify(adminActionLogService).record(2, admin.getEmail(), "USER_ROLE_CHANGE", "USER", 1,
-                Role.READER + " -> " + Role.AUTHOR);
+        verify(userUpdateService).performUpdate(existingUser, null, null, Role.AUTHOR, 2);
     }
 
     @Test
@@ -182,7 +186,7 @@ class AdminUserServiceTest {
         assertThatThrownBy(() -> adminUserService.update(2, 99, request))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(userUpdateService, never()).performUpdate(any(), any(), any(), any());
+        verify(userUpdateService, never()).performUpdate(any(), any(), any(), any(), any());
     }
 
     @Test

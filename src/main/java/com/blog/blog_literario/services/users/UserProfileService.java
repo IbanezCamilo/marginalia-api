@@ -15,6 +15,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.utils.UserValidator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +33,7 @@ public class UserProfileService {
     private final AvatarResolver avatarResolver;
     private final PasswordEncoder passwordEncoder;
     private final UserUpdateService userUpdateService;
+    private final UserValidator userValidator;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
@@ -43,7 +45,7 @@ public class UserProfileService {
     public UserProfileResponse updateProfile(UserDetails userDetails, UserProfileUpdateRequest request) {
         User user = findByEmail(userDetails.getUsername());
 
-        user.setName(request.name());
+        user.setName(userValidator.validateAndSanitizeName(request.name()));
         user.setDescription(request.description());
 
         return toResponse(userRepository.save(user));
