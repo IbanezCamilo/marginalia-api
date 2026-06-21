@@ -10,7 +10,7 @@ REST API for **Marginalia**, a literary blogging platform. Handles authenticatio
 | Technology | Version | Role |
 |---|---|---|
 | Java | 21 | Runtime (virtual threads) |
-| Spring Boot | 3.5.3 | Application framework |
+| Spring Boot | 3.5.15 | Application framework |
 | Spring Security | — | Authentication & authorization |
 | Spring Data JPA / Hibernate | — | Data access layer (PostgreSQL dialect) |
 | PostgreSQL | — | Relational database |
