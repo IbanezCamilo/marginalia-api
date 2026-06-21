@@ -14,6 +14,7 @@ REST API for **Marginalia**, a literary blogging platform. Handles authenticatio
 | Spring Security | — | Authentication & authorization |
 | Spring Data JPA / Hibernate | — | Data access layer (PostgreSQL dialect) |
 | PostgreSQL | — | Relational database |
+| Flyway | — | Schema migrations (`src/main/resources/db/migration`) |
 | JJWT | 0.11.5 | JWT generation & validation |
 | Bucket4j | 8.7.0 | Rate limiting (token bucket) |
 | Lombok | — | Boilerplate reduction |
@@ -87,6 +88,13 @@ cp .env.sample .env
 ```
 
 The API server starts at `http://localhost:8080`. On first run, `DataInitializer` seeds the four roles and the default admin account from your `.env` values.
+
+> **Migrating an existing local dev DB**: Flyway's `baseline-on-migrate` assumes an
+> existing database already matches the entities and just marks it as version 1 without
+> running `V1__baseline.sql`. If you already had a local dev DB from before Flyway existed,
+> it may be missing tables added since you last ran the app (`ddl-auto=update` used to
+> create them lazily). If `ddl-auto=validate` fails with a missing-table error, drop and
+> recreate the local database so Flyway builds the schema from empty instead.
 
 ## Environment Variables
 
