@@ -16,6 +16,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.AuthorRequestRepository;
 import com.blog.blog_literario.repositories.PostRepository;
+import com.blog.blog_literario.repositories.RefreshTokenRepository;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.images.StorageService;
@@ -41,6 +42,7 @@ public class AdminUserService {
     private final RoleRepository roleRepository;
     private final PostRepository postRepository;
     private final AuthorRequestRepository authorRequestRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final UserCreationService userCreationService;
     private final UserUpdateService userUpdateService;
     private final UserValidator userValidator;
@@ -200,6 +202,11 @@ public class AdminUserService {
 
         // Clean up profile picture
         storageService.delete(user.getProfilePicture());
+
+        // Remove refresh tokens so an active session doesn't leave a dangling
+        // foreign key behind
+        refreshTokenRepository.deleteByUser(user);
+
         userRepository.deleteById(id);
 
         adminActionLogService.record(

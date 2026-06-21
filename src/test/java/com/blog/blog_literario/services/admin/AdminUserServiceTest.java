@@ -32,6 +32,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.AuthorRequestRepository;
 import com.blog.blog_literario.repositories.PostRepository;
+import com.blog.blog_literario.repositories.RefreshTokenRepository;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.images.StorageService;
@@ -46,6 +47,7 @@ class AdminUserServiceTest {
     @Mock RoleRepository roleRepository;
     @Mock PostRepository postRepository;
     @Mock AuthorRequestRepository authorRequestRepository;
+    @Mock RefreshTokenRepository refreshTokenRepository;
     @Mock UserCreationService userCreationService;
     @Mock UserUpdateService userUpdateService;
     @Mock UserValidator userValidator;
@@ -210,9 +212,11 @@ class AdminUserServiceTest {
         verify(storageService).delete("profile.jpg");
         verify(postRepository).clearModeratedByForUser(1);
         verify(authorRequestRepository).clearResolvedByForUser(1);
+        verify(refreshTokenRepository).deleteByUser(user);
 
-        InOrder order = inOrder(postRepository, userRepository);
+        InOrder order = inOrder(postRepository, refreshTokenRepository, userRepository);
         order.verify(postRepository).deleteAllByAuthorId(1);
+        order.verify(refreshTokenRepository).deleteByUser(user);
         order.verify(userRepository).deleteById(1);
 
         verify(adminActionLogService).record(2, admin.getEmail(), "USER_DELETE", "USER", 1,
