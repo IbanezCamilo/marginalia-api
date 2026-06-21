@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Field;
@@ -17,6 +18,7 @@ import com.blog.blog_literario.controllers.auth.AuthController;
 import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.services.auth.AuthService;
 import com.blog.blog_literario.support.WebMvcTestConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -52,13 +54,16 @@ class RateLimitFilterTest {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-                .andExpect(status().isTooManyRequests());
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/rate-limited"))
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.detail").isString());
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void evictStaleBuckets_removesEntriesOlderThan10Minutes() throws Exception {
-        RateLimitFilter filter = new RateLimitFilter(new RateLimitProperties(false));
+        RateLimitFilter filter = new RateLimitFilter(new RateLimitProperties(false), new ObjectMapper());
 
         Field bucketsField = RateLimitFilter.class.getDeclaredField("buckets");
         bucketsField.setAccessible(true);

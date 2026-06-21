@@ -1,6 +1,7 @@
 package com.blog.blog_literario.security;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -8,11 +9,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.blog.blog_literario.config.properties.RateLimitProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
@@ -37,6 +41,7 @@ import lombok.RequiredArgsConstructor;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimitProperties rateLimitProperties;
+    private final ObjectMapper objectMapper;
 
     private final Map<String, BucketEntry> buckets = new ConcurrentHashMap<>();
 
@@ -84,11 +89,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (entry.bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);
         } else {
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.TOO_MANY_REQUESTS,
+                    "Demasiados intentos. Espera un minuto antes de volver a intentar.");
+            problem.setType(URI.create("https://blog-literario.com/errors/rate-limited"));
+
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"error\": \"Demasiados intentos. Espera un minuto antes de volver a intentar.\"}"
-            );
+            response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+            objectMapper.writeValue(response.getWriter(), problem);
         }
     }
 
