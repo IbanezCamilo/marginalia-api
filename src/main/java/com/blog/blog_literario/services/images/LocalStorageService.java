@@ -6,11 +6,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.blog.blog_literario.config.properties.AppProperties;
+import com.blog.blog_literario.config.properties.StorageProperties;
 import com.blog.blog_literario.utils.FileNameGenerator;
 import com.blog.blog_literario.utils.ImageValidator;
 
@@ -29,10 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class LocalStorageService implements StorageService {
 
-    @Value("${storage.local.upload-dir:uploads}")
-    private String uploadDir;
-
     private final AppProperties appProperties;
+    private final StorageProperties storageProperties;
 
     /**
      * Validates the file, removes the previous image if present, generates a unique
@@ -53,7 +51,7 @@ public class LocalStorageService implements StorageService {
 
             String fileName = FileNameGenerator.generate(file);
 
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path uploadPath = Paths.get(storageProperties.uploadDir()).toAbsolutePath().normalize();
             Files.createDirectories(uploadPath);
             Path destination = uploadPath.resolve(fileName);
 
@@ -83,7 +81,7 @@ public class LocalStorageService implements StorageService {
         }
 
         try {
-            Path uploadPath = Paths.get(uploadDir).normalize();
+            Path uploadPath = Paths.get(storageProperties.uploadDir()).normalize();
             Path filePath = uploadPath.resolve(fileName).normalize();
 
             if (!filePath.startsWith(uploadPath)) {

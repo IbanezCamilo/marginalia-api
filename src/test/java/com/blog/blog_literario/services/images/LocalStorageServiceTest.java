@@ -11,9 +11,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.blog.blog_literario.config.properties.AppProperties;
+import com.blog.blog_literario.config.properties.StorageProperties;
 
 class LocalStorageServiceTest {
 
@@ -26,8 +26,9 @@ class LocalStorageServiceTest {
 
     @BeforeEach
     void setUp() {
-        storageService = new LocalStorageService(new AppProperties("http://localhost:8080"));
-        ReflectionTestUtils.setField(storageService, "uploadDir", tempDir.toString());
+        storageService = new LocalStorageService(
+                new AppProperties("http://localhost:8080"),
+                new StorageProperties(tempDir.toString()));
     }
 
     @Test

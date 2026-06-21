@@ -14,9 +14,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.beans.factory.annotation.Value;
 
+import com.blog.blog_literario.config.properties.StorageProperties;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
+
+import lombok.RequiredArgsConstructor;
 
 /**
  * Serves locally stored images. The upload directory is read from
@@ -27,10 +29,10 @@ import com.blog.blog_literario.exception.ResourceNotFoundException;
  */
 @RestController
 @RequestMapping("/api/images")
+@RequiredArgsConstructor
 public class ImageController {
 
-    @Value("${storage.local.upload-dir:uploads}")
-    private String uploadDir;
+    private final StorageProperties storageProperties;
 
     /**
      * Returns the raw image bytes with the correct {@code Content-Type}.
@@ -40,7 +42,7 @@ public class ImageController {
      */
     @GetMapping("/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) {
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path uploadPath = Paths.get(storageProperties.uploadDir()).toAbsolutePath().normalize();
         Path filePath = uploadPath.resolve(filename).normalize();
 
         // Don't reveal that a path-traversal attempt was detected — report it the
