@@ -35,6 +35,11 @@ import lombok.RequiredArgsConstructor;
  * AUTHENTICATED ({@code /api/me/**}, {@code /api/moderator/**}, {@code /api/admin/**}) — 120/min.
  * Buckets inactive for more than 10 minutes are evicted to prevent unbounded memory growth.
  * Paths that do not match any profile are passed through without inspection.
+ *
+ * <p><b>Single-instance only:</b> buckets live in an in-process map, not a shared store,
+ * so limits are enforced per instance. Behind multiple horizontally-scaled instances, a
+ * client can get up to {@code instances × limit} requests through. Move to a Redis-backed
+ * bucket store before scaling out.
  */
 @Component
 @RequiredArgsConstructor

@@ -116,6 +116,20 @@ Copy `.env.sample` → `.env` and fill in your values:
 
 `app.cookie.secure` and `app.cookie.domain` are set directly in `application.properties` — `false` / empty for local development, `true` / your domain for production.
 
+## Deployment Notes
+
+**Cookie domain topology**: auth cookies are issued with `SameSite=Lax`. For the
+[frontend](https://github.com/IbanezCamilo/marginalia-web) to send them on cross-origin
+`fetch()` calls with `credentials: 'include'`, `marginalia-web` and `marginalia-api` must
+share a registrable domain in production (e.g. `app.example.com` + `api.example.com`) —
+they cannot live on unrelated domains. Set `APP_COOKIE_DOMAIN` accordingly.
+
+**Rate limiting is per-instance**: `RateLimitFilter` keeps its token buckets in an
+in-process `ConcurrentHashMap`, not a shared store. This is fine at single-instance scale,
+but each horizontally-scaled instance enforces its own independent limits — a client could
+get up to `instances × limit` requests through. Move to a Redis-backed bucket store
+(Bucket4j supports this) before scaling out horizontally.
+
 ## Scripts
 
 ```bash
