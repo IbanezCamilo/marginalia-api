@@ -28,6 +28,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.blog.blog_literario.config.properties.FrontendProperties;
+import com.blog.blog_literario.security.CorrelationIdFilter;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.RateLimitFilter;
 
@@ -38,14 +39,16 @@ import lombok.RequiredArgsConstructor;
  *
  * <p>Stateless JWT-based authentication; CSRF is disabled because the API is
  * consumed by a separate SPA. CORS is restricted to the configured frontend origin.
- * The {@link RateLimitFilter} runs before the {@link JwtAuthenticationFilter} so
- * brute-force login attempts are rejected early.
+ * The {@link CorrelationIdFilter} runs first so every request has a correlation ID
+ * for its full lifecycle, followed by the {@link RateLimitFilter} and then the
+ * {@link JwtAuthenticationFilter} so brute-force login attempts are rejected early.
  */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final CorrelationIdFilter correlationIdFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitFilter rateLimitFilter;
     private final UserDetailsService userDetailsService;
@@ -99,7 +102,10 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // RateLimitFilter must already be registered (above) before it can be
+                // used as a relative-order anchor here.
+                .addFilterBefore(correlationIdFilter, RateLimitFilter.class);
 
         return http.build();
     }

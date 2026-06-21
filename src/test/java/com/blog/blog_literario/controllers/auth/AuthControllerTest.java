@@ -17,6 +17,7 @@ import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
 import com.blog.blog_literario.security.CookieUtil;
 import org.springframework.security.authentication.BadCredentialsException;
+import com.blog.blog_literario.security.CorrelationIdFilter;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
@@ -36,7 +37,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
+@Import({SecurityConfig.class, CorrelationIdFilter.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
 @ActiveProfiles("test")
 class AuthControllerTest {
 

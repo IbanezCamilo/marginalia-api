@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.blog.blog_literario.config.SecurityConfig;
+import com.blog.blog_literario.security.CorrelationIdFilter;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.DummyController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class,
+@Import({SecurityConfig.class, CorrelationIdFilter.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class,
         GlobalExceptionHandlerTest.DummyController.class})
 @ActiveProfiles("test")
 class GlobalExceptionHandlerTest {

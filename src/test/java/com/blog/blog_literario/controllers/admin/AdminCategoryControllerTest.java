@@ -24,6 +24,7 @@ import com.blog.blog_literario.dto.categories.CategoryResponse;
 import com.blog.blog_literario.dto.categories.CreateCategoryRequest;
 import com.blog.blog_literario.dto.categories.UpdateCategoryRequest;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
+import com.blog.blog_literario.security.CorrelationIdFilter;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
@@ -32,7 +33,7 @@ import com.blog.blog_literario.services.categories.CategoryService;
 import com.blog.blog_literario.support.WebMvcTestConfig;
 
 @WebMvcTest(AdminCategoryController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
+@Import({SecurityConfig.class, CorrelationIdFilter.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
 @ActiveProfiles("test")
 class AdminCategoryControllerTest {
 

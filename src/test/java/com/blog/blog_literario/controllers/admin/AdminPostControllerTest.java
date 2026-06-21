@@ -19,6 +19,7 @@ import java.util.List;
 import com.blog.blog_literario.config.SecurityConfig;
 import com.blog.blog_literario.dto.admin.AdminPostResponse;
 import com.blog.blog_literario.dto.admin.AdminStatusUpdateRequest;
+import com.blog.blog_literario.security.CorrelationIdFilter;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
@@ -38,7 +39,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AdminPostController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
+@Import({SecurityConfig.class, CorrelationIdFilter.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
 @ActiveProfiles("test")
 class AdminPostControllerTest {
 

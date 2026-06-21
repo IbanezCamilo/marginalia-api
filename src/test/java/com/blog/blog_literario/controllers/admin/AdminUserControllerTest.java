@@ -22,6 +22,7 @@ import com.blog.blog_literario.dto.roles.RoleResponse;
 import com.blog.blog_literario.dto.users.UpdateUserRequest;
 import com.blog.blog_literario.dto.users.UserResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
+import com.blog.blog_literario.security.CorrelationIdFilter;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.RateLimitFilter;
@@ -41,7 +42,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AdminUserController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
+@Import({SecurityConfig.class, CorrelationIdFilter.class, JwtAuthenticationFilter.class, RateLimitFilter.class, WebMvcTestConfig.class})
 @ActiveProfiles("test")
 class AdminUserControllerTest {
 
