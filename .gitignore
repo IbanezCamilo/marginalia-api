@@ -40,11 +40,9 @@ target/
 Thumbs.db
 
 # === Config
+# Real secrets only live in .env (gitignored); application*.properties files
+# use ${ENV_VAR} placeholders and are safe to commit.
 *.env
-application.properties
-application.yml
-application-*.yml
-application-*.properties
 .env.*
 
 #Other
