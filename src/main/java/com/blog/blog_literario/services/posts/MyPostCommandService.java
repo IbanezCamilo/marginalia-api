@@ -1,5 +1,8 @@
 package com.blog.blog_literario.services.posts;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -70,26 +73,41 @@ public class MyPostCommandService {
     }
 
     /**
-     * Creates a new post for the given author. The slug is derived from the title
-     * and must be globally unique.
+     * Creates a new post for the given author. A draft may be created with no title
+     * and no category; both become mandatory once {@code status} resolves to
+     * {@code PUBLISHED}. The slug is derived from the title and must be globally
+     * unique; posts with no title have no slug.
      *
      * @throws ResourceNotFoundException if the user or category is not found
      * @throws IllegalStateException     if the generated slug already exists
+     * @throws IllegalArgumentException  if publishing without title, content, or category
      */
     public MyPostResponse create(@NonNull Integer userId, CreatePostRequest request) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + userId));
 
-        Category category = categoryRepository.findById(request.categoryId()).orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada con ID: " + request.categoryId()));
+        Category category = null;
+        if (request.categoryId() != null) {
+            category = categoryRepository.findById(request.categoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada con ID: " + request.categoryId()));
+        }
 
-        String slug = SlugUtils.toSlug(request.title());
-        if (postRepository.existsBySlug(slug)) {
-            throw new IllegalStateException("El slug ya existe. Por favor, elige otro título.");
+        String slug = null;
+        if (request.title() != null && !request.title().isBlank()) {
+            slug = SlugUtils.toSlug(request.title());
+            if (postRepository.existsBySlug(slug)) {
+                throw new IllegalStateException("El slug ya existe. Por favor, elige otro título.");
+            }
+        }
+
+        PostStatus status = PostStatus.valueOf(request.status());
+        if (status == PostStatus.PUBLISHED) {
+            validateForPublish(request.title(), request.content(), request.categoryId());
         }
 
         Post post = new Post(
                 request.title(),
                 PostContentSanitizer.sanitize(request.content()),
-                PostStatus.valueOf(request.status()),
+                status,
                 slug,
                 user,
                 category
@@ -100,12 +118,14 @@ public class MyPostCommandService {
     }
 
     /**
-     * Updates all mutable fields of a post. Rebuilds the slug when the title changes;
-     * validates author-permitted status transitions.
+     * Updates all mutable fields of a post. Rebuilds the slug when the title changes,
+     * and clears it when the title is cleared; validates author-permitted status
+     * transitions.
      *
      * @throws ResourceNotFoundException if the post or category does not exist (or the post does not belong to the user)
      * @throws IllegalStateException     if the post is not editable by its author (published/archived),
      *                                    or if the new slug collides with an existing post
+     * @throws IllegalArgumentException  if publishing without title, content, or category
      */
     public MyPostResponse update(Integer userId, Integer postId, UpdatePostRequest request) {
         Post post = postRepository
@@ -114,6 +134,13 @@ public class MyPostCommandService {
 
         if (!post.canBeEditedByAuthor()) {
             throw new IllegalStateException("No puedes editar un post publicado o archivado.");
+        }
+
+        PostStatus newStatus = PostStatus.valueOf(request.status());
+        validateAuthorCanChangeStatus(post.getStatus(), newStatus);
+
+        if (newStatus == PostStatus.PUBLISHED) {
+            validateForPublish(request.title(), request.content(), request.categoryId());
         }
 
         post.setTitle(request.title());
@@ -125,18 +152,19 @@ public class MyPostCommandService {
             post.setCategory(category);
         }
 
-        PostStatus newStatus = PostStatus.valueOf(request.status());
-        validateAuthorCanChangeStatus(post.getStatus(), newStatus);
-
         post.setStatus(newStatus);
 
-        // Title changed: rebuild slug to stay consistent with the title
-        String newSlug = SlugUtils.toSlug(request.title());
-        if (!post.getSlug().equals(newSlug)) {
-            if (postRepository.existsBySlugAndIdNot(newSlug, postId)) {
-                throw new IllegalStateException("Ya existe un post con tal slug");
+        // Title changed: rebuild slug to stay consistent with it. Title cleared: clear the slug too.
+        if (request.title() != null && !request.title().isBlank()) {
+            String newSlug = SlugUtils.toSlug(request.title());
+            if (!newSlug.equals(post.getSlug())) {
+                if (postRepository.existsBySlugAndIdNot(newSlug, postId)) {
+                    throw new IllegalStateException("Ya existe un post con tal slug");
+                }
+                post.setSlug(newSlug);
             }
-            post.setSlug(newSlug);
+        } else {
+            post.setSlug(null);
         }
 
         return toResponse(post);
@@ -147,7 +175,8 @@ public class MyPostCommandService {
      * {@link #update} (which also updates content fields at the same time).
      *
      * @throws ResourceNotFoundException if the post does not exist (or does not belong to the user)
-     * @throws IllegalArgumentException  if {@code newStatusStr} is not a valid {@link PostStatus} name
+     * @throws IllegalArgumentException  if {@code newStatusStr} is not a valid {@link PostStatus} name,
+     *                                    or if publishing a post that has no title, content, or category
      * @throws IllegalStateException     if the requested transition is not permitted for authors,
      *                                    or if resubmitting (REJECTED → DRAFT) a post that has been
      *                                    permanently blocked by 3 accumulated rejections
@@ -178,6 +207,11 @@ public class MyPostCommandService {
         }
 
         validateAuthorCanChangeStatus(post.getStatus(), newStatus);
+
+        if (newStatus == PostStatus.PUBLISHED) {
+            Integer categoryId = post.getCategory() != null ? post.getCategory().getId() : null;
+            validateForPublish(post.getTitle(), post.getContent(), categoryId);
+        }
 
         post.setStatus(newStatus);
         postRepository.save(post);
@@ -254,7 +288,28 @@ public class MyPostCommandService {
         }
     }
 
+    /**
+     * Validates the fields a post must have before it can move to {@code PUBLISHED},
+     * mirroring the frontend's {@code validatePost()} publish-time checks.
+     */
+    private void validateForPublish(String title, String content, Integer categoryId) {
+        List<String> errors = new ArrayList<>();
+        if (title == null || title.trim().length() < 5) {
+            errors.add("El título es obligatorio y debe tener al menos 5 caracteres para publicar.");
+        }
+        if (content == null || content.isBlank()) {
+            errors.add("El contenido es obligatorio para publicar.");
+        }
+        if (categoryId == null) {
+            errors.add("Debes seleccionar una categoría para publicar.");
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join(" ", errors));
+        }
+    }
+
     private MyPostResponse toResponse(Post post) {
+        Category category = post.getCategory();
         return new MyPostResponse(
                 post.getId(),
                 post.getTitle(),
@@ -262,8 +317,8 @@ public class MyPostCommandService {
                 post.getStatus().name(),
                 post.getSlug(),
                 post.getAuthor().getName(),
-                post.getCategory().getId(),
-                post.getCategory().getName(),
+                category != null ? category.getId() : null,
+                category != null ? category.getName() : null,
                 storageService.buildUrl(post.getCoverImage()),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),

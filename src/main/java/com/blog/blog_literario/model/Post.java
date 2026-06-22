@@ -38,7 +38,8 @@ public class Post {
     @Column(name = "id")
     private Integer id;
 
-    @Column(name = "title", nullable = false, length = 200)
+    /** Nullable: a draft may exist with no title until the author publishes it. */
+    @Column(name = "title", length = 200)
     private String title;
 
     @Column(name = "content", columnDefinition = "TEXT")
@@ -57,7 +58,8 @@ public class Post {
     @Column(name = "status", nullable = false, length = 20)
     private PostStatus status = PostStatus.DRAFT; // default value
 
-    @Column(name = "slug", nullable = false, unique = true, length = 250)
+    /** Nullable: only generated once the post has a title; Postgres permits multiple NULLs under UNIQUE. */
+    @Column(name = "slug", unique = true, length = 250)
     private String slug;
 
     @Column(name = "cover_image", length = 500)
@@ -84,8 +86,9 @@ public class Post {
     @JoinColumn(name = "user_id", nullable = false)
     private User author;
 
+    /** Nullable: a draft may exist with no category until the author publishes it. */
     @ManyToOne(fetch = FetchType.LAZY) // LAZY — avoids N+1 on list queries
-    @JoinColumn(name = "category_id", nullable = false)
+    @JoinColumn(name = "category_id")
     private Category category;
 
     /**

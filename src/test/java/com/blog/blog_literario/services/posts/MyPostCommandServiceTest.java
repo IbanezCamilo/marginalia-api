@@ -198,6 +198,80 @@ class MyPostCommandServiceTest {
     }
 
     @Test
+    void create_draftWithOnlyContent_succeeds() {
+        CreatePostRequest request = new CreatePostRequest(null, TIPTAP_CONTENT, null, "DRAFT");
+        given(userRepository.findById(1)).willReturn(Optional.of(author));
+
+        MyPostResponse result = myService.create(1, request);
+
+        assertThat(result.title()).isNull();
+        assertThat(result.slug()).isNull();
+        assertThat(result.categoryId()).isNull();
+        verify(postRepository, never()).existsBySlug(any());
+        verify(categoryRepository, never()).findById(any());
+        verify(postRepository).save(any(Post.class));
+    }
+
+    @Test
+    void create_twoDraftsWithNoTitle_bothSucceed_withoutSlugCollisionCheck() {
+        CreatePostRequest request = new CreatePostRequest(null, TIPTAP_CONTENT, null, "DRAFT");
+        given(userRepository.findById(1)).willReturn(Optional.of(author));
+
+        myService.create(1, request);
+        myService.create(1, request);
+
+        verify(postRepository, never()).existsBySlug(any());
+        verify(postRepository, org.mockito.Mockito.times(2)).save(any(Post.class));
+    }
+
+    @Test
+    void create_publishWithoutTitleContentCategory_throwsIllegalArgumentException() {
+        CreatePostRequest request = new CreatePostRequest(null, null, null, "PUBLISHED");
+        given(userRepository.findById(1)).willReturn(Optional.of(author));
+
+        assertThatThrownBy(() -> myService.create(1, request))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void update_clearingTitle_clearsSlugToo() {
+        Post post = new Post("Old Title", "Old Content", PostStatus.DRAFT, "old-title", author, category);
+        UpdatePostRequest request = new UpdatePostRequest(null, TIPTAP_CONTENT, null, "DRAFT");
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        MyPostResponse result = myService.update(1, 1, request);
+
+        assertThat(result.title()).isNull();
+        assertThat(result.slug()).isNull();
+        verify(postRepository, never()).existsBySlugAndIdNot(any(), any());
+    }
+
+    @Test
+    void update_publishWithoutRequiredFields_throwsIllegalArgumentException_andDoesNotMutate() {
+        Post post = new Post(null, null, PostStatus.DRAFT, null, author, null);
+        UpdatePostRequest request = new UpdatePostRequest(null, null, null, "PUBLISHED");
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> myService.update(1, 1, request))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(post.getStatus()).isEqualTo(PostStatus.DRAFT);
+    }
+
+    @Test
+    void updateStatus_publishWithoutTitleOrCategory_throwsIllegalArgumentException() {
+        Post post = new Post(null, "Content", PostStatus.DRAFT, null, author, null);
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> myService.updateStatus(1, 1, "PUBLISHED"))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
     void delete_existingPost_deletesImageThenPost() {
         Post post = new Post("Post", "Content", PostStatus.DRAFT, "post-slug", author, category);
         post.setCoverImage("cover.jpg");

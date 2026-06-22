@@ -93,29 +93,44 @@ class MyPostControllerTest {
     }
 
     @Test
-    void create_asAuthor_blankTitle_returns400() throws Exception {
+    void create_asAuthor_blankTitleDraft_returns201() throws Exception {
+        // A draft may be saved with no title — only enforced once it's published.
         mockMvc.perform(post("/api/me/posts")
                 .with(authentication(TestSecurityFactory.asAuthor(42)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"\",\"content\":\"Content\",\"categoryId\":1,\"status\":\"DRAFT\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated());
     }
 
     @Test
-    void create_asAuthor_titleTooShort_returns400() throws Exception {
+    void create_asAuthor_titleTooLong_returns400() throws Exception {
+        String tooLong = "a".repeat(201);
         mockMvc.perform(post("/api/me/posts")
                 .with(authentication(TestSecurityFactory.asAuthor(42)))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"abc\",\"content\":\"Content\",\"categoryId\":1,\"status\":\"DRAFT\"}"))
+                .content("{\"title\":\"" + tooLong + "\",\"content\":\"Content\",\"categoryId\":1,\"status\":\"DRAFT\"}"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void create_asAuthor_nullCategoryId_returns400() throws Exception {
+    void create_asAuthor_nullCategoryIdDraft_returns201() throws Exception {
+        // A draft may be saved with no category — only enforced once it's published.
         mockMvc.perform(post("/api/me/posts")
                 .with(authentication(TestSecurityFactory.asAuthor(42)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Test Title Post\",\"content\":\"Content\",\"status\":\"DRAFT\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void create_asAuthor_publishedWithoutTitleOrCategory_returns400() throws Exception {
+        given(myService.create(eq(42), any()))
+                .willThrow(new IllegalArgumentException("El título es obligatorio para publicar."));
+
+        mockMvc.perform(post("/api/me/posts")
+                .with(authentication(TestSecurityFactory.asAuthor(42)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"Content\",\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isBadRequest());
     }
 
