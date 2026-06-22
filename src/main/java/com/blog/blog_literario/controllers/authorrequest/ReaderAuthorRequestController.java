@@ -51,8 +51,8 @@ public class ReaderAuthorRequestController {
      * it gives the admin context to make a better decision.
      *
      * Returns 201 Created with the new request on success.
-     * Returns 409 Conflict if the user already has a PENDING request.
-     * Returns 400 Bad Request if the user is not a READER.
+     * Returns 409 Conflict if the user already has a PENDING request,
+     * or if the user is not a READER.
      */
     @PostMapping
     public ResponseEntity<AuthorRequestResponse> submitRequest(
