@@ -177,9 +177,14 @@ public class AdminUserService {
      * @param adminId the ID of the admin performing the deletion (for audit logging)
      * @param id the user's ID to delete
      * @throws ResourceNotFoundException if the user doesn't exist
-     * @throws IllegalStateException if the user is the last remaining ADMIN
+     * @throws IllegalStateException if the admin is trying to delete their own account,
+     *                                or if the user is the last remaining ADMIN
      */
     public void deleteUser(@NonNull Integer adminId, @NonNull Integer id) {
+        if (adminId.equals(id)) {
+            throw new IllegalStateException("No puedes eliminar tu propia cuenta de administrador");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + id));
 

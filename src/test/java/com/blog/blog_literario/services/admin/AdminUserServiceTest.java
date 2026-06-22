@@ -235,6 +235,15 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void deleteUser_adminDeletesSelf_throwsIllegalState_andDoesNotDelete() {
+        assertThatThrownBy(() -> adminUserService.deleteUser(2, 2))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).deleteById(any());
+        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void deleteUser_lastRemainingAdmin_throwsIllegalState_andDoesNotDelete() {
         User lastAdmin = new User(1, "Admin", "admin1@test.com", new Role(1, Role.ADMIN));
         given(userRepository.findById(1)).willReturn(Optional.of(lastAdmin));
