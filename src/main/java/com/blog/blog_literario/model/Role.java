@@ -41,6 +41,7 @@ public class Role {
     public static final String AUTHOR = "AUTHOR";
     public static final String MODERATOR = "MODERATOR";
     public static final String ADMIN = "ADMIN";
+    public static final String OWNER = "OWNER";
 
     /** Creates a role with only the name set; used during data seeding. */
     public Role(String name) {
@@ -55,5 +56,10 @@ public class Role {
 
     public boolean isAuthor() {
         return AUTHOR.equalsIgnoreCase(name);
+    }
+
+
+    public boolean isOwner() {
+        return OWNER.equalsIgnoreCase(name);
     }
 }
