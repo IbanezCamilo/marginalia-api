@@ -37,9 +37,15 @@ public class UserCreationService {
      * @param roleName the role to assign (must exist in the database)
      * @throws RuntimeException          if the email is already in use
      * @throws ResourceNotFoundException if {@code roleName} does not exist
+     * @throws IllegalStateException     if {@code roleName} is OWNER — that role is seeded
+     *                                    exclusively by DataInitializer and never assignable here
      */
     public User createUser(String name, String email,
                            String password, String roleName) {
+        if (Role.OWNER.equalsIgnoreCase(roleName)) {
+            throw new IllegalStateException("El rol OWNER no puede asignarse manualmente");
+        }
+
         String sanitizedName = userValidator.validateAndSanitizeName(name);
         String sanitizedEmail = userValidator.validateAndSanitizeEmail(email);
         if (userRepository.existsByEmail(sanitizedEmail)) {

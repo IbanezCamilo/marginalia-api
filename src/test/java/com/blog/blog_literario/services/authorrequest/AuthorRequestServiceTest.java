@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -103,6 +104,25 @@ class AuthorRequestServiceTest {
         assertThat(result.status()).isEqualTo("APPROVED");
         verify(userUpdateService).updateRole(reader, Role.AUTHOR, 2);
         verify(userRepository).save(reader);
+    }
+
+    @Test
+    void approve_roleUpdateGuardThrows_propagatesException() {
+        // Defense-in-depth: approve() always promotes the requester to AUTHOR, and only
+        // READERs can submit requests, so this path never realistically reaches an OWNER
+        // requester — but UserUpdateService.updateRole()'s target-is-OWNER guard (see
+        // UserUpdateServiceTest) is shared infrastructure, so this just confirms approve()
+        // propagates the exception rather than swallowing it.
+        AuthorRequest request = buildPendingRequest();
+        given(authorRequestRepository.findById(1)).willReturn(Optional.of(request));
+        given(userRepository.findById(2)).willReturn(Optional.of(adminUser));
+        doThrow(new IllegalStateException("El rol OWNER no puede ser modificado"))
+                .when(userUpdateService).updateRole(reader, Role.AUTHOR, 2);
+
+        assertThatThrownBy(() -> service.approve(1, 2, "note"))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test

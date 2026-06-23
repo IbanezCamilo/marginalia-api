@@ -58,6 +58,7 @@ class AdminUserServiceTest {
 
     private final Pageable pageable = PageRequest.of(0, 10);
     private final User admin = new User(2, "Admin", "admin@test.com", new Role(2, Role.ADMIN));
+    private final User owner = new User(3, "Owner", "owner@test.com", new Role(3, Role.OWNER));
 
     @Test
     void getAllUsers_returnsMappedPage() {
@@ -151,10 +152,38 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void createUser_adminRoleByNonOwnerActor_throwsIllegalState() {
+        CreateUserRequest request = new CreateUserRequest("Bob", "bob@test.com", "password123", Role.ADMIN);
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> adminUserService.createUser(2, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userCreationService, never()).createUser(any(), any(), any(), any());
+        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createUser_adminRoleByOwnerActor_succeeds() {
+        CreateUserRequest request = new CreateUserRequest("Bob", "bob@test.com", "password123", Role.ADMIN);
+        User createdUser = new User(1, "Bob", "bob@test.com", new Role(1, Role.ADMIN));
+        given(userRepository.findById(3)).willReturn(Optional.of(owner));
+        given(userCreationService.createUser("Bob", "bob@test.com", "password123", Role.ADMIN))
+                .willReturn(createdUser);
+
+        UserResponse result = adminUserService.createUser(3, request);
+
+        assertThat(result.role().name()).isEqualTo(Role.ADMIN);
+        verify(adminActionLogService).record(3, owner.getEmail(), "USER_CREATE", "USER", 1,
+                "email=bob@test.com, role=" + Role.ADMIN);
+    }
+
+    @Test
     void update_existingUser_delegatesToUserUpdateServiceAndSaves() {
         User existingUser = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
         UpdateUserRequest request = new UpdateUserRequest("Bob", null, null);
         given(userRepository.findById(1)).willReturn(Optional.of(existingUser));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
         given(userRepository.save(existingUser)).willReturn(existingUser);
 
         UserResponse result = adminUserService.update(2, 1, request);
@@ -173,6 +202,7 @@ class AdminUserServiceTest {
         User existingUser = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
         UpdateUserRequest request = new UpdateUserRequest(null, null, Role.AUTHOR);
         given(userRepository.findById(1)).willReturn(Optional.of(existingUser));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
         given(userRepository.save(existingUser)).willReturn(existingUser);
 
         adminUserService.update(2, 1, request);
@@ -189,6 +219,58 @@ class AdminUserServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userUpdateService, never()).performUpdate(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_adminTargetByNonOwnerActor_throwsIllegalState() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        UpdateUserRequest request = new UpdateUserRequest("NewName", null, null);
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> adminUserService.update(2, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userUpdateService, never()).performUpdate(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_promotingToAdminByNonOwnerActor_throwsIllegalState() {
+        User readerTarget = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
+        UpdateUserRequest request = new UpdateUserRequest(null, null, Role.ADMIN);
+        given(userRepository.findById(1)).willReturn(Optional.of(readerTarget));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> adminUserService.update(2, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userUpdateService, never()).performUpdate(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_adminTargetByOwnerActor_succeeds() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        UpdateUserRequest request = new UpdateUserRequest("NewName", null, null);
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.findById(3)).willReturn(Optional.of(owner));
+        given(userRepository.save(adminTarget)).willReturn(adminTarget);
+
+        adminUserService.update(3, 1, request);
+
+        verify(userUpdateService).performUpdate(adminTarget, "NewName", null, null, 3);
+    }
+
+    @Test
+    void update_ownerTarget_throwsIllegalState_regardlessOfActorRole() {
+        User ownerTarget = new User(1, "Owner", "owner1@test.com", new Role(1, Role.OWNER));
+        UpdateUserRequest request = new UpdateUserRequest("NewName", null, null);
+        given(userRepository.findById(1)).willReturn(Optional.of(ownerTarget));
+
+        assertThatThrownBy(() -> adminUserService.update(3, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userUpdateService, never()).performUpdate(any(), any(), any(), any(), any());
+        verify(userRepository, never()).findById(3);
     }
 
     @Test
@@ -257,6 +339,45 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void deleteUser_ownerTarget_throwsIllegalState_regardlessOfActorRole() {
+        User ownerTarget = new User(1, "Owner", "owner1@test.com", new Role(1, Role.OWNER));
+        given(userRepository.findById(1)).willReturn(Optional.of(ownerTarget));
+
+        assertThatThrownBy(() -> adminUserService.deleteUser(3, 1))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).deleteById(any());
+        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void deleteUser_adminTargetByNonOwnerActor_throwsIllegalState() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(2L);
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> adminUserService.deleteUser(2, 1))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteUser_adminTargetByOwnerActor_succeeds() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(2L);
+        given(userRepository.findById(3)).willReturn(Optional.of(owner));
+
+        adminUserService.deleteUser(3, 1);
+
+        verify(userRepository).deleteById(1);
+        verify(adminActionLogService).record(3, owner.getEmail(), "USER_DELETE", "USER", 1,
+                "email=other@test.com, role=" + Role.ADMIN);
+    }
+
+    @Test
     void resetPassword_existingUser_updatesPasswordAndRecordsAuditLog() {
         User user = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
         AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
@@ -280,6 +401,45 @@ class AdminUserServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userUpdateService, never()).updatePassword(any(), any());
+    }
+
+    @Test
+    void resetPassword_ownerTarget_throwsIllegalState() {
+        User ownerTarget = new User(1, "Owner", "owner1@test.com", new Role(1, Role.OWNER));
+        AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
+        given(userRepository.findById(1)).willReturn(Optional.of(ownerTarget));
+
+        assertThatThrownBy(() -> adminUserService.resetPassword(2, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userUpdateService, never()).updatePassword(any(), any());
+    }
+
+    @Test
+    void resetPassword_adminTargetByNonOwnerActor_throwsIllegalState() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> adminUserService.resetPassword(2, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userUpdateService, never()).updatePassword(any(), any());
+    }
+
+    @Test
+    void resetPassword_adminTargetByOwnerActor_succeeds() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.findById(3)).willReturn(Optional.of(owner));
+
+        adminUserService.resetPassword(3, 1, request);
+
+        verify(userUpdateService).updatePassword(adminTarget, "newPassword123");
+        verify(adminActionLogService).record(3, owner.getEmail(), "USER_PASSWORD_RESET", "USER", 1,
+                "email=other@test.com");
     }
 
     @Test

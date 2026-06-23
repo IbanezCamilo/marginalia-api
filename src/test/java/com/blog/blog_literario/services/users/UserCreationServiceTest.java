@@ -77,6 +77,23 @@ class UserCreationServiceTest {
     }
 
     @Test
+    void createUser_ownerRole_throwsIllegalStateException() {
+        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", Role.OWNER))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).save(any());
+        verify(userValidator, never()).validateAndSanitizeName(any());
+    }
+
+    @Test
+    void createUser_ownerRoleCaseInsensitive_throwsIllegalStateException() {
+        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", "owner"))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void createUser_sanitizesNameAndEmailViaValidator() {
         given(userValidator.validateAndSanitizeName("  Alice  ")).willReturn("Alice");
         given(userValidator.validateAndSanitizeEmail("  Alice@Test.com  ")).willReturn("alice@test.com");

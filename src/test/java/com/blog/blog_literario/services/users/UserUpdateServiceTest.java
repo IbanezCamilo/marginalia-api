@@ -157,6 +157,38 @@ class UserUpdateServiceTest {
     }
 
     @Test
+    void updateRole_targetIsOwner_throwsIllegalState_andDoesNotChangeRole() {
+        User owner = new User(1, "Owner", "owner@test.com", new Role(Role.OWNER));
+
+        assertThatThrownBy(() -> userUpdateService.updateRole(owner, Role.ADMIN, ACTOR_ID))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(owner.getRole().getName()).isEqualTo(Role.OWNER);
+        verify(roleRepository, never()).findByName(any());
+    }
+
+    @Test
+    void updateRole_newRoleIsOwner_throwsIllegalState_andDoesNotChangeRole() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.ADMIN));
+
+        assertThatThrownBy(() -> userUpdateService.updateRole(user, Role.OWNER, ACTOR_ID))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(user.getRole().getName()).isEqualTo(Role.ADMIN);
+        verify(roleRepository, never()).findByName(any());
+    }
+
+    @Test
+    void updateRole_newRoleIsOwnerCaseInsensitive_throwsIllegalState() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+
+        assertThatThrownBy(() -> userUpdateService.updateRole(user, "owner", ACTOR_ID))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(user.getRole().getName()).isEqualTo(Role.READER);
+    }
+
+    @Test
     void updateRole_notLastAdmin_demotesSuccessfully() {
         User admin = new User(1, "Admin", "admin@test.com", new Role(Role.ADMIN));
         User actor = new User(ACTOR_ID, "OtherAdmin", "other-admin@test.com", new Role(Role.ADMIN));

@@ -127,13 +127,18 @@ public class AdminUserService {
     // ─── Commands ────────────────────────────────────────────────────────────────
 
     public UserResponse createUser(@NonNull Integer adminId, CreateUserRequest request) {
+        User admin = getRequiredUser(adminId);
+
+        if (Role.ADMIN.equalsIgnoreCase(request.roleName()) && !admin.getRole().isOwner()) {
+            throw new IllegalStateException("Solo el propietario puede crear cuentas de administrador");
+        }
+
         User createdUser = userCreationService.createUser(
                 request.name(),
                 request.email(),
                 request.password(),
                 request.roleName());
 
-        User admin = getRequiredUser(adminId);
         adminActionLogService.record(
                 adminId, admin.getEmail(), "USER_CREATE", "USER", createdUser.getId(),
                 "email=" + createdUser.getEmail() + ", role=" + createdUser.getRole().getName()
@@ -153,12 +158,27 @@ public class AdminUserService {
      * @return UserResponse with updated user details
      * @throws ResourceNotFoundException if user or role doesn't exist
      * @throws UserAlreadyExistsException if new email is already used
-     * @throws IllegalStateException if the change would demote the last remaining ADMIN
+     * @throws IllegalStateException if the change would demote the last remaining ADMIN,
+     *                                if {@code id} refers to the OWNER (immutable, even to
+     *                                another OWNER), or if a non-OWNER actor targets an
+     *                                ADMIN account or attempts to promote a user to ADMIN
      */
     public UserResponse update(@NonNull Integer adminId, @NonNull Integer id, UpdateUserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Usuario no encontrado con ID: " + id));
+
+        // OWNER is immutable through this endpoint — name/email/role alike, even by another OWNER
+        if (user.getRole().isOwner()) {
+            throw new IllegalStateException("El usuario propietario no puede ser modificado");
+        }
+
+        User actor = getRequiredUser(adminId);
+        boolean targetIsAdmin = user.getRole().isAdmin();
+        boolean promotingToAdmin = Role.ADMIN.equalsIgnoreCase(request.roleName());
+        if ((targetIsAdmin || promotingToAdmin) && !actor.getRole().isOwner()) {
+            throw new IllegalStateException("Solo el propietario puede modificar cuentas de administrador");
+        }
 
         // Update fields using dedicated service; role changes are audit-logged
         // internally by UserUpdateService.updateRole()
@@ -178,7 +198,9 @@ public class AdminUserService {
      * @param id the user's ID to delete
      * @throws ResourceNotFoundException if the user doesn't exist
      * @throws IllegalStateException if the admin is trying to delete their own account,
-     *                                or if the user is the last remaining ADMIN
+     *                                if the user is the last remaining ADMIN, if the user
+     *                                is the OWNER (never deletable, even by another OWNER),
+     *                                or if a non-OWNER actor targets an ADMIN account
      */
     public void deleteUser(@NonNull Integer adminId, @NonNull Integer id) {
         if (adminId.equals(id)) {
@@ -188,12 +210,21 @@ public class AdminUserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + id));
 
+        // OWNER is immutable — never deletable, regardless of who's asking
+        if (user.getRole().isOwner()) {
+            throw new IllegalStateException("El usuario propietario no puede ser eliminado");
+        }
+
         if (user.getRole().isAdmin() && userRepository.countByRoleName(Role.ADMIN) <= 1) {
             throw new IllegalStateException(
                     "No se puede eliminar al último administrador del sistema");
         }
 
         User admin = getRequiredUser(adminId);
+
+        if (user.getRole().isAdmin() && !admin.getRole().isOwner()) {
+            throw new IllegalStateException("Solo el propietario puede eliminar cuentas de administrador");
+        }
 
         // Clear references from other users' rows so deleting this user doesn't
         // leave a dangling moderatedBy/resolvedBy foreign key behind
@@ -248,15 +279,27 @@ public class AdminUserService {
      * support flows where a user has lost access to their account.
      *
      * @param adminId the ID of the admin performing the reset (for audit logging)
+     * @throws IllegalStateException if the target is the OWNER, or if a non-OWNER actor
+     *                                targets an ADMIN account
      */
     public UserResponse resetPassword(@NonNull Integer adminId, @NonNull Integer id, @NonNull AdminResetPasswordRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el usuario con ID: " + id));
 
+        // OWNER's credentials are immutable through this endpoint
+        if (user.getRole().isOwner()) {
+            throw new IllegalStateException("La contraseña del propietario no puede ser modificada");
+        }
+
+        User admin = getRequiredUser(adminId);
+
+        if (user.getRole().isAdmin() && !admin.getRole().isOwner()) {
+            throw new IllegalStateException("Solo el propietario puede restablecer la contraseña de un administrador");
+        }
+
         userUpdateService.updatePassword(user, request.newPassword());
         userRepository.save(user);
 
-        User admin = getRequiredUser(adminId);
         adminActionLogService.record(
                 adminId, admin.getEmail(), "USER_PASSWORD_RESET", "USER", id,
                 "email=" + user.getEmail()

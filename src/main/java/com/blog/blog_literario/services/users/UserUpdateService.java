@@ -79,7 +79,9 @@ public class UserUpdateService {
      * @param newRoleName the new role name
      * @param actorId the ID of the admin performing the change (for audit logging)
      * @throws ResourceNotFoundException if the role or the actor doesn't exist
-     * @throws IllegalStateException if {@code user} is the last remaining ADMIN
+     * @throws IllegalStateException if {@code user} is the last remaining ADMIN,
+     *                                if {@code user} currently has the OWNER role,
+     *                                or if {@code newRoleName} is OWNER
      */
     public void updateRole(@NonNull User user, String newRoleName, @NonNull Integer actorId) {
         if (newRoleName.isBlank()) {
@@ -91,6 +93,16 @@ public class UserUpdateService {
         // Avoid unnecessary query
         if (newRoleName.equals(previousRoleName)) {
             return;
+        }
+
+        // OWNER is immutable — never demotable, regardless of caller or actor
+        if (user.getRole().isOwner()) {
+            throw new IllegalStateException("El rol OWNER no puede ser modificado");
+        }
+
+        // OWNER is seeded exclusively by DataInitializer — never assignable through any endpoint
+        if (Role.OWNER.equalsIgnoreCase(newRoleName)) {
+            throw new IllegalStateException("El rol OWNER no puede asignarse manualmente");
         }
 
         if (user.getRole().isAdmin() && userRepository.countByRoleName(Role.ADMIN) <= 1) {
