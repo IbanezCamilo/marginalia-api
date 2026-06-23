@@ -66,6 +66,15 @@ class AdminUserControllerTest {
     }
 
     @Test
+    void getAllUsers_asOwner_returns200() throws Exception {
+        given(adminUserService.getAllUsers(any(Pageable.class))).willReturn(new PageImpl<>(List.of(SAMPLE_USER)));
+
+        mockMvc.perform(get("/api/admin/users").with(user("owner").roles("OWNER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
     void getAllUsers_asReader_returns403() throws Exception {
         mockMvc.perform(get("/api/admin/users").with(user("reader").roles("READER")))
                 .andExpect(status().isForbidden());

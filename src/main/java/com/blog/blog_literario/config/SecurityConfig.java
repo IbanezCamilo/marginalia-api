@@ -85,16 +85,17 @@ public class SecurityConfig {
                 .requestMatchers("/api/docs/**", "/api/swagger-ui/**", "/api/swagger-ui.html").permitAll()
                 // Actuator endpoints
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .requestMatchers("/actuator/**").hasRole("ADMIN")
+                .requestMatchers("/actuator/**").hasAnyRole("ADMIN", "OWNER")
                 // Authenticated endpoints
                 .requestMatchers("/api/me/profile/**").authenticated()
                 .requestMatchers("/api/me/author-request/**").authenticated()
-                // Author/Moderator/Admin endpoints
-                .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN", "MODERATOR")
-                // Moderator endpoints (ModeratorPostController) — moderators and admins
-                .requestMatchers("/api/moderator/**").hasAnyRole("MODERATOR", "ADMIN")
-                // Admin-only endpoints
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // Author/Moderator/Admin/Owner endpoints
+                .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN", "MODERATOR", "OWNER")
+                // Moderator endpoints (ModeratorPostController) — moderators, admins, and owner
+                .requestMatchers("/api/moderator/**").hasAnyRole("MODERATOR", "ADMIN", "OWNER")
+                // Admin endpoints — owner has full admin access plus the ADMIN-account
+                // management restrictions enforced at the service layer
+                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "OWNER")
                 // Fallback
                 .anyRequest().authenticated()
                 )
