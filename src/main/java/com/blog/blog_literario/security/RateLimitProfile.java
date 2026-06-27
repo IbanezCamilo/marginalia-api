@@ -7,6 +7,7 @@ enum RateLimitProfile {
     PUBLIC(60, Duration.ofMinutes(1)),
     IMAGES(30, Duration.ofMinutes(1)),
     UPLOAD(10, Duration.ofHours(1)),
+    PASSWORD_CHANGE(5, Duration.ofHours(1)),
     AUTHENTICATED(120, Duration.ofMinutes(1));
 
     final long capacity;

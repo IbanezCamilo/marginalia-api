@@ -32,6 +32,7 @@ import lombok.RequiredArgsConstructor;
  *
  * <p>Each client IP gets an independent {@link Bucket} per profile. Limits:
  * AUTH — 10/min, PUBLIC — 60/min, IMAGES — 30/min, UPLOAD — 10/hr,
+ * PASSWORD_CHANGE ({@code PUT /api/me/profile/password}) — 5/hr,
  * AUTHENTICATED ({@code /api/me/**}, {@code /api/moderator/**}, {@code /api/admin/**}) — 120/min.
  * Buckets inactive for more than 10 minutes are evicted to prevent unbounded memory growth.
  * Paths that do not match any profile are passed through without inspection.
@@ -110,6 +111,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (uri.startsWith("/api/images/")) return RateLimitProfile.IMAGES;
         if (isUploadEndpoint(uri, method))  return RateLimitProfile.UPLOAD;
         if (uri.startsWith("/api/public/")) return RateLimitProfile.PUBLIC;
+        if ("PUT".equals(method) && "/api/me/profile/password".equals(uri)) {
+            return RateLimitProfile.PASSWORD_CHANGE;
+        }
         if (uri.startsWith("/api/me/") || uri.startsWith("/api/moderator/") || uri.startsWith("/api/admin/")) {
             return RateLimitProfile.AUTHENTICATED;
         }

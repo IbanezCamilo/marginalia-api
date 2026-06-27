@@ -122,6 +122,18 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void resolveProfile_passwordChangeEndpoint_returnsPasswordChange() {
+        assertThat(rateLimitFilter.resolveProfile("/api/me/profile/password", "PUT"))
+                .isEqualTo(RateLimitProfile.PASSWORD_CHANGE);
+    }
+
+    @Test
+    void resolveProfile_passwordChangeEndpointGet_returnsAuthenticated() {
+        assertThat(rateLimitFilter.resolveProfile("/api/me/profile/password", "GET"))
+                .isEqualTo(RateLimitProfile.AUTHENTICATED);
+    }
+
+    @Test
     void resolveProfile_adminEndpoint_returnsAuthenticated() {
         assertThat(rateLimitFilter.resolveProfile("/api/admin/users", "GET"))
                 .isEqualTo(RateLimitProfile.AUTHENTICATED);
