@@ -13,6 +13,7 @@ import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.auth.RefreshTokenService;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
 import com.blog.blog_literario.utils.UserValidator;
@@ -34,6 +35,7 @@ public class UserProfileService {
     private final PasswordEncoder passwordEncoder;
     private final UserUpdateService userUpdateService;
     private final UserValidator userValidator;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
@@ -106,6 +108,7 @@ public class UserProfileService {
         }
 
         userUpdateService.updatePassword(user, request.newPassword());
+        refreshTokenService.deleteAllByUser(user);
         userRepository.save(user);
     }
 

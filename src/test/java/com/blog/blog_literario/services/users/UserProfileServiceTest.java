@@ -27,6 +27,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.security.UserDetailsImpl;
+import com.blog.blog_literario.services.auth.RefreshTokenService;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
 import com.blog.blog_literario.utils.UserValidator;
@@ -40,6 +41,7 @@ class UserProfileServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock UserUpdateService userUpdateService;
     @Mock UserValidator userValidator;
+    @Mock RefreshTokenService refreshTokenService;
 
     @InjectMocks UserProfileService userProfileService;
 
@@ -190,6 +192,7 @@ class UserProfileServiceTest {
         userProfileService.changePassword(userDetails, request);
 
         verify(userUpdateService).updatePassword(user, "newPassword123");
+        verify(refreshTokenService).deleteAllByUser(user);
         verify(userRepository).save(user);
     }
 
