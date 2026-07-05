@@ -132,10 +132,6 @@ public class MyPostCommandService {
                 .findByIdAndAuthorId(postId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
-        if (!post.canBeEditedByAuthor()) {
-            throw new IllegalStateException("No puedes editar un post publicado o archivado.");
-        }
-
         PostStatus newStatus = PostStatus.valueOf(request.status());
         validateAuthorCanChangeStatus(post.getStatus(), newStatus);
 
@@ -264,14 +260,24 @@ public class MyPostCommandService {
         return toResponse(post);
     }
 
+    /**
+     * Single source of truth for which status transitions an author may save.
+     * Encodes the allowed (current → target) matrix:
+     * <pre>
+     *              → DRAFT    → PUBLISHED
+     *   DRAFT      allowed    allowed
+     *   REJECTED   allowed    blocked
+     *   PUBLISHED  allowed    blocked
+     *   ARCHIVED   blocked    blocked
+     * </pre>
+     * Note: unlike a naive same-status short-circuit, PUBLISHED → PUBLISHED is
+     * intentionally blocked (a published post must be moved back to draft first),
+     * while DRAFT → DRAFT is allowed (editing a draft in place).
+     */
     private void validateAuthorCanChangeStatus(PostStatus currentStatus, PostStatus newStatus) {
-        if (currentStatus == newStatus) {
-            return; // No status change, no validation needed
-        }
-
         boolean isAllowed = switch (currentStatus) {
             case DRAFT ->
-                newStatus == PostStatus.PUBLISHED;
+                newStatus == PostStatus.DRAFT || newStatus == PostStatus.PUBLISHED;
             case PUBLISHED ->
                 newStatus == PostStatus.DRAFT;
             case REJECTED ->

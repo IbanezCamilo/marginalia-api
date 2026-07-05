@@ -26,6 +26,8 @@ import com.blog.blog_literario.services.images.StorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -195,6 +197,51 @@ class MyPostCommandServiceTest {
                 .isInstanceOf(IllegalStateException.class);
 
         assertThat(post.getContent()).isEqualTo("Content");
+    }
+
+    // --- Author edit transition matrix ---------------------------------------
+    //              → DRAFT    → PUBLISHED
+    //   DRAFT      allowed    allowed
+    //   REJECTED   allowed    blocked
+    //   PUBLISHED  allowed    blocked
+    //   ARCHIVED   blocked    blocked
+
+    @ParameterizedTest(name = "update {0} → {1} is allowed")
+    @CsvSource({
+            "DRAFT,     DRAFT",
+            "DRAFT,     PUBLISHED",
+            "REJECTED,  DRAFT",
+            "PUBLISHED, DRAFT",
+    })
+    void update_allowedTransition_savesAndSetsTargetStatus(PostStatus current, PostStatus target) {
+        Post post = new Post("Old Title", "Old Content", current, "old-title", author, category);
+        UpdatePostRequest request = new UpdatePostRequest("New Title Here", TIPTAP_CONTENT, 1, target.name());
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+        given(categoryRepository.findById(1)).willReturn(Optional.of(category));
+
+        MyPostResponse result = myService.update(1, 1, request);
+
+        assertThat(result.status()).isEqualTo(target.name());
+        assertThat(result.title()).isEqualTo("New Title Here");
+    }
+
+    @ParameterizedTest(name = "update {0} → {1} is blocked")
+    @CsvSource({
+            "REJECTED,  PUBLISHED",
+            "PUBLISHED, PUBLISHED",
+            "ARCHIVED,  DRAFT",
+            "ARCHIVED,  PUBLISHED",
+    })
+    void update_blockedTransition_throwsIllegalState_andDoesNotMutate(PostStatus current, PostStatus target) {
+        Post post = new Post("Original Title", "Original Content", current, "original-title", author, category);
+        UpdatePostRequest request = new UpdatePostRequest("Sneaky Title", "Sneaky edit", 1, target.name());
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> myService.update(1, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(post.getContent()).isEqualTo("Original Content");
+        assertThat(post.getStatus()).isEqualTo(current);
     }
 
     @Test
