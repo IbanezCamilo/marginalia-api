@@ -1,5 +1,6 @@
 package com.blog.blog_literario.dto.posts;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -24,6 +25,8 @@ public record MyPostResponse(
         Integer categoryId,
         String categoryName,
         String coverImage,
+        BigDecimal focalX,
+        BigDecimal focalY,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         //Moderation fields

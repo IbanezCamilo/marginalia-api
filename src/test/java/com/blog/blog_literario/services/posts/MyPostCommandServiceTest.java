@@ -9,6 +9,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import com.blog.blog_literario.dto.posts.CreatePostRequest;
@@ -342,5 +343,70 @@ class MyPostCommandServiceTest {
         InOrder order = inOrder(storageService, postRepository);
         order.verify(storageService).delete("cover.jpg");
         order.verify(postRepository).delete(post);
+    }
+
+    // --- Cover-image focal point ---------------------------------------------
+
+    @Test
+    void create_withFocalPoint_persistsAndReturnsIt() {
+        CreatePostRequest request = new CreatePostRequest(
+                "Focal Post", TIPTAP_CONTENT, 1, "DRAFT",
+                new BigDecimal("0.25"), new BigDecimal("0.75"));
+        given(userRepository.findById(1)).willReturn(Optional.of(author));
+        given(categoryRepository.findById(1)).willReturn(Optional.of(category));
+        given(postRepository.existsBySlug("focal-post")).willReturn(false);
+
+        MyPostResponse result = myService.create(1, request);
+
+        assertThat(result.focalX()).isEqualByComparingTo("0.25");
+        assertThat(result.focalY()).isEqualByComparingTo("0.75");
+
+        org.mockito.ArgumentCaptor<Post> saved = org.mockito.ArgumentCaptor.forClass(Post.class);
+        verify(postRepository).save(saved.capture());
+        assertThat(saved.getValue().getFocalX()).isEqualByComparingTo("0.25");
+        assertThat(saved.getValue().getFocalY()).isEqualByComparingTo("0.75");
+    }
+
+    @Test
+    void create_withoutFocalPoint_defaultsToCenter() {
+        CreatePostRequest request = new CreatePostRequest(null, TIPTAP_CONTENT, null, "DRAFT");
+        given(userRepository.findById(1)).willReturn(Optional.of(author));
+
+        MyPostResponse result = myService.create(1, request);
+
+        assertThat(result.focalX()).isEqualByComparingTo("0.5");
+        assertThat(result.focalY()).isEqualByComparingTo("0.5");
+    }
+
+    @Test
+    void update_withFocalPoint_updatesStoredValue() {
+        Post post = new Post("Old Title", "Old Content", PostStatus.DRAFT, "old-title", author, category);
+        UpdatePostRequest request = new UpdatePostRequest(
+                "New Title Here", TIPTAP_CONTENT, 1, "DRAFT",
+                new BigDecimal("0.1"), new BigDecimal("0.9"));
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+        given(categoryRepository.findById(1)).willReturn(Optional.of(category));
+        given(postRepository.existsBySlugAndIdNot(anyString(), any())).willReturn(false);
+
+        MyPostResponse result = myService.update(1, 1, request);
+
+        assertThat(result.focalX()).isEqualByComparingTo("0.1");
+        assertThat(result.focalY()).isEqualByComparingTo("0.9");
+        assertThat(post.getFocalX()).isEqualByComparingTo("0.1");
+        assertThat(post.getFocalY()).isEqualByComparingTo("0.9");
+    }
+
+    @Test
+    void update_withoutFocalPoint_keepsExistingValue() {
+        Post post = new Post("Old Title", "Old Content", PostStatus.DRAFT, "old-title", author, category);
+        post.setFocalX(new BigDecimal("0.2"));
+        post.setFocalY(new BigDecimal("0.8"));
+        UpdatePostRequest request = new UpdatePostRequest("New Title Here", TIPTAP_CONTENT, null, "DRAFT");
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        MyPostResponse result = myService.update(1, 1, request);
+
+        assertThat(result.focalX()).isEqualByComparingTo("0.2");
+        assertThat(result.focalY()).isEqualByComparingTo("0.8");
     }
 }

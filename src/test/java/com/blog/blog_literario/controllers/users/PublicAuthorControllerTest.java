@@ -49,7 +49,9 @@ class PublicAuthorControllerTest {
     private static final PublicPostResponse SAMPLE_POST = new PublicPostResponse(
             "My Post", "Content", "my-post",
             1, "Alice", "Bio", "https://avatar-url",
-            "Fiction", "fiction", null, LocalDateTime.now());
+            "Fiction", "fiction", null,
+            new java.math.BigDecimal("0.25"), new java.math.BigDecimal("0.75"),
+            LocalDateTime.now());
 
     @Test
     void getAuthor_existingId_returns200() throws Exception {

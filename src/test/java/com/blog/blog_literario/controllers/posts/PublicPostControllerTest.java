@@ -45,7 +45,9 @@ class PublicPostControllerTest {
     private static final PublicPostResponse SAMPLE_POST = new PublicPostResponse(
             "Spring Boot Guide", "Content here", "spring-boot-guide",
             1, "Alice", "Author bio", null,
-            "Technology", "technology", null, LocalDateTime.now());
+            "Technology", "technology", null,
+            new java.math.BigDecimal("0.25"), new java.math.BigDecimal("0.75"),
+            LocalDateTime.now());
 
     @Test
     void list_noAuth_returns200WithPage() throws Exception {

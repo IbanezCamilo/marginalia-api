@@ -48,7 +48,9 @@ class MyPostControllerTest {
 
     private static final MyPostResponse SAMPLE_RESPONSE = new MyPostResponse(
             1, "Test Title", "Content", "DRAFT", "test-title",
-            "Test Author", 1, "Fiction", null, null, null,
+            "Test Author", 1, "Fiction", null,
+            new java.math.BigDecimal("0.25"), new java.math.BigDecimal("0.75"),
+            null, null,
             // Moderation fields
             null,
             0,

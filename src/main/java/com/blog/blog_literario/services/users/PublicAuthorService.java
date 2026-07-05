@@ -80,6 +80,8 @@ public class PublicAuthorService {
                 post.getCategory().getName(),
                 post.getCategory().getSlug(),
                 storageService.buildUrl(post.getCoverImage()),
+                post.getFocalX(),
+                post.getFocalY(),
                 post.getCreatedAt()
         );
     }

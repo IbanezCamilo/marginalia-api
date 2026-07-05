@@ -113,6 +113,14 @@ public class MyPostCommandService {
                 category
         );
 
+        // Focal point is optional; when omitted the entity keeps its default (center, 0.5).
+        if (request.focalX() != null) {
+            post.setFocalX(request.focalX());
+        }
+        if (request.focalY() != null) {
+            post.setFocalY(request.focalY());
+        }
+
         postRepository.save(post);
         return toResponse(post);
     }
@@ -161,6 +169,14 @@ public class MyPostCommandService {
         }
 
         post.setStatus(newStatus);
+
+        // Focal point is optional; a null keeps the currently stored value.
+        if (request.focalX() != null) {
+            post.setFocalX(request.focalX());
+        }
+        if (request.focalY() != null) {
+            post.setFocalY(request.focalY());
+        }
 
         // Title changed: rebuild slug to stay consistent with it. Title cleared: clear the slug too.
         if (request.title() != null && !request.title().isBlank()) {
@@ -338,6 +354,8 @@ public class MyPostCommandService {
                 category != null ? category.getId() : null,
                 category != null ? category.getName() : null,
                 storageService.buildUrl(post.getCoverImage()),
+                post.getFocalX(),
+                post.getFocalY(),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 //Moderation fields

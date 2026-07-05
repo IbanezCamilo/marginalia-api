@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -57,6 +58,8 @@ class PublicPostQueryServiceTest {
         post.setSlug("my-post");
         post.setStatus(PostStatus.PUBLISHED);
         post.setCoverImage("cover.jpg");
+        post.setFocalX(new BigDecimal("0.25"));
+        post.setFocalY(new BigDecimal("0.75"));
         post.setAuthor(author);
         post.setCategory(category);
         post.setCreatedAt(LocalDateTime.now());
@@ -116,6 +119,8 @@ class PublicPostQueryServiceTest {
         assertThat(response.categoryName()).isEqualTo("Fiction");
         assertThat(response.categorySlug()).isEqualTo("fiction");
         assertThat(response.coverImage()).isEqualTo("https://cover-url");
+        assertThat(response.focalX()).isEqualByComparingTo("0.25");
+        assertThat(response.focalY()).isEqualByComparingTo("0.75");
     }
 
     @Test

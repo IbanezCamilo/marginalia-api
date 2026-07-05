@@ -74,6 +74,8 @@ public class PublicPostQueryService {
                 post.getCategory().getName(),
                 post.getCategory().getSlug(),
                 storageService.buildUrl(post.getCoverImage()),
+                post.getFocalX(),
+                post.getFocalY(),
                 post.getCreatedAt()
         );
     }
