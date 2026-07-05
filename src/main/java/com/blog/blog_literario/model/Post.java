@@ -1,5 +1,6 @@
 package com.blog.blog_literario.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -64,6 +65,14 @@ public class Post {
 
     @Column(name = "cover_image", length = 500)
     private String coverImage;
+
+    /** Horizontal cover focal point, normalized to [0,1]; rendered by the frontend as CSS object-position. Defaults to center. */
+    @Column(name = "focal_x", nullable = false, precision = 4, scale = 3)
+    private BigDecimal focalX = new BigDecimal("0.5");
+
+    /** Vertical cover focal point, normalized to [0,1]; rendered by the frontend as CSS object-position. Defaults to center. */
+    @Column(name = "focal_y", nullable = false, precision = 4, scale = 3)
+    private BigDecimal focalY = new BigDecimal("0.5");
 
     /** Feedback left by a moderator/admin, shown to the author (e.g. why a post was rejected). */
     @Column(name = "moderation_note", length=500)
