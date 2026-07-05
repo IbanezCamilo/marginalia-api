@@ -133,6 +133,18 @@ public class MyPostCommandService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con ID: " + postId));
 
         PostStatus newStatus = PostStatus.valueOf(request.status());
+
+        // If the author is saving a rejected post back to draft,
+        // check first that it hasn't been permanently blocked
+        if (post.getStatus() == PostStatus.REJECTED && newStatus == PostStatus.DRAFT) {
+            if (!post.canBeResubmitted()) {
+                throw new IllegalStateException(
+                        "Este post ha sido rechazado 3 veces y está bloqueado permanentemente. "
+                        + "Contactá al administrador para desbloquearlo."
+                );
+            }
+        }
+
         validateAuthorCanChangeStatus(post.getStatus(), newStatus);
 
         if (newStatus == PostStatus.PUBLISHED) {

@@ -245,6 +245,19 @@ class MyPostCommandServiceTest {
     }
 
     @Test
+    void update_rejectedPermanentlyBlocked_toDraft_throwsIllegalState_andDoesNotMutate() {
+        Post post = new Post("Rejected Post", "Content", PostStatus.REJECTED, "rejected-post", author, category);
+        post.setRejectionCount(3);
+        UpdatePostRequest request = new UpdatePostRequest("Rejected Post", "Sneaky edit", null, "DRAFT");
+        given(postRepository.findByIdAndAuthorId(1, 1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> myService.update(1, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(post.getContent()).isEqualTo("Content");
+    }
+
+    @Test
     void create_draftWithOnlyContent_succeeds() {
         CreatePostRequest request = new CreatePostRequest(null, TIPTAP_CONTENT, null, "DRAFT");
         given(userRepository.findById(1)).willReturn(Optional.of(author));
