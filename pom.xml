@@ -22,7 +22,21 @@
     <!--  Project Configuration        -->
     <properties>
         <java.version>21</java.version>
+        <aws-sdk.version>2.46.21</aws-sdk.version>
     </properties>
+
+    <!--  Dependency Management         -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <!--  Dependencies                 -->
     <dependencies>
@@ -106,6 +120,13 @@
             <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
             <artifactId>owasp-java-html-sanitizer</artifactId>
             <version>20240325.1</version>
+        </dependency>
+
+        <!-- ===== Object Storage (Cloudflare R2 via S3 API) ===== -->
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
         </dependency>
 
         <!-- ===== API Documentation ===== -->
