@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "storage.active", havingValue = "local", matchIfMissing = true)
 @RequiredArgsConstructor
 public class LocalStorageService implements StorageService {
 

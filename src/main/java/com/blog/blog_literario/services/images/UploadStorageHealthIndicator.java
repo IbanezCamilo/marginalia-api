@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import com.blog.blog_literario.config.properties.StorageProperties;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
  * instead of staying silently UP until a user fails to upload an image.
  */
 @Component
+@ConditionalOnProperty(name = "storage.active", havingValue = "local", matchIfMissing = true)
 @RequiredArgsConstructor
 public class UploadStorageHealthIndicator implements HealthIndicator {
 
