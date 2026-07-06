@@ -111,8 +111,29 @@ Copy `.env.sample` → `.env` and fill in your values:
 | `JWT_SECRET` | Base64-encoded HMAC key (min 64 chars) | *(generate with `openssl rand -base64 64`)* |
 | `JWT_EXPIRATION` | Token TTL in milliseconds | `86400000` *(24 h)* |
 | `APP_BASE_URL` | Base URL for constructing image URLs | `http://localhost:8080` |
+| `STORAGE_ACTIVE` | Storage backend: `local` (default) or `r2` | `local` |
+| `R2_ACCOUNT_ID` | Cloudflare account ID *(only when `STORAGE_ACTIVE=r2`)* | `a1b2c3d4...` |
+| `R2_ACCESS_KEY_ID` | R2 bucket-scoped token Access Key ID | *(from Cloudflare)* |
+| `R2_SECRET_ACCESS_KEY` | R2 bucket-scoped token Secret Access Key | *(from Cloudflare)* |
+| `R2_BUCKET_NAME` | Target R2 bucket | `marginalia-media` |
+| `R2_PUBLIC_BASE_URL` | Custom-domain base URL used to build public image URLs | `https://assets.example.com` |
 
 > `.env` is in `.gitignore` and must never be committed.
+
+### Image storage backend
+
+Uploaded images are stored through the `StorageService` abstraction, which has two
+implementations selected at runtime by `STORAGE_ACTIVE`:
+
+- **`local`** (default) — files are written to `storage.local.upload-dir` (`uploads/`) and
+  served by the backend at `/api/images/**`. No R2 variables are required.
+- **`r2`** — files are uploaded to a [Cloudflare R2](https://developers.cloudflare.com/r2/)
+  bucket over its S3-compatible API and served from `R2_PUBLIC_BASE_URL` (a custom domain).
+  The `R2_*` variables must be set. Credentials come from a **bucket-scoped** R2 API token
+  (never an Admin token) and must only ever live in the environment, never in the repo.
+
+Switching back to local storage is a zero-code-change rollback: set `STORAGE_ACTIVE=local`
+(or unset it) and restart.
 
 `app.cookie.secure` and `app.cookie.domain` are set directly in `application.properties` — `false` / empty for local development, `true` / your domain for production.
 

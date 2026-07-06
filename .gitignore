@@ -48,6 +48,7 @@ Thumbs.db
 #Other
 ImgTest/
 uploads/
+playbook-cloudflare-r2.md
 
 # Logs
 *.log
