@@ -187,6 +187,13 @@
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                         </path>
+                        <!-- Generates META-INF/spring-configuration-metadata.json from
+                             @ConfigurationProperties classes: gives IDEs autocomplete and
+                             silences the "unknown property" warnings. Version managed by the parent BOM. -->
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                        </path>
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
