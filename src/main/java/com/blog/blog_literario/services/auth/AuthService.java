@@ -8,11 +8,15 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
+import com.blog.blog_literario.config.properties.LockoutProperties;
 import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
+import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
@@ -38,6 +42,8 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserCreationService userCreationService;
     private final RefreshTokenService refreshTokenService;
+    private final UserRepository userRepository;
+    private final LockoutProperties lockoutProperties;
 
     public AuthTokenPair register(RegisterRequest request) {
         User newUser = userCreationService.createUser(
@@ -54,20 +60,68 @@ public class AuthService {
         return new AuthTokenPair(accessToken, refreshToken);
     }
 
+    /**
+     * Authenticates a user, enforcing a temporary lockout after too many failed attempts.
+     *
+     * <p>A locked account is rejected before its password is even checked, and every failure
+     * path throws the same generic {@link BadCredentialsException} — the response never reveals
+     * whether the email exists or whether the account is locked.
+     *
+     * <p>{@code noRollbackFor} is required: the failed-attempt counter is written inside this
+     * transaction and must survive the rethrown {@link BadCredentialsException}, which would
+     * otherwise trigger a rollback and silently discard the increment.
+     */
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public AuthTokenPair login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.email()).orElse(null);
+
+        if (isLocked(user)) {
+            throw new BadCredentialsException("Credenciales inválidas");
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
+            if (user != null) {
+                resetFailedAttempts(user);
+            }
+
             UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
-            User user = ((UserDetailsImpl) userDetails).getUser();
-            String accessToken = jwtService.generateToken(userDetails, user.getTokenVersion());
-            String refreshToken = refreshTokenService.create(user);
+            User authUser = ((UserDetailsImpl) userDetails).getUser();
+            String accessToken = jwtService.generateToken(userDetails, authUser.getTokenVersion());
+            String refreshToken = refreshTokenService.create(authUser);
 
             return new AuthTokenPair(accessToken, refreshToken);
         } catch (AuthenticationException e) {
+            if (user != null) {
+                registerFailedAttempt(user);
+            }
             throw new BadCredentialsException("Credenciales inválidas");
         }
+    }
+
+    private boolean isLocked(User user) {
+        return user != null
+                && user.getLockedUntil() != null
+                && user.getLockedUntil().isAfter(LocalDateTime.now());
+    }
+
+    private void resetFailedAttempts(User user) {
+        if (user.getFailedLoginAttempts() != 0 || user.getLockedUntil() != null) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
+            userRepository.save(user);
+        }
+    }
+
+    private void registerFailedAttempt(User user) {
+        int attempts = user.getFailedLoginAttempts() + 1;
+        user.setFailedLoginAttempts(attempts);
+        if (attempts >= lockoutProperties.maxAttempts()) {
+            user.setLockedUntil(LocalDateTime.now().plusMinutes(lockoutProperties.durationMinutes()));
+        }
+        userRepository.save(user);
     }
 
     public AuthTokenPair refresh(String rawRefreshToken) {
