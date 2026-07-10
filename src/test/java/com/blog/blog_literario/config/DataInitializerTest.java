@@ -17,7 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import com.blog.blog_literario.config.properties.AdminProperties;
+import com.blog.blog_literario.config.properties.OwnerProperties;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
@@ -29,21 +29,21 @@ class DataInitializerTest {
     @Mock RoleRepository roleRepository;
     @Mock UserRepository userRepository;
     @Mock PasswordEncoder passwordEncoder;
-    @Mock AdminProperties adminProperties;
+    @Mock OwnerProperties ownerProperties;
 
     @InjectMocks DataInitializer dataInitializer;
 
     @Test
     void run_noExistingRoles_createsAllFiveRoles() throws Exception {
-        // RoleInitializer's own lookup for OWNER must see it as missing (so it's
-        // created), but UserAdminInitializer's later lookup must see it as present
+        // roleInitializer's own lookup for OWNER must see it as missing (so it's
+        // created), but ownerInitializer's later lookup must see it as present
         // (so it can assign it to the seed user) — same mocked call, two answers.
         given(roleRepository.findByName(any())).willReturn(Optional.empty());
         given(roleRepository.findByName(Role.OWNER))
                 .willReturn(Optional.empty(), Optional.of(new Role(5, Role.OWNER)));
-        given(adminProperties.email()).willReturn("owner@test.com");
+        given(ownerProperties.email()).willReturn("owner@test.com");
         given(userRepository.findByEmail("owner@test.com")).willReturn(Optional.empty());
-        given(adminProperties.password()).willReturn("password123");
+        given(ownerProperties.password()).willReturn("password123");
         given(passwordEncoder.encode("password123")).willReturn("encoded-hash");
 
         dataInitializer.run();
@@ -61,9 +61,9 @@ class DataInitializerTest {
         given(roleRepository.findByName(any())).willReturn(Optional.empty());
         given(roleRepository.findByName(Role.OWNER))
                 .willReturn(Optional.empty(), Optional.of(new Role(5, Role.OWNER)));
-        given(adminProperties.email()).willReturn("owner@test.com");
+        given(ownerProperties.email()).willReturn("owner@test.com");
         given(userRepository.findByEmail("owner@test.com")).willReturn(Optional.empty());
-        given(adminProperties.password()).willReturn("password123");
+        given(ownerProperties.password()).willReturn("password123");
         given(passwordEncoder.encode("password123")).willReturn("encoded-hash");
 
         dataInitializer.run();
@@ -79,7 +79,7 @@ class DataInitializerTest {
         User existingAdmin = new User(1, "Admin", "owner@test.com", new Role(1, Role.ADMIN));
         given(roleRepository.findByName(any())).willReturn(Optional.empty());
         given(roleRepository.findByName(Role.OWNER)).willReturn(Optional.of(new Role(2, Role.OWNER)));
-        given(adminProperties.email()).willReturn("owner@test.com");
+        given(ownerProperties.email()).willReturn("owner@test.com");
         given(userRepository.findByEmail("owner@test.com")).willReturn(Optional.of(existingAdmin));
 
         dataInitializer.run();
@@ -94,7 +94,7 @@ class DataInitializerTest {
         User existingOwner = new User(1, "Owner", "owner@test.com", new Role(1, Role.OWNER));
         given(roleRepository.findByName(any())).willReturn(Optional.empty());
         given(roleRepository.findByName(Role.OWNER)).willReturn(Optional.of(new Role(1, Role.OWNER)));
-        given(adminProperties.email()).willReturn("owner@test.com");
+        given(ownerProperties.email()).willReturn("owner@test.com");
         given(userRepository.findByEmail("owner@test.com")).willReturn(Optional.of(existingOwner));
 
         dataInitializer.run();

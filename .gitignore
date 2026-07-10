@@ -43,7 +43,6 @@ Thumbs.db
 # Real secrets only live in .env (gitignored); application*.properties files
 # use ${ENV_VAR} placeholders and are safe to commit.
 *.env
-.env.*
 
 #Other
 ImgTest/

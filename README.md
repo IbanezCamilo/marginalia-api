@@ -105,8 +105,8 @@ Copy `.env.sample` → `.env` and fill in your values:
 | `DB_URL` | JDBC connection string | `jdbc:postgresql://localhost:5432/marginalia` |
 | `DB_USERNAME` | Database user | `postgres` |
 | `DB_PASSWORD` | Database password | `secret` |
-| `ADMIN_EMAIL` | Seed admin account email | `admin@example.com` |
-| `ADMIN_PASSWORD` | Seed admin account password | `changeme` |
+| `OWNER_EMAIL` | Seed owner account email | `owner@example.com` |
+| `OWNER_PASSWORD` | Seed owner account password | `changeme` |
 | `FRONTEND_URL` | Allowed CORS origin | `http://localhost:5173` |
 | `JWT_SECRET` | Base64-encoded HMAC key (min 64 chars) | *(generate with `openssl rand -base64 64`)* |
 | `JWT_EXPIRATION` | Token TTL in milliseconds | `86400000` *(24 h)* |

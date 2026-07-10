@@ -6,7 +6,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import com.blog.blog_literario.config.properties.AdminProperties;
+import com.blog.blog_literario.config.properties.OwnerProperties;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>Creates the five application roles (READER, AUTHOR, MODERATOR, ADMIN, OWNER) and
  * the seed user if they do not already exist. Credentials are sourced from
- * {@link AdminProperties} ({@code admin.*} in {@code application.yml}). If the seed
+ * {@link OwnerProperties} ({@code owner.*} in {@code application.properties}). If the seed
  * email already exists in the database (e.g. a production deploy that previously
  * seeded it as ADMIN before OWNER existed), its role is explicitly upgraded to OWNER
  * rather than left untouched — OWNER is never assignable through any endpoint, so this
@@ -34,16 +34,16 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AdminProperties adminProperties;
+    private final OwnerProperties ownerProperties;
 
     @Override
     public void run(String... args) throws Exception {
         log.info("Executing DataInitializer");
-        RoleInitializer();
-        UserAdminInitializer();
+        roleInitializer();
+        ownerInitializer();
     }
 
-    private void RoleInitializer() {
+    private void roleInitializer() {
         createRoleIfNotExist(Role.READER);
         createRoleIfNotExist(Role.AUTHOR);
         createRoleIfNotExist(Role.MODERATOR);
@@ -61,22 +61,22 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void UserAdminInitializer() {
+    private void ownerInitializer() {
         Role ownerRole = roleRepository.findByName(Role.OWNER)
                 .orElseThrow(() -> new RuntimeException("ERROR: El rol owner no existe"));
 
-        Optional<User> existing = userRepository.findByEmail(adminProperties.email());
+        Optional<User> existing = userRepository.findByEmail(ownerProperties.email());
 
         if (existing.isEmpty()) {
             User owner = new User();
             owner.setName("Propietario");
-            owner.setEmail(adminProperties.email());
-            owner.setPassword(passwordEncoder.encode(adminProperties.password()));
+            owner.setEmail(ownerProperties.email());
+            owner.setPassword(passwordEncoder.encode(ownerProperties.password()));
             owner.setRole(ownerRole);
             owner.setProfilePicture(null);
 
             userRepository.save(owner);
-            log.info("Owner user created with email: {}", adminProperties.email());
+            log.info("Owner user created with email: {}", ownerProperties.email());
             return;
         }
 
@@ -90,7 +90,7 @@ public class DataInitializer implements CommandLineRunner {
         user.setRole(ownerRole);
         user.incrementTokenVersion();
         userRepository.save(user);
-        log.info("Upgraded existing seed user '{}' from {} to OWNER", adminProperties.email(), previousRoleName);
+        log.info("Upgraded existing seed user '{}' from {} to OWNER", ownerProperties.email(), previousRoleName);
     }
 
 }

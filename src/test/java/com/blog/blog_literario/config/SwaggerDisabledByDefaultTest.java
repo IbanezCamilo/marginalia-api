@@ -27,8 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "jwt.secret=dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0cy0xMjM0NTY3ODkw",
         "frontend.url=http://localhost:3000",
-        "admin.email=admin@example.com",
-        "admin.password=TestPassword1"
+        "owner.email=admin@example.com",
+        "owner.password=TestPassword1"
 })
 class SwaggerDisabledByDefaultTest {
 
