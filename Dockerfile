@@ -28,4 +28,4 @@ COPY --from=build /app/target/blog-literario-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
 
 # Profile and all secrets are injected at runtime via env vars (Dokploy).
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xmx512m", "-XX:MaxMetaspaceSize=128m", "-jar", "app.jar"]
