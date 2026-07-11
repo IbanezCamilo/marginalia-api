@@ -48,6 +48,7 @@ Thumbs.db
 ImgTest/
 uploads/
 playbook-cloudflare-r2.md
+DOKPLOY_DEPLOY.md
 
 # Logs
 *.log
