@@ -1,0 +1,27 @@
+# Build output
+target/
+
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Local runtime data / secrets (never bake into the image)
+uploads/
+ImgTest/
+*.env
+.env
+
+# Logs
+*.log
+logs/
+.mvn/wrapper/maven-wrapper.log
+
+# Docs / misc
+HELP.md
+DOKPLOY_DEPLOY.md
