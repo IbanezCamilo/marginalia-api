@@ -228,7 +228,7 @@ public class AdminPostModerationService {
                 post.getStatus().getDisplayName(),
                 post.getAuthor().getName(),
                 post.getAuthor().getEmail(),
-                post.getCategory().getName(),
+                post.getCategory() != null ? post.getCategory().getName() : null,
                 storageService.buildUrl(post.getCoverImage()),
                 post.getModerationNote(),
                 post.getModeratedBy() != null ? post.getModeratedBy().getName() : null,

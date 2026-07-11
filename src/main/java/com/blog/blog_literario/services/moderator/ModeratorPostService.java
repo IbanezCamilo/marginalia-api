@@ -173,7 +173,7 @@ public class ModeratorPostService {
                 post.getStatus().getDisplayName(),
                 post.getAuthor().getId(),
                 post.getAuthor().getName(),
-                post.getCategory().getName(),
+                post.getCategory() != null ? post.getCategory().getName() : null,
                 storageService.buildUrl(post.getCoverImage()),
                 post.getModerationNote(),
                 post.getModeratedBy() != null ? post.getModeratedBy().getName() : null,
