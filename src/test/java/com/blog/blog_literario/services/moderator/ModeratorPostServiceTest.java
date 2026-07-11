@@ -87,6 +87,17 @@ class ModeratorPostServiceTest {
     }
 
     @Test
+    void listAll_draftWithoutCategory_mapsNullCategoryName() {
+        Post post = new Post("Title", "Content", PostStatus.DRAFT, "title-slug", author, null);
+        given(postRepository.findByStatus(PostStatus.DRAFT, pageable)).willReturn(new PageImpl<>(List.of(post)));
+
+        var result = moderatorService.listAll(PostStatus.DRAFT, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).categoryName()).isNull();
+    }
+
+    @Test
     void updateStatus_draftToPublished_succeeds() {
         Post post = newPost(PostStatus.DRAFT);
         given(postRepository.findById(1)).willReturn(Optional.of(post));
