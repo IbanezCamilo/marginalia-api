@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.blog.blog_literario.config.properties.EmailProperties;
 import com.blog.blog_literario.config.properties.EmailVerificationProperties;
 import com.blog.blog_literario.config.properties.ResendProperties;
 import com.resend.Resend;
@@ -30,6 +31,7 @@ class ResendEmailServiceTest {
     @Mock Emails emails;
     @Mock ResendProperties resendProperties;
     @Mock EmailVerificationProperties verificationProperties;
+    @Mock EmailProperties emailProperties;
 
     @InjectMocks ResendEmailService resendEmailService;
 
@@ -38,6 +40,7 @@ class ResendEmailServiceTest {
         given(resend.emails()).willReturn(emails);
         given(resendProperties.from()).willReturn("Marginalia <no-reply@test.dev>");
         given(verificationProperties.tokenExpirationHours()).willReturn(24L);
+        given(emailProperties.logoUrl()).willReturn("https://media.test.dev/logo.png");
     }
 
     @Test
@@ -55,6 +58,11 @@ class ResendEmailServiceTest {
         assertThat(optionsCaptor.getValue().getFrom()).isEqualTo("Marginalia <no-reply@test.dev>");
         assertThat(optionsCaptor.getValue().getTo()).containsExactly("alice@test.com");
         assertThat(optionsCaptor.getValue().getHtml()).contains("http://front/verify-email?token=abc");
+        // The configured logo renders above the greeting, decorative with a brand alt.
+        assertThat(optionsCaptor.getValue().getHtml()).contains("src=\"https://media.test.dev/logo.png\"");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("alt=\"Marginalia\"");
+        // The plain-text part must never depend on the image.
+        assertThat(optionsCaptor.getValue().getText()).contains("http://front/verify-email?token=abc");
         assertThat(requestCaptor.getValue().getIdempotencyKey()).isEqualTo("verify-email/10");
     }
 

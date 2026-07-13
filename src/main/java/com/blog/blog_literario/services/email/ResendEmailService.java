@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
 
+import com.blog.blog_literario.config.properties.EmailProperties;
 import com.blog.blog_literario.config.properties.EmailVerificationProperties;
 import com.blog.blog_literario.config.properties.ResendProperties;
 import com.resend.Resend;
@@ -39,6 +40,7 @@ public class ResendEmailService implements EmailService {
     private final Resend resend;
     private final ResendProperties resendProperties;
     private final EmailVerificationProperties verificationProperties;
+    private final EmailProperties emailProperties;
 
     @Override
     public void sendVerificationEmail(String to, String userName, String verificationUrl, String idempotencyKey) {
@@ -103,30 +105,43 @@ public class ResendEmailService implements EmailService {
         }
     }
 
+    /**
+     * Single-column, inline-styled HTML that renders correctly in conservative email
+     * clients (no external CSS, no flexbox/grid, no web fonts). The logo is decorative:
+     * with images blocked, its alt text carries the brand name and the verification
+     * link remains available as button and plain text.
+     */
     private String buildHtmlBody(String userName, String verificationUrl) {
         String safeName = HtmlUtils.htmlEscape(userName);
         String safeUrl = HtmlUtils.htmlEscape(verificationUrl);
+        String safeLogoUrl = HtmlUtils.htmlEscape(emailProperties.logoUrl());
         long hours = verificationProperties.tokenExpirationHours();
         return """
-                <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #1a1a1a;">
-                  <h1 style="font-size: 22px;">Marginalia</h1>
-                  <p>Hola %s,</p>
-                  <p>Gracias por registrarte en Marginalia. Confirma tu correo electrónico haciendo clic en el siguiente botón:</p>
-                  <p style="text-align: center; margin: 32px 0;">
-                    <a href="%s" style="background: #1a1a1a; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Confirmar correo</a>
-                  </p>
-                  <p>O copia y pega este enlace en tu navegador:</p>
-                  <p style="word-break: break-all; font-size: 13px; color: #555555;">%s</p>
-                  <p style="font-size: 13px; color: #555555;">Este enlace caducará en %d horas. Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
+                <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">Confirma tu correo para activar tu cuenta en Marginalia.</div>
+                <div style="background-color: #faf8f5; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
+                  <div style="max-width: 520px; margin: 0 auto;">
+                    <img src="%s" alt="Marginalia" width="120" style="display: block; margin: 0 auto 28px auto; border: 0;">
+                    <p style="margin: 0 0 6px 0; text-align: center; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #a8a29e;">&mdash; Verificaci&oacute;n &mdash;</p>
+                    <h1 style="margin: 0 0 24px 0; text-align: center; font-size: 26px; font-weight: normal; color: #1c1917;">Confirma tu correo</h1>
+                    <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Hola %s,</p>
+                    <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Tu cuenta en Marginalia est&aacute; casi lista. Confirma tu correo electr&oacute;nico para empezar a leer:</p>
+                    <p style="margin: 0 0 28px 0; text-align: center;">
+                      <a href="%s" style="display: inline-block; background-color: #be163d; color: #ffffff; padding: 12px 28px; font-size: 15px; text-decoration: none; border-radius: 4px;">Confirmar correo</a>
+                    </p>
+                    <p style="margin: 0 0 4px 0; font-size: 13px; line-height: 1.6; color: #78716c;">O copia y pega este enlace en tu navegador:</p>
+                    <p style="margin: 0 0 28px 0; font-size: 13px; line-height: 1.6; color: #78716c; word-break: break-all;"><a href="%s" style="color: #be163d;">%s</a></p>
+                    <div style="border-top: 1px solid #e7e5e4; margin: 0 0 16px 0;"></div>
+                    <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8a29e;">Este enlace caducar&aacute; en %d horas. Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
+                  </div>
                 </div>
-                """.formatted(safeName, safeUrl, safeUrl, hours);
+                """.formatted(safeLogoUrl, safeName, safeUrl, safeUrl, safeUrl, hours);
     }
 
     private String buildTextBody(String userName, String verificationUrl) {
         return """
                 Hola %s,
 
-                Gracias por registrarte en Marginalia. Confirma tu correo electrónico abriendo este enlace:
+                Tu cuenta en Marginalia está casi lista. Confirma tu correo electrónico abriendo este enlace:
 
                 %s
 
