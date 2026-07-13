@@ -14,6 +14,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import com.blog.blog_literario.config.properties.RateLimitProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +52,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, BucketEntry> buckets = new ConcurrentHashMap<>();
 
+    /**
+     * Decodes and normalizes the request path (percent-decoding, semicolon-content removal)
+     * so profile matching runs on the same path Spring uses to route the request. Without
+     * this, a percent-encoded variant of an allowlisted prefix (e.g. {@code /api/%61uth/login},
+     * where {@code %61}='a') is routed to the controller by Spring but seen as an unmatched
+     * raw URI by {@code resolveProfile}, silently bypassing the limit (e.g. the AUTH one).
+     */
+    private static final UrlPathHelper URL_PATH_HELPER = new UrlPathHelper();
+
     private static final Pattern COVER_IMAGE_PATTERN =
             Pattern.compile("/api/me/posts/\\d+/cover-image");
 
@@ -78,7 +88,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        String uri = request.getRequestURI();
+        String uri = URL_PATH_HELPER.getPathWithinApplication(request);
         String method = request.getMethod();
 
         RateLimitProfile profile = resolveProfile(uri, method);
