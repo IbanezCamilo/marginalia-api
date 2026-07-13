@@ -167,6 +167,21 @@ class AuthorRequestRepositoryTest {
     }
 
     @Test
+    void deleteByRequesterId_removesAllRequestsForRequester() {
+        persistRequest(AuthorRequestStatus.REJECTED);
+        persistRequest(AuthorRequestStatus.PENDING);
+        em.flush();
+
+        authorRequestRepository.deleteByRequesterId(requester.getId());
+        em.flush();
+        em.clear();
+
+        Page<AuthorRequest> remaining = authorRequestRepository
+                .findByRequesterId(requester.getId(), PageRequest.of(0, 10));
+        assertThat(remaining).isEmpty();
+    }
+
+    @Test
     void findAllByStatus_orderedByCreatedAtAscending() throws InterruptedException {
         AuthorRequest first = persistRequest(AuthorRequestStatus.PENDING);
         em.flush();

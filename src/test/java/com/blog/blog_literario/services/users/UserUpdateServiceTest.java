@@ -145,18 +145,6 @@ class UserUpdateServiceTest {
     }
 
     @Test
-    void updateRole_lastRemainingAdmin_throwsIllegalState_andDoesNotChangeRole() {
-        User admin = new User(1, "Admin", "admin@test.com", new Role(Role.ADMIN));
-        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(1L);
-
-        assertThatThrownBy(() -> userUpdateService.updateRole(admin, Role.AUTHOR, ACTOR_ID))
-                .isInstanceOf(IllegalStateException.class);
-
-        assertThat(admin.getRole().getName()).isEqualTo(Role.ADMIN);
-        verify(roleRepository, never()).findByName(any());
-    }
-
-    @Test
     void updateRole_targetIsOwner_throwsIllegalState_andDoesNotChangeRole() {
         User owner = new User(1, "Owner", "owner@test.com", new Role(Role.OWNER));
 
@@ -189,10 +177,9 @@ class UserUpdateServiceTest {
     }
 
     @Test
-    void updateRole_notLastAdmin_demotesSuccessfully() {
+    void updateRole_admin_demotesSuccessfully() {
         User admin = new User(1, "Admin", "admin@test.com", new Role(Role.ADMIN));
         User actor = new User(ACTOR_ID, "OtherAdmin", "other-admin@test.com", new Role(Role.ADMIN));
-        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(2L);
         given(roleRepository.findByName(Role.AUTHOR)).willReturn(Optional.of(new Role(Role.AUTHOR)));
         given(userRepository.findById(ACTOR_ID)).willReturn(Optional.of(actor));
 

@@ -294,6 +294,7 @@ class AdminUserServiceTest {
         verify(storageService).delete("profile.jpg");
         verify(postRepository).clearModeratedByForUser(1);
         verify(authorRequestRepository).clearResolvedByForUser(1);
+        verify(authorRequestRepository).deleteByRequesterId(1);
         verify(refreshTokenRepository).deleteByUser(user);
 
         InOrder order = inOrder(postRepository, refreshTokenRepository, userRepository);
@@ -326,19 +327,6 @@ class AdminUserServiceTest {
     }
 
     @Test
-    void deleteUser_lastRemainingAdmin_throwsIllegalState_andDoesNotDelete() {
-        User lastAdmin = new User(1, "Admin", "admin1@test.com", new Role(1, Role.ADMIN));
-        given(userRepository.findById(1)).willReturn(Optional.of(lastAdmin));
-        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(1L);
-
-        assertThatThrownBy(() -> adminUserService.deleteUser(2, 1))
-                .isInstanceOf(IllegalStateException.class);
-
-        verify(userRepository, never()).deleteById(any());
-        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
-    }
-
-    @Test
     void deleteUser_ownerTarget_throwsIllegalState_regardlessOfActorRole() {
         User ownerTarget = new User(1, "Owner", "owner1@test.com", new Role(1, Role.OWNER));
         given(userRepository.findById(1)).willReturn(Optional.of(ownerTarget));
@@ -354,7 +342,6 @@ class AdminUserServiceTest {
     void deleteUser_adminTargetByNonOwnerActor_throwsIllegalState() {
         User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
         given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
-        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(2L);
         given(userRepository.findById(2)).willReturn(Optional.of(admin));
 
         assertThatThrownBy(() -> adminUserService.deleteUser(2, 1))
@@ -367,7 +354,6 @@ class AdminUserServiceTest {
     void deleteUser_adminTargetByOwnerActor_succeeds() {
         User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
         given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
-        given(userRepository.countByRoleName(Role.ADMIN)).willReturn(2L);
         given(userRepository.findById(3)).willReturn(Optional.of(owner));
 
         adminUserService.deleteUser(3, 1);

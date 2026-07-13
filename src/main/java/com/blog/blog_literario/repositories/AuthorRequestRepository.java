@@ -78,4 +78,13 @@ public interface AuthorRequestRepository extends JpaRepository<AuthorRequest, In
     @Modifying
     @Query("UPDATE AuthorRequest r SET r.resolvedBy = NULL WHERE r.resolvedBy.id = :userId")
     void clearResolvedByForUser(@Param("userId") Integer userId);
+
+    /**
+     * Deletes every request submitted by the given user. Because {@code requester_id}
+     * is NOT NULL it can't be nulled out like {@code resolvedBy}, so the user's own
+     * request history is removed along with their account when they are deleted.
+     */
+    @Modifying
+    @Query("DELETE FROM AuthorRequest r WHERE r.requester.id = :userId")
+    void deleteByRequesterId(@Param("userId") Integer userId);
 }

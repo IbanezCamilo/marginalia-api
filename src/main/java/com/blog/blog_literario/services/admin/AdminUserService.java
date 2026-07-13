@@ -158,8 +158,7 @@ public class AdminUserService {
      * @return UserResponse with updated user details
      * @throws ResourceNotFoundException if user or role doesn't exist
      * @throws UserAlreadyExistsException if new email is already used
-     * @throws IllegalStateException if the change would demote the last remaining ADMIN,
-     *                                if {@code id} refers to the OWNER (immutable, even to
+     * @throws IllegalStateException if {@code id} refers to the OWNER (immutable, even to
      *                                another OWNER), or if a non-OWNER actor targets an
      *                                ADMIN account or attempts to promote a user to ADMIN
      */
@@ -194,13 +193,17 @@ public class AdminUserService {
     }
 
     /**
+     * Deletes a user along with the data owned by that account — their posts (and cover
+     * images), profile picture, refresh tokens, and their own author-request history.
+     * References held on other users' rows (moderatedBy, resolvedBy) are nulled out first.
+     *
      * @param adminId the ID of the admin performing the deletion (for audit logging)
      * @param id the user's ID to delete
      * @throws ResourceNotFoundException if the user doesn't exist
      * @throws IllegalStateException if the admin is trying to delete their own account,
-     *                                if the user is the last remaining ADMIN, if the user
-     *                                is the OWNER (never deletable, even by another OWNER),
-     *                                or if a non-OWNER actor targets an ADMIN account
+     *                                if the user is the OWNER (never deletable, even by
+     *                                another OWNER), or if a non-OWNER actor targets an
+     *                                ADMIN account
      */
     public void deleteUser(@NonNull Integer adminId, @NonNull Integer id) {
         if (adminId.equals(id)) {
@@ -215,11 +218,6 @@ public class AdminUserService {
             throw new IllegalStateException("El usuario propietario no puede ser eliminado");
         }
 
-        if (user.getRole().isAdmin() && userRepository.countByRoleName(Role.ADMIN) <= 1) {
-            throw new IllegalStateException(
-                    "No se puede eliminar al último administrador del sistema");
-        }
-
         User admin = getRequiredUser(adminId);
 
         if (user.getRole().isAdmin() && !admin.getRole().isOwner()) {
@@ -230,6 +228,10 @@ public class AdminUserService {
         // leave a dangling moderatedBy/resolvedBy foreign key behind
         postRepository.clearModeratedByForUser(id);
         authorRequestRepository.clearResolvedByForUser(id);
+
+        // Delete the user's own author requests: requester_id is NOT NULL, so it
+        // can't be nulled out — the request history goes away with the account
+        authorRequestRepository.deleteByRequesterId(id);
 
         // Clean up post images
         postRepository.findAllByAuthorId(id)

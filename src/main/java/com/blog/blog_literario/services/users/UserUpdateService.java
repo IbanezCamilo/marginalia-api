@@ -72,15 +72,14 @@ public class UserUpdateService {
      * Updates a user's role with validation, recording the change to the admin audit
      * trail. This is the single source of truth for role changes — every write path
      * that promotes or demotes a user (direct admin edit, author-request approval,
-     * etc.) must go through this method so the "last admin" guard and the audit log
-     * apply uniformly regardless of which endpoint triggered the change.
+     * etc.) must go through this method so the audit log applies uniformly
+     * regardless of which endpoint triggered the change.
      *
      * @param user the user entity to update
      * @param newRoleName the new role name
      * @param actorId the ID of the admin performing the change (for audit logging)
      * @throws ResourceNotFoundException if the role or the actor doesn't exist
-     * @throws IllegalStateException if {@code user} is the last remaining ADMIN,
-     *                                if {@code user} currently has the OWNER role,
+     * @throws IllegalStateException if {@code user} currently has the OWNER role,
      *                                or if {@code newRoleName} is OWNER
      */
     public void updateRole(@NonNull User user, String newRoleName, @NonNull Integer actorId) {
@@ -103,11 +102,6 @@ public class UserUpdateService {
         // OWNER is seeded exclusively by DataInitializer — never assignable through any endpoint
         if (Role.OWNER.equalsIgnoreCase(newRoleName)) {
             throw new IllegalStateException("El rol OWNER no puede asignarse manualmente");
-        }
-
-        if (user.getRole().isAdmin() && userRepository.countByRoleName(Role.ADMIN) <= 1) {
-            throw new IllegalStateException(
-                "No se puede quitar el rol de administrador al último admin del sistema");
         }
 
         var role = roleRepository.findByName(newRoleName)
