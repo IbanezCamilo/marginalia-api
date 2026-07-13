@@ -3,6 +3,7 @@ package com.blog.blog_literario.services.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -138,7 +139,7 @@ class AdminUserServiceTest {
     void createUser_delegatesToUserCreationService_andRecordsAuditLog() {
         CreateUserRequest request = new CreateUserRequest("Alice", "alice@test.com", "password123", Role.READER);
         User createdUser = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
-        given(userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER))
+        given(userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER, true))
                 .willReturn(createdUser);
         given(userRepository.findById(2)).willReturn(Optional.of(admin));
 
@@ -159,7 +160,7 @@ class AdminUserServiceTest {
         assertThatThrownBy(() -> adminUserService.createUser(2, request))
                 .isInstanceOf(IllegalStateException.class);
 
-        verify(userCreationService, never()).createUser(any(), any(), any(), any());
+        verify(userCreationService, never()).createUser(any(), any(), any(), any(), anyBoolean());
         verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
     }
 
@@ -168,7 +169,7 @@ class AdminUserServiceTest {
         CreateUserRequest request = new CreateUserRequest("Bob", "bob@test.com", "password123", Role.ADMIN);
         User createdUser = new User(1, "Bob", "bob@test.com", new Role(1, Role.ADMIN));
         given(userRepository.findById(3)).willReturn(Optional.of(owner));
-        given(userCreationService.createUser("Bob", "bob@test.com", "password123", Role.ADMIN))
+        given(userCreationService.createUser("Bob", "bob@test.com", "password123", Role.ADMIN, true))
                 .willReturn(createdUser);
 
         UserResponse result = adminUserService.createUser(3, request);

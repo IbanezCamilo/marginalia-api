@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 
 import com.blog.blog_literario.config.properties.LockoutProperties;
 import com.blog.blog_literario.dto.auth.AuthTokenPair;
+import com.blog.blog_literario.exception.EmailNotVerifiedException;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
 import com.blog.blog_literario.model.Role;
@@ -27,10 +28,12 @@ import lombok.RequiredArgsConstructor;
 /**
  * Handles user self-registration, authentication, token refresh, and logout.
  *
- * <p>Login and registration return an {@link AuthTokenPair} — a short-lived JWT
- * (access token) and a long-lived opaque refresh token. The controller writes both
- * to HttpOnly cookies. On logout, the refresh token is deleted from the database;
- * the access token expires naturally within its 15-minute window.
+ * <p>Login returns an {@link AuthTokenPair} — a short-lived JWT (access token) and a
+ * long-lived opaque refresh token. The controller writes both to HttpOnly cookies.
+ * Registration issues no tokens: the account starts unverified and every
+ * token-issuing path (login, refresh, and registration itself) is blocked until the
+ * user clicks the emailed verification link. On logout, the refresh token is deleted
+ * from the database; the access token expires naturally within its 15-minute window.
  */
 @Service
 @Transactional
@@ -42,22 +45,25 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserCreationService userCreationService;
     private final RefreshTokenService refreshTokenService;
+    private final EmailVerificationService emailVerificationService;
     private final UserRepository userRepository;
     private final LockoutProperties lockoutProperties;
 
-    public AuthTokenPair register(RegisterRequest request) {
+    /**
+     * Creates an unverified account and queues the verification email. The email
+     * itself goes out only after this transaction commits (AFTER_COMMIT listener),
+     * so the link can never point at a token that was rolled back.
+     */
+    public void register(RegisterRequest request) {
         User newUser = userCreationService.createUser(
                 request.name(),
                 request.email(),
                 request.password(),
-                Role.READER
+                Role.READER,
+                false
         );
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(newUser.getEmail());
-        String accessToken = jwtService.generateToken(userDetails, newUser.getTokenVersion());
-        String refreshToken = refreshTokenService.create(newUser);
-
-        return new AuthTokenPair(accessToken, refreshToken);
+        emailVerificationService.requestVerificationEmail(newUser);
     }
 
     /**
@@ -89,6 +95,7 @@ public class AuthService {
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
             User authUser = ((UserDetailsImpl) userDetails).getUser();
+            requireVerifiedEmail(authUser);
             String accessToken = jwtService.generateToken(userDetails, authUser.getTokenVersion());
             String refreshToken = refreshTokenService.create(authUser);
 
@@ -126,9 +133,23 @@ public class AuthService {
 
     public AuthTokenPair refresh(String rawRefreshToken) {
         RefreshTokenService.RotationResult result = refreshTokenService.rotate(rawRefreshToken);
+        requireVerifiedEmail(result.user());
         UserDetails userDetails = userDetailsService.loadUserByUsername(result.user().getEmail());
         String newAccessToken = jwtService.generateToken(userDetails, result.user().getTokenVersion());
         return new AuthTokenPair(newAccessToken, result.newRawToken());
+    }
+
+    /**
+     * Blocks token issuance for unverified accounts. Only called AFTER credentials
+     * (or a valid refresh token) have been proven, so it never leaks whether an
+     * account exists, and — unlike {@link BadCredentialsException} — it is not
+     * caught by the failed-attempt counter above.
+     */
+    private void requireVerifiedEmail(User user) {
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException(
+                    "Debes verificar tu correo electrónico antes de iniciar sesión");
+        }
     }
 
     public void logout(String rawRefreshToken, String jwt) {

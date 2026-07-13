@@ -23,6 +23,7 @@ import com.blog.blog_literario.config.SecurityConfig;
 import com.blog.blog_literario.controllers.auth.AuthController;
 import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.services.auth.AuthService;
+import com.blog.blog_literario.services.auth.EmailVerificationService;
 import com.blog.blog_literario.support.WebMvcTestConfig;
 
 /**
@@ -46,6 +47,7 @@ class RateLimitEncodedPathBypassTest {
     @Autowired RateLimitFilter rateLimitFilter;
 
     @MockBean AuthService authService;
+    @MockBean EmailVerificationService emailVerificationService;
     @MockBean JwtService jwtService;
     @MockBean UserDetailsServiceImpl userDetailsService;
 

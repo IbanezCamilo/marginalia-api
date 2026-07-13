@@ -122,6 +122,14 @@
             <version>20240325.1</version>
         </dependency>
 
+        <!-- ===== Transactional Email (Resend) ===== -->
+
+        <dependency>
+            <groupId>com.resend</groupId>
+            <artifactId>resend-java</artifactId>
+            <version>4.4.0</version>
+        </dependency>
+
         <!-- ===== Object Storage (Cloudflare R2 via S3 API) ===== -->
 
         <dependency>

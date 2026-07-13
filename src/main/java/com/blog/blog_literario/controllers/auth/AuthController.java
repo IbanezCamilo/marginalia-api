@@ -10,8 +10,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
+import com.blog.blog_literario.dto.auth.ResendVerificationRequest;
+import com.blog.blog_literario.dto.auth.VerifyEmailRequest;
 import com.blog.blog_literario.security.CookieUtil;
 import com.blog.blog_literario.services.auth.AuthService;
+import com.blog.blog_literario.services.auth.EmailVerificationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,10 +24,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Handles user registration, login, token refresh, and logout.
+ * Handles user registration, email verification, login, token refresh, and logout.
  *
- * <p>Successful login and registration write both a short-lived JWT (access token)
- * and a long-lived refresh token to separate HttpOnly cookies via {@link CookieUtil}.
+ * <p>Successful login writes both a short-lived JWT (access token) and a long-lived
+ * refresh token to separate HttpOnly cookies via {@link CookieUtil}. Registration
+ * sets no cookies: the account must first be verified through the emailed link
+ * ({@code /verify-email}), and until then login and refresh answer 403.
  * The refresh endpoint rotates the refresh token and issues a new access token.
  * Logout deletes the refresh token from the database and clears both cookies.
  */
@@ -35,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final EmailVerificationService emailVerificationService;
     private final CookieUtil cookieUtil;
 
     @Operation(summary = "Login", description = "Authenticates the user and sets both JWT and refresh token cookies on success.")
@@ -50,17 +56,31 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Register", description = "Creates a new READER account and sets both cookies for immediate login.")
+    @Operation(summary = "Register", description = "Creates a new READER account and emails a verification link. No cookies are set: login is blocked until the email is verified.")
     @PostMapping("/register")
-    public ResponseEntity<Void> register(
-            @RequestBody @Valid RegisterRequest dto,
-            HttpServletResponse response) {
+    public ResponseEntity<Void> register(@RequestBody @Valid RegisterRequest dto) {
 
-        AuthTokenPair tokens = authService.register(dto);
-        cookieUtil.addJwtCookie(response, tokens.accessToken());
-        cookieUtil.addRefreshTokenCookie(response, tokens.refreshToken());
+        authService.register(dto);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @Operation(summary = "Verify email", description = "Validates the emailed verification token and activates the account. 400 if the token is unknown, 410 if it expired or was superseded.")
+    @PostMapping("/verify-email")
+    public ResponseEntity<Void> verifyEmail(@RequestBody @Valid VerifyEmailRequest dto) {
+
+        emailVerificationService.verify(dto.token());
+
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Resend verification email", description = "Issues a new verification token and email. Always answers 200 — it never reveals whether the account exists, is verified, or is rate-limited.")
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Void> resendVerification(@RequestBody @Valid ResendVerificationRequest dto) {
+
+        emailVerificationService.resendVerification(dto.email());
+
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Refresh", description = "Issues a new access token and rotates the refresh token. Both cookies are updated.")

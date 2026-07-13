@@ -74,6 +74,7 @@ public class DataInitializer implements CommandLineRunner {
             owner.setPassword(passwordEncoder.encode(ownerProperties.password()));
             owner.setRole(ownerRole);
             owner.setProfilePicture(null);
+            owner.setEmailVerified(true);
 
             userRepository.save(owner);
             log.info("Owner user created with email: {}", ownerProperties.email());

@@ -42,14 +42,28 @@ class UserCreationServiceTest {
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
         given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-        User result = userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER);
+        User result = userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER, false);
 
         assertThat(result.getName()).isEqualTo("Alice");
         assertThat(result.getEmail()).isEqualTo("alice@test.com");
         assertThat(result.getPassword()).isEqualTo("encoded-password");
         assertThat(result.getRole().getName()).isEqualTo(Role.READER);
         assertThat(result.getProfilePicture()).isNull();
+        assertThat(result.isEmailVerified()).isFalse();
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void createUser_emailVerifiedTrue_savesVerifiedUser() {
+        given(userValidator.validateAndSanitizeName("Alice")).willReturn("Alice");
+        given(userValidator.validateAndSanitizeEmail("alice@test.com")).willReturn("alice@test.com");
+        given(roleRepository.findByName(Role.READER)).willReturn(Optional.of(new Role(Role.READER)));
+        given(passwordEncoder.encode("password123")).willReturn("encoded-password");
+        given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        User result = userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER, true);
+
+        assertThat(result.isEmailVerified()).isTrue();
     }
 
     @Test
@@ -58,7 +72,7 @@ class UserCreationServiceTest {
         given(userValidator.validateAndSanitizeEmail("alice@test.com"))
                 .willThrow(new UserAlreadyExistsException("El correo 'alice@test.com' ya está registrado"));
 
-        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER))
+        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER, false))
                 .isInstanceOf(UserAlreadyExistsException.class);
 
         verify(userRepository, never()).save(any());
@@ -70,7 +84,7 @@ class UserCreationServiceTest {
         given(userValidator.validateAndSanitizeEmail("alice@test.com")).willReturn("alice@test.com");
         given(roleRepository.findByName("UNKNOWN")).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", "UNKNOWN"))
+        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", "UNKNOWN", false))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userRepository, never()).save(any());
@@ -78,7 +92,7 @@ class UserCreationServiceTest {
 
     @Test
     void createUser_ownerRole_throwsIllegalStateException() {
-        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", Role.OWNER))
+        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", Role.OWNER, true))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(userRepository, never()).save(any());
@@ -87,7 +101,7 @@ class UserCreationServiceTest {
 
     @Test
     void createUser_ownerRoleCaseInsensitive_throwsIllegalStateException() {
-        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", "owner"))
+        assertThatThrownBy(() -> userCreationService.createUser("Alice", "alice@test.com", "password123", "owner", true))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(userRepository, never()).save(any());
@@ -101,7 +115,7 @@ class UserCreationServiceTest {
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
         given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-        userCreationService.createUser("  Alice  ", "  Alice@Test.com  ", "password123", Role.READER);
+        userCreationService.createUser("  Alice  ", "  Alice@Test.com  ", "password123", Role.READER, false);
 
         verify(userValidator).validateAndSanitizeName("  Alice  ");
         verify(userValidator).validateAndSanitizeEmail("  Alice@Test.com  ");

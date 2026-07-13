@@ -3,6 +3,7 @@ package com.blog.blog_literario.services.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -19,11 +20,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import com.blog.blog_literario.config.properties.LockoutProperties;
 import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
+import com.blog.blog_literario.exception.EmailNotVerifiedException;
 import com.blog.blog_literario.exception.UserAlreadyExistsException;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
@@ -41,47 +44,48 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock UserCreationService userCreationService;
     @Mock RefreshTokenService refreshTokenService;
+    @Mock EmailVerificationService emailVerificationService;
     @Mock UserRepository userRepository;
     @Mock LockoutProperties lockoutProperties;
 
     @InjectMocks AuthService authService;
 
     @Test
-    void register_validRequest_createsUserAndReturnsTokenPair() {
+    void register_validRequest_createsUnverifiedUserAndRequestsVerificationEmail() {
         var request = new RegisterRequest("Alice", "alice@test.com", "password123");
         User newUser = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
-        UserDetailsImpl userDetails = new UserDetailsImpl(newUser);
 
-        given(userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER))
+        given(userCreationService.createUser("Alice", "alice@test.com", "password123", Role.READER, false))
                 .willReturn(newUser);
-        given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
-        given(jwtService.generateToken(userDetails, newUser.getTokenVersion())).willReturn("jwt-token");
-        given(refreshTokenService.create(newUser)).willReturn("raw-refresh-token");
 
-        AuthTokenPair result = authService.register(request);
+        authService.register(request);
 
-        assertThat(result.accessToken()).isEqualTo("jwt-token");
-        assertThat(result.refreshToken()).isEqualTo("raw-refresh-token");
-        verify(userCreationService).createUser("Alice", "alice@test.com", "password123", Role.READER);
-        verify(refreshTokenService).create(newUser);
+        verify(userCreationService).createUser("Alice", "alice@test.com", "password123", Role.READER, false);
+        verify(emailVerificationService).requestVerificationEmail(newUser);
+        // Registration must not create a session — no tokens until the email is verified.
+        verify(jwtService, never()).generateToken(any(UserDetails.class), any(Integer.class));
+        verify(refreshTokenService, never()).create(any());
     }
 
     @Test
     void register_duplicateEmail_propagatesUserAlreadyExistsException() {
         var request = new RegisterRequest("Alice", "alice@test.com", "password123");
 
-        given(userCreationService.createUser(any(), any(), any(), any()))
+        given(userCreationService.createUser(any(), any(), any(), any(), anyBoolean()))
                 .willThrow(new UserAlreadyExistsException("El correo 'alice@test.com' ya está registrado"));
 
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(UserAlreadyExistsException.class)
                 .hasMessageContaining("alice@test.com");
+
+        verify(emailVerificationService, never()).requestVerificationEmail(any());
     }
 
     @Test
     void login_validCredentials_returnsTokenPair() {
         var request = new LoginRequest("alice@test.com", "password123");
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setEmailVerified(true);
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
 
         given(authenticationManager.authenticate(any())).willReturn(
@@ -142,6 +146,7 @@ class AuthServiceTest {
     void login_successful_resetsFailedAttempts() {
         var request = new LoginRequest("alice@test.com", "password123");
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setEmailVerified(true);
         user.setFailedLoginAttempts(3);
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
 
@@ -164,6 +169,7 @@ class AuthServiceTest {
     void login_lockExpired_allowsNormalLoginAndResets() {
         var request = new LoginRequest("alice@test.com", "password123");
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setEmailVerified(true);
         user.setFailedLoginAttempts(5);
         user.setLockedUntil(LocalDateTime.now().minusMinutes(1)); // lock already expired
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
@@ -201,6 +207,7 @@ class AuthServiceTest {
     @Test
     void refresh_validToken_rotatesAndReturnsNewTokenPair() {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setEmailVerified(true);
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
         var rotationResult = new RefreshTokenService.RotationResult(user, "new-raw-refresh");
 
@@ -212,6 +219,40 @@ class AuthServiceTest {
 
         assertThat(result.accessToken()).isEqualTo("new-jwt-token");
         assertThat(result.refreshToken()).isEqualTo("new-raw-refresh");
+    }
+
+    @Test
+    void login_unverifiedEmail_throwsEmailNotVerifiedWithoutCountingFailedAttempt() {
+        var request = new LoginRequest("alice@test.com", "password123");
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER)); // emailVerified = false
+        UserDetailsImpl userDetails = new UserDetailsImpl(user);
+
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+        given(authenticationManager.authenticate(any())).willReturn(
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
+        given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(EmailNotVerifiedException.class);
+
+        // The password was correct — a verification block is not a failed attempt.
+        assertThat(user.getFailedLoginAttempts()).isZero();
+        assertThat(user.getLockedUntil()).isNull();
+        verify(jwtService, never()).generateToken(any(UserDetails.class), any(Integer.class));
+        verify(refreshTokenService, never()).create(any());
+    }
+
+    @Test
+    void refresh_unverifiedEmail_throwsEmailNotVerified() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER)); // emailVerified = false
+        var rotationResult = new RefreshTokenService.RotationResult(user, "new-raw-refresh");
+
+        given(refreshTokenService.rotate("old-raw-refresh")).willReturn(rotationResult);
+
+        assertThatThrownBy(() -> authService.refresh("old-raw-refresh"))
+                .isInstanceOf(EmailNotVerifiedException.class);
+
+        verify(jwtService, never()).generateToken(any(UserDetails.class), any(Integer.class));
     }
 
     @Test

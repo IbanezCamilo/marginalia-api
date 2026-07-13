@@ -137,7 +137,8 @@ public class AdminUserService {
                 request.name(),
                 request.email(),
                 request.password(),
-                request.roleName());
+                request.roleName(),
+                true); // admin-created accounts are vouched for — no email verification
 
         adminActionLogService.record(
                 adminId, admin.getEmail(), "USER_CREATE", "USER", createdUser.getId(),

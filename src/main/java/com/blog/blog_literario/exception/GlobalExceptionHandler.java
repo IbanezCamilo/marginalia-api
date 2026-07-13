@@ -70,6 +70,30 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    /** 403 — credentials are correct but the account's email is not verified yet. */
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        pd.setType(URI.create("https://blog-literario.com/errors/email-not-verified"));
+        return pd;
+    }
+
+    /** 400 — verification token does not match any stored token. */
+    @ExceptionHandler(InvalidVerificationTokenException.class)
+    public ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        pd.setType(URI.create("https://blog-literario.com/errors/invalid-verification-token"));
+        return pd;
+    }
+
+    /** 410 — verification token expired or was superseded; the client should offer a resend. */
+    @ExceptionHandler(VerificationTokenExpiredException.class)
+    public ProblemDetail handleVerificationTokenExpired(VerificationTokenExpiredException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.GONE, ex.getMessage());
+        pd.setType(URI.create("https://blog-literario.com/errors/verification-token-expired"));
+        return pd;
+    }
+
     /** 401 — supplied credentials are incorrect. */
     @ExceptionHandler(BadCredentialsException.class)
     public ProblemDetail handleBadCredentials(BadCredentialsException ex) {

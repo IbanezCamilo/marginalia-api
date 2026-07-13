@@ -69,6 +69,9 @@ public class User {
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

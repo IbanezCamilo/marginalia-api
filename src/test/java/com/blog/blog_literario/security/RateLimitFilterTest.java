@@ -2,7 +2,6 @@ package com.blog.blog_literario.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -15,8 +14,8 @@ import java.util.Map;
 import com.blog.blog_literario.config.SecurityConfig;
 import com.blog.blog_literario.config.properties.RateLimitProperties;
 import com.blog.blog_literario.controllers.auth.AuthController;
-import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.services.auth.AuthService;
+import com.blog.blog_literario.services.auth.EmailVerificationService;
 import com.blog.blog_literario.support.WebMvcTestConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -37,13 +36,12 @@ class RateLimitFilterTest {
     @Autowired RateLimitFilter rateLimitFilter;
 
     @MockBean AuthService authService;
+    @MockBean EmailVerificationService emailVerificationService;
     @MockBean JwtService jwtService;
     @MockBean UserDetailsServiceImpl userDetailsService;
 
     @Test
     void register_rateLimitExceeded_returns429() throws Exception {
-        given(authService.register(any())).willReturn(new AuthTokenPair("token", "refresh"));
-
         String body = "{\"name\":\"John\",\"email\":\"john@test.com\",\"password\":\"password123\"}";
         for (int i = 0; i < 10; i++) {
             mockMvc.perform(post("/api/auth/register")
