@@ -2,15 +2,18 @@ package com.blog.blog_literario.controllers.auth;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.blog.blog_literario.dto.auth.AuthTokenPair;
 import com.blog.blog_literario.dto.auth.LoginRequest;
 import com.blog.blog_literario.dto.auth.RegisterRequest;
 import com.blog.blog_literario.dto.auth.ResendVerificationRequest;
+import com.blog.blog_literario.dto.auth.VerificationStatusResponse;
 import com.blog.blog_literario.dto.auth.VerifyEmailRequest;
 import com.blog.blog_literario.security.CookieUtil;
 import com.blog.blog_literario.services.auth.AuthService;
@@ -81,6 +84,13 @@ public class AuthController {
         emailVerificationService.resendVerification(dto.email());
 
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Verification status", description = "Whether the given email belongs to a verified account. Polled by the post-registration waiting screen to detect verification from another device. Unknown emails answer verified=false, never 404.")
+    @GetMapping("/verification-status")
+    public ResponseEntity<VerificationStatusResponse> verificationStatus(@RequestParam String email) {
+
+        return ResponseEntity.ok(new VerificationStatusResponse(emailVerificationService.isEmailVerified(email)));
     }
 
     @Operation(summary = "Refresh", description = "Issues a new access token and rotates the refresh token. Both cookies are updated.")

@@ -212,6 +212,29 @@ class EmailVerificationServiceTest {
     }
 
     @Test
+    void isEmailVerified_verifiedUser_returnsTrue() {
+        User user = unverifiedUser();
+        user.setEmailVerified(true);
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+
+        assertThat(emailVerificationService.isEmailVerified("alice@test.com")).isTrue();
+    }
+
+    @Test
+    void isEmailVerified_unverifiedUser_returnsFalse() {
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(unverifiedUser()));
+
+        assertThat(emailVerificationService.isEmailVerified("alice@test.com")).isFalse();
+    }
+
+    @Test
+    void isEmailVerified_unknownEmail_returnsFalseNotError() {
+        given(userRepository.findByEmail("ghost@test.com")).willReturn(Optional.empty());
+
+        assertThat(emailVerificationService.isEmailVerified("ghost@test.com")).isFalse();
+    }
+
+    @Test
     void purgeExpiredTokens_deletesRowsPastTheCapWindow() {
         emailVerificationService.purgeExpiredTokens();
 

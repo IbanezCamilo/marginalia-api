@@ -121,6 +121,18 @@ public class EmailVerificationService {
     }
 
     /**
+     * Whether {@code email} belongs to a verified account. Unknown addresses answer
+     * {@code false} — indistinguishable from an unverified account — so the public
+     * status endpoint reveals nothing about whether an account exists.
+     */
+    @Transactional(readOnly = true)
+    public boolean isEmailVerified(String email) {
+        return userRepository.findByEmail(email)
+                .map(User::isEmailVerified)
+                .orElse(false);
+    }
+
+    /**
      * Nightly purge of stale token rows. The 24-hour grace period after expiry keeps
      * every row that could still count toward a user's daily cap.
      */

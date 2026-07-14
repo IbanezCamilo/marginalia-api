@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -282,6 +283,34 @@ class AuthControllerTest {
         verify(authService).logout(null, null);
         verify(cookieUtil).clearJwtCookie(any(HttpServletResponse.class));
         verify(cookieUtil).clearRefreshTokenCookie(any(HttpServletResponse.class));
+    }
+
+    @Test
+    void verificationStatus_verifiedEmail_returns200True() throws Exception {
+        given(emailVerificationService.isEmailVerified("alice@test.com")).willReturn(true);
+
+        mockMvc.perform(get("/api/auth/verification-status").param("email", "alice@test.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verified").value(true));
+    }
+
+    @Test
+    void verificationStatus_unverifiedOrUnknownEmail_returns200False() throws Exception {
+        // Unknown addresses also answer false — never 404 — so the endpoint reveals
+        // nothing about whether an account exists (same philosophy as resend).
+        given(emailVerificationService.isEmailVerified("ghost@test.com")).willReturn(false);
+
+        mockMvc.perform(get("/api/auth/verification-status").param("email", "ghost@test.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verified").value(false));
+    }
+
+    @Test
+    void verificationStatus_missingEmailParam_returns400() throws Exception {
+        mockMvc.perform(get("/api/auth/verification-status"))
+                .andExpect(status().isBadRequest());
+
+        verify(emailVerificationService, never()).isEmailVerified(any());
     }
 
     @Test

@@ -10,6 +10,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -67,6 +68,15 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
         pd.setType(URI.create("https://blog-literario.com/errors/validation"));
+        return pd;
+    }
+
+    /** 400 — a required query or form parameter is missing from the request. */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ProblemDetail handleMissingParameter(MissingServletRequestParameterException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "Falta el parámetro obligatorio '" + ex.getParameterName() + "'");
+        pd.setType(URI.create("https://blog-literario.com/errors/bad-request"));
         return pd;
     }
 
