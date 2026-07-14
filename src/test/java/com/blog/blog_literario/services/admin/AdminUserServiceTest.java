@@ -32,6 +32,7 @@ import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.AuthorRequestRepository;
+import com.blog.blog_literario.repositories.EmailVerificationTokenRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.RefreshTokenRepository;
 import com.blog.blog_literario.repositories.RoleRepository;
@@ -49,6 +50,7 @@ class AdminUserServiceTest {
     @Mock PostRepository postRepository;
     @Mock AuthorRequestRepository authorRequestRepository;
     @Mock RefreshTokenRepository refreshTokenRepository;
+    @Mock EmailVerificationTokenRepository emailVerificationTokenRepository;
     @Mock UserCreationService userCreationService;
     @Mock UserUpdateService userUpdateService;
     @Mock UserValidator userValidator;
@@ -297,10 +299,12 @@ class AdminUserServiceTest {
         verify(authorRequestRepository).clearResolvedByForUser(1);
         verify(authorRequestRepository).deleteByRequesterId(1);
         verify(refreshTokenRepository).deleteByUser(user);
+        verify(emailVerificationTokenRepository).deleteByUser(user);
 
-        InOrder order = inOrder(postRepository, refreshTokenRepository, userRepository);
+        InOrder order = inOrder(postRepository, refreshTokenRepository, emailVerificationTokenRepository, userRepository);
         order.verify(postRepository).deleteAllByAuthorId(1);
         order.verify(refreshTokenRepository).deleteByUser(user);
+        order.verify(emailVerificationTokenRepository).deleteByUser(user);
         order.verify(userRepository).deleteById(1);
 
         verify(adminActionLogService).record(2, admin.getEmail(), "USER_DELETE", "USER", 1,

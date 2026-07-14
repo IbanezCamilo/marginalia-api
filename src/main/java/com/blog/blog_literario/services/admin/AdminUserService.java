@@ -15,6 +15,7 @@ import com.blog.blog_literario.exception.UserAlreadyExistsException;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.AuthorRequestRepository;
+import com.blog.blog_literario.repositories.EmailVerificationTokenRepository;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.RefreshTokenRepository;
 import com.blog.blog_literario.repositories.RoleRepository;
@@ -43,6 +44,7 @@ public class AdminUserService {
     private final PostRepository postRepository;
     private final AuthorRequestRepository authorRequestRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final UserCreationService userCreationService;
     private final UserUpdateService userUpdateService;
     private final UserValidator userValidator;
@@ -195,7 +197,8 @@ public class AdminUserService {
 
     /**
      * Deletes a user along with the data owned by that account — their posts (and cover
-     * images), profile picture, refresh tokens, and their own author-request history.
+     * images), profile picture, refresh tokens, email verification tokens, and their
+     * own author-request history.
      * References held on other users' rows (moderatedBy, resolvedBy) are nulled out first.
      *
      * @param adminId the ID of the admin performing the deletion (for audit logging)
@@ -245,6 +248,10 @@ public class AdminUserService {
         // Remove refresh tokens so an active session doesn't leave a dangling
         // foreign key behind
         refreshTokenRepository.deleteByUser(user);
+
+        // Remove email verification tokens (unverified accounts always have one)
+        // so the FK on email_verification_tokens doesn't block the delete
+        emailVerificationTokenRepository.deleteByUser(user);
 
         userRepository.deleteById(id);
 
