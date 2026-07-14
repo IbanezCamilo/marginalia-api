@@ -60,7 +60,7 @@ public class ResendEmailService implements EmailService {
             try {
                 resend.emails().send(params, options);
                 return;
-            } catch (ResendException e) {
+            } catch (Exception e) {
                 Integer status = extractStatusCode(e);
                 if (!isRetryable(status) || attempt == MAX_ATTEMPTS) {
                     log.error("Failed to send verification email to {} (status {}): {}",
@@ -82,11 +82,12 @@ public class ResendEmailService implements EmailService {
     }
 
     /**
-     * The 4.4.0 SDK's {@link ResendException} carries no status field; API failures
-     * arrive as {@code "Failed to send email: <status> <body>"}, so the code is
+     * The 4.4.0 SDK throws a raw {@link RuntimeException} with message
+     * {@code "Failed to send email: <status> <body>"} for non-2xx responses, and
+     * {@link ResendException} only for transport failures — so the status code is
      * recovered from the message. Returns null when no status is present.
      */
-    private Integer extractStatusCode(ResendException e) {
+    private Integer extractStatusCode(Exception e) {
         if (e.getMessage() == null) {
             return null;
         }

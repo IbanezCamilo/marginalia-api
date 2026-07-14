@@ -18,7 +18,7 @@ public interface EmailService {
      * @param userName        display name used in the greeting
      * @param verificationUrl absolute frontend URL containing the raw verification token
      * @param idempotencyKey  provider-level deduplication key for network retries,
-     *                        unique per issued token (e.g. {@code verify-email/<token-id>})
+     *                        unique per issued token (e.g. {@code verify-email/<token-hash>})
      */
     void sendVerificationEmail(String to, String userName, String verificationUrl, String idempotencyKey);
 }

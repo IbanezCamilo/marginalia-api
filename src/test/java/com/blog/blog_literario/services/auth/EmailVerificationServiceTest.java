@@ -68,7 +68,9 @@ class EmailVerificationServiceTest {
         assertThat(event.email()).isEqualTo("alice@test.com");
         assertThat(event.name()).isEqualTo("Alice");
         assertThat(event.rawToken()).isNotBlank();
-        assertThat(event.idempotencyKey()).isEqualTo("verify-email/10");
+        // Hash-keyed so the key is unique across database instances, not just rows.
+        assertThat(event.idempotencyKey())
+                .isEqualTo("verify-email/" + emailVerificationService.hashToken(event.rawToken()));
 
         // Only the SHA-256 hash is persisted — never the raw token from the link.
         EmailVerificationToken saved = tokenCaptor.getValue();

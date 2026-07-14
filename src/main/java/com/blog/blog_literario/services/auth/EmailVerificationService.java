@@ -82,8 +82,11 @@ public class EmailVerificationService {
         entity.setExpiresAt(now.plusHours(properties.tokenExpirationHours()));
         EmailVerificationToken saved = tokenRepository.save(entity);
 
+        // Keyed by the token hash, not the row ID: IDs repeat across database instances
+        // (recreated DB, other environments on the same Resend key) and Resend remembers
+        // idempotency keys for 24h, rejecting a reused key with a different body (409).
         eventPublisher.publishEvent(new VerificationEmailRequested(
-                user.getEmail(), user.getName(), rawToken, "verify-email/" + saved.getId()));
+                user.getEmail(), user.getName(), rawToken, "verify-email/" + saved.getToken()));
     }
 
     /**

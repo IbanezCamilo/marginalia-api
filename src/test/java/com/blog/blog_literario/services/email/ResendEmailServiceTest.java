@@ -66,10 +66,12 @@ class ResendEmailServiceTest {
         assertThat(requestCaptor.getValue().getIdempotencyKey()).isEqualTo("verify-email/10");
     }
 
+    // The 4.4.0 SDK throws raw RuntimeException for non-2xx responses (ResendException
+    // only for transport failures), so API-error tests must simulate exactly that.
     @Test
     void sendVerificationEmail_validationError_doesNotRetryOrThrow() throws ResendException {
         given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
-                .willThrow(new ResendException("Failed to send email: 422 {\"message\":\"Invalid to\"}"));
+                .willThrow(new RuntimeException("Failed to send email: 422 {\"message\":\"Invalid to\"}"));
 
         resendEmailService.sendVerificationEmail(
                 "bad-address", "Alice", "http://front/verify-email?token=abc", "verify-email/11");
@@ -78,9 +80,21 @@ class ResendEmailServiceTest {
     }
 
     @Test
+    void sendVerificationEmail_idempotencyConflict_doesNotRetryOrThrow() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willThrow(new RuntimeException(
+                        "Failed to send email: 409 {\"name\":\"invalid_idempotent_request\"}"));
+
+        resendEmailService.sendVerificationEmail(
+                "alice@test.com", "Alice", "http://front/verify-email?token=abc", "verify-email/15");
+
+        verify(emails, times(1)).send(any(CreateEmailOptions.class), any(RequestOptions.class));
+    }
+
+    @Test
     void sendVerificationEmail_rateLimited_retriesAndSucceeds() throws ResendException {
         given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
-                .willThrow(new ResendException("Failed to send email: 429 {\"message\":\"Too many requests\"}"))
+                .willThrow(new RuntimeException("Failed to send email: 429 {\"message\":\"Too many requests\"}"))
                 .willReturn(new CreateEmailResponse());
 
         resendEmailService.sendVerificationEmail(
