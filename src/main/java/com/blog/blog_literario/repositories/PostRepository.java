@@ -117,4 +117,7 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
     default Page<Post> findMyDrafts(Integer authorId, Pageable pageable) {
         return findByAuthorIdAndStatus(authorId, PostStatus.DRAFT, pageable);
     }
+
+    /** Rows created before V7 whose word_count the startup backfill hasn't computed yet. */
+    List<Post> findByWordCountIsNull();
 }
