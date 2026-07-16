@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
@@ -14,8 +15,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -34,6 +37,7 @@ import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
+import com.blog.blog_literario.repositories.PostCatalogSpecifications;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
@@ -139,18 +143,24 @@ class PublicPostQueryServiceTest {
     }
 
     @Test
-    void listPublishedPosts_withFilter_passesFacetsIntoTheComposedSpecification() {
-        given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .willReturn(new PageImpl<>(List.of()));
-
+    void listPublishedPosts_withFilter_composesOneSpecificationPerActiveFacet() {
         PostCatalogFilter filter = new PostCatalogFilter(
                 "ficcion", null, 7, ReadingTimeBucket.SHORT, "borges");
 
-        publicPostQueryService.listPublishedPosts(filter, PostCatalogSort.FEATURED, pageable);
+        try (MockedStatic<PostCatalogSpecifications> specs =
+                     mockStatic(PostCatalogSpecifications.class)) {
+            given(postRepository.findAll(ArgumentMatchers.<Specification<Post>>any(), any(Pageable.class)))
+                    .willReturn(Page.empty());
 
-        ArgumentCaptor<Specification> specCaptor = ArgumentCaptor.forClass(Specification.class);
-        verify(postRepository).findAll(specCaptor.capture(), any(Pageable.class));
-        assertThat(specCaptor.getValue()).isNotNull();
+            publicPostQueryService.listPublishedPosts(filter, PostCatalogSort.FEATURED, pageable);
+
+            specs.verify(PostCatalogSpecifications::isPublished);
+            specs.verify(() -> PostCatalogSpecifications.hasCategorySlug("ficcion"));
+            specs.verify(() -> PostCatalogSpecifications.hasCategory(null));
+            specs.verify(() -> PostCatalogSpecifications.hasAuthor(7));
+            specs.verify(() -> PostCatalogSpecifications.readingTimeIn(ReadingTimeBucket.SHORT));
+            specs.verify(() -> PostCatalogSpecifications.matchesQuery("borges"));
+        }
     }
 
     @Test
