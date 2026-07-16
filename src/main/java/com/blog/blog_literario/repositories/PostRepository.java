@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,7 +22,7 @@ import com.blog.blog_literario.model.PostStatus;
  * author-owned (all statuses for a given user), and admin moderation (filtered by
  * status, date range, or full-text search).
  */
-public interface PostRepository extends JpaRepository<Post, Integer> {
+public interface PostRepository extends JpaRepository<Post, Integer>, JpaSpecificationExecutor<Post> {
 
     /** Fetches author/category/moderatedBy eagerly to avoid N+1 queries when mapping to response DTOs. */
     @EntityGraph(attributePaths = {"author", "category", "moderatedBy"})
