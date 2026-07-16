@@ -15,6 +15,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.utils.ReadingTime;
 
 import lombok.RequiredArgsConstructor;
 
@@ -91,7 +92,8 @@ public class PublicPostQueryService {
                 post.getFocalX(),
                 post.getFocalY(),
                 post.getCreatedAt(),
-                post.isFeatured()
+                post.isFeatured(),
+                ReadingTime.minutesFor(post.getWordCount())
         );
     }
 }

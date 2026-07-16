@@ -48,7 +48,7 @@ class PublicPostControllerTest {
             1, "Alice", "Author bio", null,
             "Technology", "technology", null,
             new java.math.BigDecimal("0.25"), new java.math.BigDecimal("0.75"),
-            LocalDateTime.now(), false);
+            LocalDateTime.now(), false, 3);
 
     @Test
     void list_noAuth_returns200WithPage() throws Exception {
@@ -60,7 +60,8 @@ class PublicPostControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].slug").value("spring-boot-guide"))
-                .andExpect(jsonPath("$.content[0].featured").value(false));
+                .andExpect(jsonPath("$.content[0].featured").value(false))
+                .andExpect(jsonPath("$.content[0].readingMinutes").value(3));
     }
 
     @Test

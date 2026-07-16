@@ -18,7 +18,8 @@ public record PublicPostResponse(
         BigDecimal focalX,
         BigDecimal focalY,
         LocalDateTime createdAt,
-        boolean featured
+        boolean featured,
+        int readingMinutes
         ) {
 
 }
