@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
+import com.blog.blog_literario.model.User;
 
 /**
  * Repository for {@link Post} entities.
@@ -121,4 +122,8 @@ public interface PostRepository extends JpaRepository<Post, Integer>, JpaSpecifi
 
     /** Rows created before V7 whose word_count the startup backfill hasn't computed yet. */
     List<Post> findByWordCountIsNull();
+
+    /** Authors that currently have at least one published post, for the public author facet. */
+    @Query("SELECT DISTINCT p.author FROM Post p WHERE p.status = com.blog.blog_literario.model.PostStatus.PUBLISHED ORDER BY p.author.name ASC")
+    List<User> findDistinctPublishedAuthors();
 }
