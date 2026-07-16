@@ -1,5 +1,6 @@
 package com.blog.blog_literario.controllers.posts;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.blog.blog_literario.config.SecurityConfig;
+import com.blog.blog_literario.dto.posts.PostCatalogFilter;
 import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
@@ -23,6 +25,7 @@ import com.blog.blog_literario.security.UserDetailsServiceImpl;
 import com.blog.blog_literario.services.posts.PublicPostQueryService;
 import com.blog.blog_literario.support.WebMvcTestConfig;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -53,7 +56,7 @@ class PublicPostControllerTest {
     @Test
     void list_noAuth_returns200WithPage() throws Exception {
         given(publicPostQueryService.listPublishedPosts(
-                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(SAMPLE_POST)));
 
         mockMvc.perform(get("/api/public/posts"))
@@ -67,66 +70,102 @@ class PublicPostControllerTest {
     @Test
     void list_withCategoryId_delegatesFilterToService() throws Exception {
         given(publicPostQueryService.listPublishedPosts(
-                eq(5), any(PostCatalogSort.class), any(Pageable.class)))
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/public/posts?categoryId=5"))
                 .andExpect(status().isOk());
 
+        ArgumentCaptor<PostCatalogFilter> filter = ArgumentCaptor.forClass(PostCatalogFilter.class);
         verify(publicPostQueryService).listPublishedPosts(
-                eq(5), any(PostCatalogSort.class), any(Pageable.class));
+                filter.capture(), any(PostCatalogSort.class), any(Pageable.class));
+        assertThat(filter.getValue().categoryId()).isEqualTo(5);
+    }
+
+    @Test
+    void list_stackedFacets_allReachTheServiceTogether() throws Exception {
+        given(publicPostQueryService.listPublishedPosts(
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/public/posts?category=ficcion&time=short&authorId=7&q=borges&sort=recent"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<PostCatalogFilter> filter = ArgumentCaptor.forClass(PostCatalogFilter.class);
+        verify(publicPostQueryService).listPublishedPosts(
+                filter.capture(), eq(PostCatalogSort.RECENT), any(Pageable.class));
+        assertThat(filter.getValue().categorySlug()).isEqualTo("ficcion");
+        assertThat(filter.getValue().time()).isEqualTo(com.blog.blog_literario.dto.posts.ReadingTimeBucket.SHORT);
+        assertThat(filter.getValue().authorId()).isEqualTo(7);
+        assertThat(filter.getValue().q()).isEqualTo("borges");
+    }
+
+    @Test
+    void list_unknownTimeAndShortQ_areSilentlyIgnoredNot400() throws Exception {
+        given(publicPostQueryService.listPublishedPosts(
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/public/posts?time=bogus&q=a"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<PostCatalogFilter> filter = ArgumentCaptor.forClass(PostCatalogFilter.class);
+        verify(publicPostQueryService).listPublishedPosts(
+                filter.capture(), any(PostCatalogSort.class), any(Pageable.class));
+        assertThat(filter.getValue().time()).isNull();
+        assertThat(filter.getValue().q()).isNull();
     }
 
     @Test
     void list_noSortParam_defaultsToFeatured() throws Exception {
         given(publicPostQueryService.listPublishedPosts(
-                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/public/posts"))
                 .andExpect(status().isOk());
 
         verify(publicPostQueryService).listPublishedPosts(
-                any(), eq(PostCatalogSort.FEATURED), any(Pageable.class));
+                any(PostCatalogFilter.class), eq(PostCatalogSort.FEATURED), any(Pageable.class));
     }
 
     @Test
     void list_sortFeatured_delegatesFeaturedSortToService() throws Exception {
         given(publicPostQueryService.listPublishedPosts(
-                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/public/posts?sort=featured"))
                 .andExpect(status().isOk());
 
         verify(publicPostQueryService).listPublishedPosts(
-                any(), eq(PostCatalogSort.FEATURED), any(Pageable.class));
+                any(PostCatalogFilter.class), eq(PostCatalogSort.FEATURED), any(Pageable.class));
     }
 
     @Test
     void list_legacySortString_mapsToNamedSort() throws Exception {
         given(publicPostQueryService.listPublishedPosts(
-                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/public/posts?sort=createdAt,desc"))
                 .andExpect(status().isOk());
 
         verify(publicPostQueryService).listPublishedPosts(
-                any(), eq(PostCatalogSort.RECENT), any(Pageable.class));
+                any(PostCatalogFilter.class), eq(PostCatalogSort.RECENT), any(Pageable.class));
     }
 
     @Test
     void list_unknownSort_fallsBackToFeaturedWithout400() throws Exception {
         given(publicPostQueryService.listPublishedPosts(
-                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/public/posts?sort=bogus"))
                 .andExpect(status().isOk());
 
         verify(publicPostQueryService).listPublishedPosts(
-                any(), eq(PostCatalogSort.FEATURED), any(Pageable.class));
+                any(PostCatalogFilter.class), eq(PostCatalogSort.FEATURED), any(Pageable.class));
     }
 
     @Test

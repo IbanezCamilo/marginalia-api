@@ -85,6 +85,15 @@ class PostCatalogSpecificationsTest {
     }
 
     @Test
+    void pagedQuery_countAndContentAgree_fetchGuardHoldsOnCountQuery() {
+        org.springframework.data.domain.Page<Post> page = postRepository.findAll(
+                Specification.allOf(PostCatalogSpecifications.isPublished()),
+                org.springframework.data.domain.PageRequest.of(0, 2));
+        assertThat(page.getTotalElements()).isEqualTo(3);
+        assertThat(page.getContent()).hasSize(2);
+    }
+
+    @Test
     void nullInputs_meanNoFilter() {
         assertThat(PostCatalogSpecifications.hasCategorySlug(null)).isNull();
         assertThat(PostCatalogSpecifications.hasCategorySlug("  ")).isNull();
