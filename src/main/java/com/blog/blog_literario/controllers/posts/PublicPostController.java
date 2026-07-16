@@ -40,7 +40,7 @@ public class PublicPostController {
     public Page<PublicPostResponse> list(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Integer categoryId,
-            @RequestParam(required = false) Integer authorId,
+            @RequestParam(required = false) String authorId,
             @RequestParam(required = false) String time,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String sort,

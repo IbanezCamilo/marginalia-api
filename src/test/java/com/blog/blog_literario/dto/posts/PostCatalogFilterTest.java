@@ -24,9 +24,16 @@ class PostCatalogFilterTest {
 
     @Test
     void of_passesIdentityFiltersThrough() {
-        PostCatalogFilter f = PostCatalogFilter.of("ficcion", 3, 7, null, null);
+        PostCatalogFilter f = PostCatalogFilter.of("ficcion", 3, "7", null, null);
         assertThat(f.categorySlug()).isEqualTo("ficcion");
         assertThat(f.categoryId()).isEqualTo(3);
         assertThat(f.authorId()).isEqualTo(7);
+    }
+
+    @Test
+    void of_parsesAuthorIdLeniently() {
+        assertThat(PostCatalogFilter.of(null, null, "7", null, null).authorId()).isEqualTo(7);
+        assertThat(PostCatalogFilter.of(null, null, "7x", null, null).authorId()).isNull();
+        assertThat(PostCatalogFilter.of(null, null, null, null, null).authorId()).isNull();
     }
 }

@@ -117,6 +117,21 @@ class PublicPostControllerTest {
     }
 
     @Test
+    void list_nonNumericAuthorId_isSilentlyIgnoredNot500() throws Exception {
+        given(publicPostQueryService.listPublishedPosts(
+                any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/public/posts?authorId=7x"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<PostCatalogFilter> filter = ArgumentCaptor.forClass(PostCatalogFilter.class);
+        verify(publicPostQueryService).listPublishedPosts(
+                filter.capture(), any(PostCatalogSort.class), any(Pageable.class));
+        assertThat(filter.getValue().authorId()).isNull();
+    }
+
+    @Test
     void list_noSortParam_defaultsToFeatured() throws Exception {
         given(publicPostQueryService.listPublishedPosts(
                 any(PostCatalogFilter.class), any(PostCatalogSort.class), any(Pageable.class)))

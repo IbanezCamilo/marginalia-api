@@ -14,16 +14,30 @@ public record PostCatalogFilter(
     private static final int MAX_QUERY_LENGTH = 100;
     private static final int MIN_QUERY_LENGTH = 2;
 
-    /** Builds a filter from raw request params: lenient time parsing, q trimmed/bounded. */
+    /**
+     * Builds a filter from raw request params: lenient time parsing, q trimmed/bounded,
+     * authorId parsed leniently (non-numeric/blank/null becomes null instead of erroring).
+     */
     public static PostCatalogFilter of(
-            String category, Integer categoryId, Integer authorId, String time, String q) {
+            String category, Integer categoryId, String authorId, String time, String q) {
         return new PostCatalogFilter(
-                blankToNull(category), categoryId, authorId,
+                blankToNull(category), categoryId, parseIntegerOrNull(authorId),
                 ReadingTimeBucket.from(time), normalizeQuery(q));
     }
 
     private static String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    private static Integer parseIntegerOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static String normalizeQuery(String q) {
