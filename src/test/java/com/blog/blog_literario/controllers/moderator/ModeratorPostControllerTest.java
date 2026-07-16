@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.blog.blog_literario.config.SecurityConfig;
+import com.blog.blog_literario.dto.moderator.ModeratorFeaturedUpdateRequest;
 import com.blog.blog_literario.dto.moderator.ModeratorPostResponse;
 import com.blog.blog_literario.dto.moderator.ModeratorStatusUpdateRequest;
 import com.blog.blog_literario.security.CorrelationIdFilter;
@@ -63,7 +64,8 @@ class ModeratorPostControllerTest {
             false,
             false,
             LocalDateTime.now(),
-            LocalDateTime.now()
+            LocalDateTime.now(),
+            false
     );
 
     @Test
@@ -135,5 +137,58 @@ class ModeratorPostControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateFeatured_asModerator_returns200() throws Exception {
+        given(moderatorService.updateFeatured(eq(7), eq(1), any(ModeratorFeaturedUpdateRequest.class)))
+                .willReturn(SAMPLE);
+
+        mockMvc.perform(put("/api/moderator/posts/1/featured")
+                .with(authentication(TestSecurityFactory.asModerator(7)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"featured\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.featured").value(false));
+
+        verify(moderatorService).updateFeatured(eq(7), eq(1), any(ModeratorFeaturedUpdateRequest.class));
+    }
+
+    @Test
+    void updateFeatured_asAdmin_returns200() throws Exception {
+        given(moderatorService.updateFeatured(eq(3), eq(1), any(ModeratorFeaturedUpdateRequest.class)))
+                .willReturn(SAMPLE);
+
+        mockMvc.perform(put("/api/moderator/posts/1/featured")
+                .with(authentication(TestSecurityFactory.asAdmin(3)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"featured\":true}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void updateFeatured_asAuthor_returns403() throws Exception {
+        mockMvc.perform(put("/api/moderator/posts/1/featured")
+                .with(authentication(TestSecurityFactory.asAuthor(1)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"featured\":true}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateFeatured_unauthenticated_returns4xx() throws Exception {
+        mockMvc.perform(put("/api/moderator/posts/1/featured")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"featured\":true}"))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void updateFeatured_nullFeatured_returns400() throws Exception {
+        mockMvc.perform(put("/api/moderator/posts/1/featured")
+                .with(authentication(TestSecurityFactory.asModerator(7)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"featured\":null}"))
+                .andExpect(status().isBadRequest());
     }
 }

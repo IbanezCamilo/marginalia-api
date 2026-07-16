@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.blog.blog_literario.dto.moderator.ModeratorFeaturedUpdateRequest;
 import com.blog.blog_literario.dto.moderator.ModeratorPostResponse;
 import com.blog.blog_literario.dto.moderator.ModeratorStatusUpdateRequest;
 import com.blog.blog_literario.model.PostStatus;
@@ -80,6 +81,21 @@ public class ModeratorPostController {
 
         Integer moderatorId = getModeratorId(authentication);
         ModeratorPostResponse updated = moderatorService.updateStatus(moderatorId, id, request);
+        return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Marks a post as featured (editorial curation) or removes the mark. Only
+     * {@code PUBLISHED} posts can be featured; un-featuring works in any status.
+     */
+    @PutMapping("/{id}/featured")
+    public ResponseEntity<ModeratorPostResponse> updateFeatured(
+            Authentication authentication,
+            @PathVariable Integer id,
+            @Valid @RequestBody ModeratorFeaturedUpdateRequest request) {
+
+        Integer moderatorId = getModeratorId(authentication);
+        ModeratorPostResponse updated = moderatorService.updateFeatured(moderatorId, id, request);
         return ResponseEntity.ok(updated);
     }
 

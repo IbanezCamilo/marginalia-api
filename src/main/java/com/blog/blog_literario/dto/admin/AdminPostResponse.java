@@ -27,6 +27,7 @@ public record AdminPostResponse(
         int rejectionCount,
         boolean isPermanentlyBlocked,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        LocalDateTime updatedAt,
+        boolean featured) {
 
 }

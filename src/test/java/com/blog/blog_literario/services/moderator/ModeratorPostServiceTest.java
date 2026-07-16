@@ -3,6 +3,7 @@ package com.blog.blog_literario.services.moderator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import java.util.List;
 import java.util.Optional;
 
+import com.blog.blog_literario.dto.moderator.ModeratorFeaturedUpdateRequest;
 import com.blog.blog_literario.dto.moderator.ModeratorPostResponse;
 import com.blog.blog_literario.dto.moderator.ModeratorStatusUpdateRequest;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
@@ -20,6 +22,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.admin.AdminActionLogService;
 import com.blog.blog_literario.services.images.StorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +43,7 @@ class ModeratorPostServiceTest {
     @Mock PostRepository postRepository;
     @Mock UserRepository userRepository;
     @Mock StorageService storageService;
+    @Mock AdminActionLogService adminActionLogService;
 
     @InjectMocks ModeratorPostService moderatorService;
 
@@ -263,6 +267,81 @@ class ModeratorPostServiceTest {
         given(userRepository.findById(99)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> moderatorService.updateStatus(99, 1, new ModeratorStatusUpdateRequest("PUBLISHED", null)))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void updateFeatured_publishedPost_setsFlagSavesAndLogs() {
+        Post post = newPost(PostStatus.PUBLISHED);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(moderator));
+
+        ModeratorPostResponse result = moderatorService.updateFeatured(1, 1, new ModeratorFeaturedUpdateRequest(true));
+
+        assertThat(result.featured()).isTrue();
+        assertThat(post.isFeatured()).isTrue();
+        verify(postRepository).save(post);
+        verify(adminActionLogService).record(
+                eq(1), eq("mod@test.com"), eq("POST_FEATURED_CHANGE"), eq("POST"), eq(1), any());
+    }
+
+    @Test
+    void updateFeatured_nonPublishedPost_throwsIllegalState() {
+        for (PostStatus status : List.of(PostStatus.DRAFT, PostStatus.REJECTED, PostStatus.ARCHIVED)) {
+            Post post = newPost(status);
+            given(postRepository.findById(1)).willReturn(Optional.of(post));
+
+            assertThatThrownBy(() -> moderatorService.updateFeatured(1, 1, new ModeratorFeaturedUpdateRequest(true)))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void updateFeatured_unfeatureNonPublishedPost_succeeds() {
+        Post post = newPost(PostStatus.ARCHIVED);
+        post.setFeatured(true);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(moderator));
+
+        ModeratorPostResponse result = moderatorService.updateFeatured(1, 1, new ModeratorFeaturedUpdateRequest(false));
+
+        assertThat(result.featured()).isFalse();
+        assertThat(post.isFeatured()).isFalse();
+        verify(postRepository).save(post);
+    }
+
+    @Test
+    void updateFeatured_sameValue_isNoOpWithoutSaveOrLog() {
+        Post post = newPost(PostStatus.PUBLISHED);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+
+        ModeratorPostResponse result = moderatorService.updateFeatured(1, 1, new ModeratorFeaturedUpdateRequest(false));
+
+        assertThat(result.featured()).isFalse();
+        verify(postRepository, never()).save(any());
+        verify(adminActionLogService, never()).record(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void updateFeatured_doesNotTouchModerationMetadata() {
+        Post post = newPost(PostStatus.PUBLISHED);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(moderator));
+
+        moderatorService.updateFeatured(1, 1, new ModeratorFeaturedUpdateRequest(true));
+
+        assertThat(post.getModeratedBy()).isNull();
+        assertThat(post.getModeratedAt()).isNull();
+        assertThat(post.getModerationNote()).isNull();
+    }
+
+    @Test
+    void updateFeatured_postNotFound_throwsResourceNotFound() {
+        given(postRepository.findById(99)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> moderatorService.updateFeatured(1, 99, new ModeratorFeaturedUpdateRequest(true)))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 }

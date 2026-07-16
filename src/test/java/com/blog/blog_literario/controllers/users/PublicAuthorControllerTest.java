@@ -51,7 +51,7 @@ class PublicAuthorControllerTest {
             1, "Alice", "Bio", "https://avatar-url",
             "Fiction", "fiction", null,
             new java.math.BigDecimal("0.25"), new java.math.BigDecimal("0.75"),
-            LocalDateTime.now());
+            LocalDateTime.now(), false);
 
     @Test
     void getAuthor_existingId_returns200() throws Exception {

@@ -1,10 +1,12 @@
 package com.blog.blog_literario.services.posts;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Post;
@@ -28,6 +30,18 @@ public class PublicPostQueryService {
     private final PostRepository postRepository;
     private final StorageService storageService;
     private final AvatarResolver avatarResolver;
+
+    /**
+     * Returns a paginated page of published posts ordered by {@code catalogSort},
+     * optionally filtered by {@code categoryId}. Any sort carried by {@code pageable}
+     * is discarded — only whitelisted {@link PostCatalogSort} orderings reach the query.
+     */
+    public Page<PublicPostResponse> listPublishedPosts(
+            Integer categoryId, PostCatalogSort catalogSort, Pageable pageable) {
+        Pageable effective = PageRequest.of(
+                pageable.getPageNumber(), pageable.getPageSize(), catalogSort.toSort());
+        return listPublishedPosts(categoryId, effective);
+    }
 
     /**
      * Returns a paginated page of published posts, optionally filtered by {@code categoryId}.
@@ -76,7 +90,8 @@ public class PublicPostQueryService {
                 storageService.buildUrl(post.getCoverImage()),
                 post.getFocalX(),
                 post.getFocalY(),
-                post.getCreatedAt()
+                post.getCreatedAt(),
+                post.isFeatured()
         );
     }
 }

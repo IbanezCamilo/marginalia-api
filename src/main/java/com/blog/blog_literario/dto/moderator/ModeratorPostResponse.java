@@ -29,5 +29,6 @@ public record ModeratorPostResponse(
         boolean isPermanentlyBlocked,
         boolean isLastAttempt,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        boolean featured
     ) {}

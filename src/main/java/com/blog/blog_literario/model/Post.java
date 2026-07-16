@@ -74,6 +74,10 @@ public class Post {
     @Column(name = "focal_y", nullable = false, precision = 4, scale = 3)
     private BigDecimal focalY = new BigDecimal("0.5");
 
+    /** Editorial curation flag set by moderators/admins; featured posts surface first in the public catalog. */
+    @Column(name = "featured", nullable = false)
+    private boolean featured = false;
+
     /** Feedback left by a moderator/admin, shown to the author (e.g. why a post was rejected). */
     @Column(name = "moderation_note", length=500)
     private String moderationNote;

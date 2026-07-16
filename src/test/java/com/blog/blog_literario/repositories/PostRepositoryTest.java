@@ -2,9 +2,11 @@ package com.blog.blog_literario.repositories;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
@@ -163,6 +165,42 @@ class PostRepositoryTest {
 
         Post reloaded = postRepository.findById(post.getId()).orElseThrow();
         assertThat(reloaded.getModeratedBy()).isNull();
+    }
+
+    @Test
+    void findByStatus_withFeaturedSort_ordersFeaturedFirstThenByRecency() {
+        Post featuredOld = persistPost("Featured Old", "featured-old", PostStatus.PUBLISHED, category);
+        featuredOld.setFeatured(true);
+        Post featuredNew = persistPost("Featured New", "featured-new", PostStatus.PUBLISHED, category);
+        featuredNew.setFeatured(true);
+        Post regularNewest = persistPost("Regular Newest", "regular-newest", PostStatus.PUBLISHED, category);
+        Post featuredDraft = persistPost("Featured Draft", "featured-draft", PostStatus.DRAFT, category);
+        featuredDraft.setFeatured(true);
+        em.flush();
+
+        // created_at is @PrePersist-managed and not updatable through the entity,
+        // so pin deterministic timestamps directly to make the ordering unambiguous.
+        setCreatedAt(featuredOld.getId(), LocalDateTime.of(2026, 1, 1, 12, 0));
+        setCreatedAt(featuredNew.getId(), LocalDateTime.of(2026, 1, 2, 12, 0));
+        setCreatedAt(regularNewest.getId(), LocalDateTime.of(2026, 1, 3, 12, 0));
+        setCreatedAt(featuredDraft.getId(), LocalDateTime.of(2026, 1, 4, 12, 0));
+        em.clear();
+
+        Page<Post> result = postRepository.findByStatus(
+                PostStatus.PUBLISHED,
+                PageRequest.of(0, 10, PostCatalogSort.FEATURED.toSort()));
+
+        assertThat(result.getContent())
+                .extracting(Post::getSlug)
+                .containsExactly("featured-new", "featured-old", "regular-newest");
+    }
+
+    private void setCreatedAt(Integer postId, LocalDateTime createdAt) {
+        em.getEntityManager()
+                .createNativeQuery("update posts set created_at = :createdAt where id = :id")
+                .setParameter("createdAt", createdAt)
+                .setParameter("id", postId)
+                .executeUpdate();
     }
 
     private Post persistPost(String title, String slug, PostStatus status, Category cat) {

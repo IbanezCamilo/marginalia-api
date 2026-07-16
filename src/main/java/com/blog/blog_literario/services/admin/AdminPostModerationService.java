@@ -236,7 +236,8 @@ public class AdminPostModerationService {
                 post.getRejectionCount(),
                 post.isPermanentlyBlocked(),
                 post.getCreatedAt(),
-                post.getUpdatedAt()
+                post.getUpdatedAt(),
+                post.isFeatured()
         );
     }
 }

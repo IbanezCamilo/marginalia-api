@@ -65,7 +65,8 @@ class AdminPostControllerTest {
             0,
             false,
             LocalDateTime.now(),
-            LocalDateTime.now()
+            LocalDateTime.now(),
+            false
     );
 
     @Test

@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.blog.blog_literario.config.SecurityConfig;
+import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.security.CorrelationIdFilter;
@@ -47,28 +48,84 @@ class PublicPostControllerTest {
             1, "Alice", "Author bio", null,
             "Technology", "technology", null,
             new java.math.BigDecimal("0.25"), new java.math.BigDecimal("0.75"),
-            LocalDateTime.now());
+            LocalDateTime.now(), false);
 
     @Test
     void list_noAuth_returns200WithPage() throws Exception {
-        given(publicPostQueryService.listPublishedPosts(any(), any(Pageable.class)))
+        given(publicPostQueryService.listPublishedPosts(
+                any(), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(SAMPLE_POST)));
 
         mockMvc.perform(get("/api/public/posts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content[0].slug").value("spring-boot-guide"));
+                .andExpect(jsonPath("$.content[0].slug").value("spring-boot-guide"))
+                .andExpect(jsonPath("$.content[0].featured").value(false));
     }
 
     @Test
     void list_withCategoryId_delegatesFilterToService() throws Exception {
-        given(publicPostQueryService.listPublishedPosts(eq(5), any(Pageable.class)))
+        given(publicPostQueryService.listPublishedPosts(
+                eq(5), any(PostCatalogSort.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/public/posts?categoryId=5"))
                 .andExpect(status().isOk());
 
-        verify(publicPostQueryService).listPublishedPosts(eq(5), any(Pageable.class));
+        verify(publicPostQueryService).listPublishedPosts(
+                eq(5), any(PostCatalogSort.class), any(Pageable.class));
+    }
+
+    @Test
+    void list_noSortParam_defaultsToFeatured() throws Exception {
+        given(publicPostQueryService.listPublishedPosts(
+                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/public/posts"))
+                .andExpect(status().isOk());
+
+        verify(publicPostQueryService).listPublishedPosts(
+                any(), eq(PostCatalogSort.FEATURED), any(Pageable.class));
+    }
+
+    @Test
+    void list_sortFeatured_delegatesFeaturedSortToService() throws Exception {
+        given(publicPostQueryService.listPublishedPosts(
+                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/public/posts?sort=featured"))
+                .andExpect(status().isOk());
+
+        verify(publicPostQueryService).listPublishedPosts(
+                any(), eq(PostCatalogSort.FEATURED), any(Pageable.class));
+    }
+
+    @Test
+    void list_legacySortString_mapsToNamedSort() throws Exception {
+        given(publicPostQueryService.listPublishedPosts(
+                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/public/posts?sort=createdAt,desc"))
+                .andExpect(status().isOk());
+
+        verify(publicPostQueryService).listPublishedPosts(
+                any(), eq(PostCatalogSort.RECENT), any(Pageable.class));
+    }
+
+    @Test
+    void list_unknownSort_fallsBackToFeaturedWithout400() throws Exception {
+        given(publicPostQueryService.listPublishedPosts(
+                any(), any(PostCatalogSort.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/public/posts?sort=bogus"))
+                .andExpect(status().isOk());
+
+        verify(publicPostQueryService).listPublishedPosts(
+                any(), eq(PostCatalogSort.FEATURED), any(Pageable.class));
     }
 
     @Test

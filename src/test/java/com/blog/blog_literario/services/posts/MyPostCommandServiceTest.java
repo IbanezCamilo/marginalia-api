@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -150,6 +151,21 @@ class MyPostCommandServiceTest {
 
         assertThat(result.title()).isEqualTo("Test Title Post");
         verify(postRepository).save(any(Post.class));
+    }
+
+    @Test
+    void create_authorPath_neverSetsFeatured() {
+        // The featured flag is moderator-only curation; author payloads have no way to set it.
+        CreatePostRequest request = new CreatePostRequest("Test Title Post", TIPTAP_CONTENT, 1, "DRAFT");
+        given(userRepository.findById(1)).willReturn(Optional.of(author));
+        given(categoryRepository.findById(1)).willReturn(Optional.of(category));
+        given(postRepository.existsBySlug("test-title-post")).willReturn(false);
+
+        myService.create(1, request);
+
+        ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
+        verify(postRepository).save(captor.capture());
+        assertThat(captor.getValue().isFeatured()).isFalse();
     }
 
     @Test

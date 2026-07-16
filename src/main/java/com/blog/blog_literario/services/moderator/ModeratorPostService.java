@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.blog.blog_literario.dto.moderator.ModeratorFeaturedUpdateRequest;
 import com.blog.blog_literario.dto.moderator.ModeratorPostResponse;
 import com.blog.blog_literario.dto.moderator.ModeratorStatusUpdateRequest;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
@@ -13,6 +14,7 @@ import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.admin.AdminActionLogService;
 import com.blog.blog_literario.services.images.StorageService;
 
 import lombok.NonNull;
@@ -33,6 +35,7 @@ public class ModeratorPostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final StorageService storageService;
+    private final AdminActionLogService adminActionLogService;
 
     /**
      * Returns a paginated list of posts, optionally filtered by {@code status}.
@@ -78,6 +81,52 @@ public class ModeratorPostService {
         }
 
         postRepository.save(post);
+        return toResponse(post);
+    }
+
+    /**
+     * Marks a post as featured (editorial curation, surfaced first in the public
+     * catalog) or removes the mark. Featuring requires the post to be
+     * {@code PUBLISHED}; un-featuring is allowed in any status so a stale flag can
+     * be cleared after a post leaves the catalog. This is curation, not moderation:
+     * it does not touch {@code moderatedBy}/{@code moderatedAt}/{@code moderationNote}.
+     * Every effective toggle is recorded in the admin action log.
+     *
+     * @throws ResourceNotFoundException if no post or actor exists for the given IDs
+     * @throws IllegalStateException     if featuring a post that is not PUBLISHED
+     */
+    @Transactional
+    public ModeratorPostResponse updateFeatured(
+            @NonNull Integer moderatorId,
+            @NonNull Integer postId,
+            @NonNull ModeratorFeaturedUpdateRequest request) {
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Post no encontrado con ID: " + postId));
+
+        boolean featured = request.featured();
+
+        if (featured && !post.isPublished()) {
+            throw new IllegalStateException(
+                    "Solo los posts publicados pueden destacarse. "
+                    + "Estado actual: " + post.getStatus().getDisplayName() + "."
+            );
+        }
+
+        if (post.isFeatured() == featured) {
+            return toResponse(post); // no-op: skip the save and the audit entry
+        }
+
+        post.setFeatured(featured);
+        postRepository.save(post);
+
+        User actor = getModerator(moderatorId);
+        adminActionLogService.record(
+                moderatorId, actor.getEmail(), "POST_FEATURED_CHANGE", "POST", postId,
+                "featured " + !featured + " -> " + featured
+        );
+
         return toResponse(post);
     }
 
@@ -182,7 +231,8 @@ public class ModeratorPostService {
                 post.isPermanentlyBlocked(),
                 post.isLastAttempt(),
                 post.getCreatedAt(),
-                post.getUpdatedAt()
+                post.getUpdatedAt(),
+                post.isFeatured()
         );
     }
 }

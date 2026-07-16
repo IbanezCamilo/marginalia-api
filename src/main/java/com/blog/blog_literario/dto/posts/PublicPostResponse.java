@@ -17,7 +17,8 @@ public record PublicPostResponse(
         String coverImage,
         BigDecimal focalX,
         BigDecimal focalY,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        boolean featured
         ) {
 
 }

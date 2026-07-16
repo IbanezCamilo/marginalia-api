@@ -82,7 +82,8 @@ public class PublicAuthorService {
                 storageService.buildUrl(post.getCoverImage()),
                 post.getFocalX(),
                 post.getFocalY(),
-                post.getCreatedAt()
+                post.getCreatedAt(),
+                post.isFeatured()
         );
     }
 }

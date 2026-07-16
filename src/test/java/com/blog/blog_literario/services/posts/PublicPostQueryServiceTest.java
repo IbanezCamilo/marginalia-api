@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,7 +22,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
+import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Category;
@@ -121,6 +124,35 @@ class PublicPostQueryServiceTest {
         assertThat(response.coverImage()).isEqualTo("https://cover-url");
         assertThat(response.focalX()).isEqualByComparingTo("0.25");
         assertThat(response.focalY()).isEqualByComparingTo("0.75");
+        assertThat(response.featured()).isFalse();
+    }
+
+    @Test
+    void listPublishedPosts_mapsFeaturedFlag() {
+        Post post = publishedPost();
+        post.setFeatured(true);
+        given(postRepository.findByStatus(PostStatus.PUBLISHED, pageable))
+                .willReturn(new PageImpl<>(List.of(post), pageable, 1));
+
+        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(pageable);
+
+        assertThat(result.getContent().get(0).featured()).isTrue();
+    }
+
+    @Test
+    void listPublishedPosts_withCatalogSort_appliesWhitelistedSortIgnoringPageableSort() {
+        Pageable incoming = PageRequest.of(2, 5, Sort.by(Sort.Order.desc("moderationNote")));
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        given(postRepository.findByStatus(any(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        publicPostQueryService.listPublishedPosts(null, PostCatalogSort.FEATURED, incoming);
+
+        verify(postRepository).findByStatus(any(), captor.capture());
+        Pageable effective = captor.getValue();
+        assertThat(effective.getPageNumber()).isEqualTo(2);
+        assertThat(effective.getPageSize()).isEqualTo(5);
+        assertThat(effective.getSort()).isEqualTo(PostCatalogSort.FEATURED.toSort());
     }
 
     @Test
