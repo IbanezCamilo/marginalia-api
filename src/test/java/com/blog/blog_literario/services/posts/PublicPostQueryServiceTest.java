@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
@@ -15,23 +15,29 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
+import com.blog.blog_literario.dto.posts.PostCatalogFilter;
 import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
+import com.blog.blog_literario.dto.posts.ReadingTimeBucket;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Category;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
+import com.blog.blog_literario.repositories.PostCatalogSpecifications;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
@@ -46,6 +52,7 @@ class PublicPostQueryServiceTest {
     @InjectMocks PublicPostQueryService publicPostQueryService;
 
     private final Pageable pageable = PageRequest.of(0, 10);
+    private static final PostCatalogFilter NO_FILTER = PostCatalogFilter.of(null, null, null, null, null);
 
     private Post publishedPost() {
         User author = new User(1, "Alice", "alice@test.com", new Role(Role.AUTHOR));
@@ -70,47 +77,26 @@ class PublicPostQueryServiceTest {
     }
 
     @Test
-    void listPublishedPosts_withCategoryId_callsFindByCategoryIdAndStatus() {
-        given(postRepository.findByCategoryIdAndStatus(1, PostStatus.PUBLISHED, pageable))
+    void listPublishedPosts_delegatesToRepositoryFindAllWithSpecification() {
+        given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(publishedPost()), pageable, 1));
 
-        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(1, pageable);
+        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(
+                NO_FILTER, PostCatalogSort.FEATURED, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(postRepository).findByCategoryIdAndStatus(1, PostStatus.PUBLISHED, pageable);
-        verify(postRepository, never()).findByStatus(any(), any());
-    }
-
-    @Test
-    void listPublishedPosts_nullCategoryId_callsFindByStatus() {
-        given(postRepository.findByStatus(PostStatus.PUBLISHED, pageable))
-                .willReturn(new PageImpl<>(List.of(publishedPost()), pageable, 1));
-
-        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(null, pageable);
-
-        assertThat(result.getContent()).hasSize(1);
-        verify(postRepository).findByStatus(PostStatus.PUBLISHED, pageable);
-        verify(postRepository, never()).findByCategoryIdAndStatus(any(), any(), any());
-    }
-
-    @Test
-    void listPublishedPosts_overload_delegatesWithNullCategoryId() {
-        given(postRepository.findByStatus(PostStatus.PUBLISHED, pageable))
-                .willReturn(new PageImpl<>(List.of(), pageable, 0));
-
-        publicPostQueryService.listPublishedPosts(pageable);
-
-        verify(postRepository).findByStatus(PostStatus.PUBLISHED, pageable);
+        verify(postRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void listPublishedPosts_mapsPostToPublicPostResponseFields() {
-        given(postRepository.findByStatus(PostStatus.PUBLISHED, pageable))
+        given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(publishedPost()), pageable, 1));
         given(avatarResolver.resolve("avatar.jpg", "Alice")).willReturn("https://avatar-url");
         given(storageService.buildUrl("cover.jpg")).willReturn("https://cover-url");
 
-        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(pageable);
+        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(
+                NO_FILTER, PostCatalogSort.FEATURED, pageable);
 
         PublicPostResponse response = result.getContent().get(0);
         assertThat(response.title()).isEqualTo("My Post");
@@ -131,10 +117,11 @@ class PublicPostQueryServiceTest {
     void listPublishedPosts_mapsFeaturedFlag() {
         Post post = publishedPost();
         post.setFeatured(true);
-        given(postRepository.findByStatus(PostStatus.PUBLISHED, pageable))
+        given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(post), pageable, 1));
 
-        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(pageable);
+        Page<PublicPostResponse> result = publicPostQueryService.listPublishedPosts(
+                NO_FILTER, PostCatalogSort.FEATURED, pageable);
 
         assertThat(result.getContent().get(0).featured()).isTrue();
     }
@@ -143,16 +130,37 @@ class PublicPostQueryServiceTest {
     void listPublishedPosts_withCatalogSort_appliesWhitelistedSortIgnoringPageableSort() {
         Pageable incoming = PageRequest.of(2, 5, Sort.by(Sort.Order.desc("moderationNote")));
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        given(postRepository.findByStatus(any(), any(Pageable.class)))
+        given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
-        publicPostQueryService.listPublishedPosts(null, PostCatalogSort.FEATURED, incoming);
+        publicPostQueryService.listPublishedPosts(NO_FILTER, PostCatalogSort.FEATURED, incoming);
 
-        verify(postRepository).findByStatus(any(), captor.capture());
+        verify(postRepository).findAll(any(Specification.class), captor.capture());
         Pageable effective = captor.getValue();
         assertThat(effective.getPageNumber()).isEqualTo(2);
         assertThat(effective.getPageSize()).isEqualTo(5);
         assertThat(effective.getSort()).isEqualTo(PostCatalogSort.FEATURED.toSort());
+    }
+
+    @Test
+    void listPublishedPosts_withFilter_composesOneSpecificationPerActiveFacet() {
+        PostCatalogFilter filter = new PostCatalogFilter(
+                "ficcion", null, 7, ReadingTimeBucket.SHORT, "borges");
+
+        try (MockedStatic<PostCatalogSpecifications> specs =
+                     mockStatic(PostCatalogSpecifications.class)) {
+            given(postRepository.findAll(ArgumentMatchers.<Specification<Post>>any(), any(Pageable.class)))
+                    .willReturn(Page.empty());
+
+            publicPostQueryService.listPublishedPosts(filter, PostCatalogSort.FEATURED, pageable);
+
+            specs.verify(PostCatalogSpecifications::isPublished);
+            specs.verify(() -> PostCatalogSpecifications.hasCategorySlug("ficcion"));
+            specs.verify(() -> PostCatalogSpecifications.hasCategory(null));
+            specs.verify(() -> PostCatalogSpecifications.hasAuthor(7));
+            specs.verify(() -> PostCatalogSpecifications.readingTimeIn(ReadingTimeBucket.SHORT));
+            specs.verify(() -> PostCatalogSpecifications.matchesQuery("borges"));
+        }
     }
 
     @Test

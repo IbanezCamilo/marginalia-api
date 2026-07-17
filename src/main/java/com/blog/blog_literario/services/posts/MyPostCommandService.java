@@ -23,6 +23,7 @@ import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.admin.AdminPostModerationService;
 import com.blog.blog_literario.services.images.StorageService;
 import com.blog.blog_literario.utils.PostContentSanitizer;
+import com.blog.blog_literario.utils.PostPlainText;
 import com.blog.blog_literario.utils.SlugUtils;
 
 import lombok.NonNull;
@@ -104,14 +105,19 @@ public class MyPostCommandService {
             validateForPublish(request.title(), request.content(), request.categoryId());
         }
 
+        String sanitizedContent = PostContentSanitizer.sanitize(request.content());
+
         Post post = new Post(
                 request.title(),
-                PostContentSanitizer.sanitize(request.content()),
+                sanitizedContent,
                 status,
                 slug,
                 user,
                 category
         );
+        // word_count is derived from the same single plain-text extraction the future
+        // searchable-text column will use; recomputed on every content change (never stale).
+        post.setWordCount(PostPlainText.countWords(PostPlainText.extractPlainText(sanitizedContent)));
 
         // Focal point is optional; when omitted the entity keeps its default (center, 0.5).
         if (request.focalX() != null) {
@@ -160,7 +166,9 @@ public class MyPostCommandService {
         }
 
         post.setTitle(request.title());
-        post.setContent(PostContentSanitizer.sanitize(request.content()));
+        String sanitizedContent = PostContentSanitizer.sanitize(request.content());
+        post.setContent(sanitizedContent);
+        post.setWordCount(PostPlainText.countWords(PostPlainText.extractPlainText(sanitizedContent)));
 
         // Category changed
         if(request.categoryId() != null){

@@ -78,6 +78,15 @@ public class Post {
     @Column(name = "featured", nullable = false)
     private boolean featured = false;
 
+    /**
+     * Word count of the plain text extracted from {@code content}. The persisted fact
+     * behind reading time; minutes are always derived via {@link com.blog.blog_literario.utils.ReadingTime}.
+     * Recomputed by the service layer on every content change so it can never go stale.
+     * Nullable only for rows created before V7 that the startup backfill hasn't visited yet.
+     */
+    @Column(name = "word_count")
+    private Integer wordCount;
+
     /** Feedback left by a moderator/admin, shown to the author (e.g. why a post was rejected). */
     @Column(name = "moderation_note", length=500)
     private String moderationNote;

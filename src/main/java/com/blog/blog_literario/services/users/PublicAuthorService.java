@@ -1,5 +1,7 @@
 package com.blog.blog_literario.services.users;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -7,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.dto.users.PublicAuthorResponse;
+import com.blog.blog_literario.dto.users.PublicAuthorSummaryResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
@@ -15,6 +18,7 @@ import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.utils.ReadingTime;
 
 import lombok.RequiredArgsConstructor;
 
@@ -58,6 +62,13 @@ public class PublicAuthorService {
                 .map(this::toPostResponse);
     }
 
+    /** Authors with at least one published post, ordered by name; feeds the catalog's author facet. */
+    public List<PublicAuthorSummaryResponse> listPublishedAuthors() {
+        return postRepository.findDistinctPublishedAuthors().stream()
+                .map(author -> new PublicAuthorSummaryResponse(author.getId(), author.getName()))
+                .toList();
+    }
+
     private PublicAuthorResponse toAuthorResponse(User author) {
         return new PublicAuthorResponse(
                 author.getId(),
@@ -83,7 +94,8 @@ public class PublicAuthorService {
                 post.getFocalX(),
                 post.getFocalY(),
                 post.getCreatedAt(),
-                post.isFeatured()
+                post.isFeatured(),
+                ReadingTime.minutesFor(post.getWordCount())
         );
     }
 }

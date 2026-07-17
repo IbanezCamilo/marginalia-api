@@ -7,12 +7,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
+import com.blog.blog_literario.model.User;
 
 /**
  * Repository for {@link Post} entities.
@@ -21,7 +23,7 @@ import com.blog.blog_literario.model.PostStatus;
  * author-owned (all statuses for a given user), and admin moderation (filtered by
  * status, date range, or full-text search).
  */
-public interface PostRepository extends JpaRepository<Post, Integer> {
+public interface PostRepository extends JpaRepository<Post, Integer>, JpaSpecificationExecutor<Post> {
 
     /** Fetches author/category/moderatedBy eagerly to avoid N+1 queries when mapping to response DTOs. */
     @EntityGraph(attributePaths = {"author", "category", "moderatedBy"})
@@ -117,4 +119,11 @@ public interface PostRepository extends JpaRepository<Post, Integer> {
     default Page<Post> findMyDrafts(Integer authorId, Pageable pageable) {
         return findByAuthorIdAndStatus(authorId, PostStatus.DRAFT, pageable);
     }
+
+    /** Rows created before V7 whose word_count the startup backfill hasn't computed yet. */
+    List<Post> findByWordCountIsNull();
+
+    /** Authors that currently have at least one published post, for the public author facet. */
+    @Query("SELECT DISTINCT p.author FROM Post p WHERE p.status = com.blog.blog_literario.model.PostStatus.PUBLISHED ORDER BY p.author.name ASC")
+    List<User> findDistinctPublishedAuthors();
 }

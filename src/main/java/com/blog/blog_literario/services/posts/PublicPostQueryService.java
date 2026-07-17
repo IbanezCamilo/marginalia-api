@@ -3,18 +3,22 @@ package com.blog.blog_literario.services.posts;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.blog.blog_literario.dto.posts.PostCatalogFilter;
 import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
+import com.blog.blog_literario.repositories.PostCatalogSpecifications;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.utils.ReadingTime;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,35 +36,24 @@ public class PublicPostQueryService {
     private final AvatarResolver avatarResolver;
 
     /**
-     * Returns a paginated page of published posts ordered by {@code catalogSort},
-     * optionally filtered by {@code categoryId}. Any sort carried by {@code pageable}
-     * is discarded — only whitelisted {@link PostCatalogSort} orderings reach the query.
+     * Returns a paginated page of published posts constrained by every active facet in
+     * {@code filter}, ordered by {@code catalogSort}. Absent facets (nulls) don't
+     * constrain the query — {@link Specification#allOf} skips null specifications.
+     * Any sort carried by {@code pageable} is discarded; only whitelisted
+     * {@link PostCatalogSort} orderings reach the query.
      */
     public Page<PublicPostResponse> listPublishedPosts(
-            Integer categoryId, PostCatalogSort catalogSort, Pageable pageable) {
+            PostCatalogFilter filter, PostCatalogSort catalogSort, Pageable pageable) {
         Pageable effective = PageRequest.of(
                 pageable.getPageNumber(), pageable.getPageSize(), catalogSort.toSort());
-        return listPublishedPosts(categoryId, effective);
-    }
-
-    /**
-     * Returns a paginated page of published posts, optionally filtered by {@code categoryId}.
-     * Passing {@code null} returns posts from all categories.
-     */
-    public Page<PublicPostResponse> listPublishedPosts(Integer categoryId, Pageable pageable) {
-        if (categoryId != null) {
-            return postRepository
-                    .findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
-                    .map(this::toResponse);
-        }
-        return postRepository
-                .findByStatus(PostStatus.PUBLISHED, pageable)
-                .map(this::toResponse);
-    }
-
-    // Overload for backward compatibility (no categoryId filter)
-    public Page<PublicPostResponse> listPublishedPosts(Pageable pageable) {
-        return listPublishedPosts(null, pageable);
+        Specification<Post> spec = Specification.allOf(
+                PostCatalogSpecifications.isPublished(),
+                PostCatalogSpecifications.hasCategorySlug(filter.categorySlug()),
+                PostCatalogSpecifications.hasCategory(filter.categoryId()),
+                PostCatalogSpecifications.hasAuthor(filter.authorId()),
+                PostCatalogSpecifications.readingTimeIn(filter.time()),
+                PostCatalogSpecifications.matchesQuery(filter.q()));
+        return postRepository.findAll(spec, effective).map(this::toResponse);
     }
 
     /**
@@ -91,7 +84,8 @@ public class PublicPostQueryService {
                 post.getFocalX(),
                 post.getFocalY(),
                 post.getCreatedAt(),
-                post.isFeatured()
+                post.isFeatured(),
+                ReadingTime.minutesFor(post.getWordCount())
         );
     }
 }

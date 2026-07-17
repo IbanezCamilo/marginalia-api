@@ -1,5 +1,7 @@
 package com.blog.blog_literario.controllers.users;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.dto.users.PublicAuthorResponse;
+import com.blog.blog_literario.dto.users.PublicAuthorSummaryResponse;
 import com.blog.blog_literario.services.users.PublicAuthorService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +31,16 @@ import lombok.RequiredArgsConstructor;
 public class PublicAuthorController {
 
     private final PublicAuthorService publicAuthorService;
+
+    /**
+     * GET /api/public/authors
+     * Authors with at least one published post (id + name), ordered by name.
+     * Populates the catalog's author facet.
+     */
+    @GetMapping
+    public List<PublicAuthorSummaryResponse> listAuthors() {
+        return publicAuthorService.listPublishedAuthors();
+    }
 
     /**
      * GET /api/public/authors/{id}

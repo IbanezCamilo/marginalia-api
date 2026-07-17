@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.blog.blog_literario.dto.posts.PostCatalogFilter;
 import com.blog.blog_literario.dto.posts.PostCatalogSort;
 import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.services.posts.PublicPostQueryService;
@@ -29,17 +30,24 @@ public class PublicPostController {
     private final PublicPostQueryService publicPostQueryService;
 
     /**
-     * Returns a paginated feed of published posts, optionally filtered by {@code categoryId}.
-     * Ordering is restricted to the named {@link PostCatalogSort} keys; unknown or missing
-     * {@code sort} values fall back to the featured-first default.
+     * Returns a paginated feed of published posts filtered by any combination of
+     * stacked facets: {@code category} (slug), {@code categoryId} (legacy), {@code authorId},
+     * {@code time} (short|medium|long over the persisted word count), and {@code q}
+     * (title + author name search). Unknown facet values are ignored, never an error —
+     * these parameters live in shareable URLs.
      */
     @GetMapping
     public Page<PublicPostResponse> list(
+            @RequestParam(required = false) String category,
             @RequestParam(required = false) Integer categoryId,
+            @RequestParam(required = false) String authorId,
+            @RequestParam(required = false) String time,
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) String sort,
             @PageableDefault(size = 10) Pageable pageable) {
         return publicPostQueryService.listPublishedPosts(
-                categoryId, PostCatalogSort.from(sort), pageable);
+                PostCatalogFilter.of(category, categoryId, authorId, time, q),
+                PostCatalogSort.from(sort), pageable);
     }
 
     @GetMapping("/{slug}")
