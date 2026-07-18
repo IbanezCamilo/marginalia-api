@@ -21,6 +21,7 @@ import com.blog.blog_literario.model.EmailVerificationToken;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.EmailVerificationTokenRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.utils.UserValidator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ public class EmailVerificationService {
     private final UserRepository userRepository;
     private final EmailVerificationProperties properties;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserValidator userValidator;
 
     /**
      * Issues a fresh verification token for {@code user} and publishes a
@@ -115,7 +117,7 @@ public class EmailVerificationService {
      * verified accounts are silent no-ops so the endpoint reveals nothing.
      */
     public void resendVerification(String email) {
-        userRepository.findByEmail(email)
+        userRepository.findByEmail(userValidator.sanitizeEmail(email))
                 .filter(user -> !user.isEmailVerified())
                 .ifPresent(this::requestVerificationEmail);
     }
@@ -127,7 +129,7 @@ public class EmailVerificationService {
      */
     @Transactional(readOnly = true)
     public boolean isEmailVerified(String email) {
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmail(userValidator.sanitizeEmail(email))
                 .map(User::isEmailVerified)
                 .orElse(false);
     }

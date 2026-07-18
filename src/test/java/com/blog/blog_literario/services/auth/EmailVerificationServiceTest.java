@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -27,6 +28,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.EmailVerificationTokenRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.utils.UserValidator;
 
 @ExtendWith(MockitoExtension.class)
 class EmailVerificationServiceTest {
@@ -35,6 +37,9 @@ class EmailVerificationServiceTest {
     @Mock UserRepository userRepository;
     @Mock EmailVerificationProperties properties;
     @Mock ApplicationEventPublisher eventPublisher;
+    // Real instance: sanitizeEmail never touches the repository, and the tests
+    // must exercise the actual trim/lowercase behavior.
+    @Spy UserValidator userValidator = new UserValidator(null);
 
     @InjectMocks EmailVerificationService emailVerificationService;
 
@@ -209,6 +214,30 @@ class EmailVerificationServiceTest {
         emailVerificationService.resendVerification("alice@test.com");
 
         verify(eventPublisher).publishEvent(any(VerificationEmailRequested.class));
+    }
+
+    @Test
+    void resendVerification_mixedCaseEmail_findsLowercaseStoredUser() {
+        User user = unverifiedUser();
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+        given(tokenRepository.findTopByUserOrderByCreatedAtDesc(user)).willReturn(Optional.empty());
+        given(tokenRepository.countByUserAndCreatedAtAfter(any(), any())).willReturn(0L);
+        given(properties.dailyCap()).willReturn(5);
+        given(properties.tokenExpirationHours()).willReturn(24L);
+        given(tokenRepository.save(any(EmailVerificationToken.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        emailVerificationService.resendVerification("  Alice@Test.COM ");
+
+        verify(eventPublisher).publishEvent(any(VerificationEmailRequested.class));
+    }
+
+    @Test
+    void isEmailVerified_mixedCaseEmail_matchesLowercaseStoredUser() {
+        User user = unverifiedUser();
+        user.setEmailVerified(true);
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+
+        assertThat(emailVerificationService.isEmailVerified("ALICE@Test.com")).isTrue();
     }
 
     @Test

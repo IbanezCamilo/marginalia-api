@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -22,6 +23,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.utils.UserValidator;
 
 @ExtendWith(MockitoExtension.class)
 class DataInitializerTest {
@@ -30,6 +32,9 @@ class DataInitializerTest {
     @Mock UserRepository userRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock OwnerProperties ownerProperties;
+    // Real instance: sanitizeEmail never touches the repository, and the tests
+    // must exercise the actual trim/lowercase behavior.
+    @Spy UserValidator userValidator = new UserValidator(null);
 
     @InjectMocks DataInitializer dataInitializer;
 
@@ -72,6 +77,24 @@ class DataInitializerTest {
                 "owner@test.com".equals(user.getEmail())
                         && "encoded-hash".equals(user.getPassword())
                         && Role.OWNER.equals(user.getRole().getName())));
+    }
+
+    @Test
+    void run_mixedCaseOwnerEmailEnvVar_seedsNormalizedLowercaseEmail() throws Exception {
+        // A mixed-case OWNER_EMAIL must not seed an owner that the (lowercasing)
+        // login lookup can never find.
+        given(roleRepository.findByName(any())).willReturn(Optional.empty());
+        given(roleRepository.findByName(Role.OWNER))
+                .willReturn(Optional.empty(), Optional.of(new Role(5, Role.OWNER)));
+        given(ownerProperties.email()).willReturn("  Owner@Test.COM ");
+        given(userRepository.findByEmail("owner@test.com")).willReturn(Optional.empty());
+        given(ownerProperties.password()).willReturn("password123");
+        given(passwordEncoder.encode("password123")).willReturn("encoded-hash");
+
+        dataInitializer.run();
+
+        verify(userRepository).findByEmail("owner@test.com");
+        verify(userRepository).save(argThat((User user) -> "owner@test.com".equals(user.getEmail())));
     }
 
     @Test

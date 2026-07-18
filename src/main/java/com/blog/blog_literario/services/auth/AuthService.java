@@ -22,6 +22,7 @@ import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
 import com.blog.blog_literario.services.users.UserCreationService;
+import com.blog.blog_literario.utils.UserValidator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -48,6 +49,7 @@ public class AuthService {
     private final EmailVerificationService emailVerificationService;
     private final UserRepository userRepository;
     private final LockoutProperties lockoutProperties;
+    private final UserValidator userValidator;
 
     /**
      * Creates an unverified account and queues the verification email. The email
@@ -79,7 +81,10 @@ public class AuthService {
      */
     @Transactional(noRollbackFor = BadCredentialsException.class)
     public AuthTokenPair login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email()).orElse(null);
+        // Stored emails are always lowercase (see UserCreationService), so the typed
+        // email must be normalized the same way or the lookup silently misses.
+        String email = userValidator.sanitizeEmail(request.email());
+        User user = userRepository.findByEmail(email).orElse(null);
 
         if (isLocked(user)) {
             throw new BadCredentialsException("Credenciales inválidas");
@@ -87,13 +92,13 @@ public class AuthService {
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+                    new UsernamePasswordAuthenticationToken(email, request.password()));
 
             if (user != null) {
                 resetFailedAttempts(user);
             }
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
             User authUser = ((UserDetailsImpl) userDetails).getUser();
             requireVerifiedEmail(authUser);
             String accessToken = jwtService.generateToken(userDetails, authUser.getTokenVersion());

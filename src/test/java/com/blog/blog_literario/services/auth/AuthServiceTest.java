@@ -14,9 +14,12 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -35,6 +38,7 @@ import com.blog.blog_literario.security.JwtService;
 import com.blog.blog_literario.security.UserDetailsImpl;
 import com.blog.blog_literario.security.UserDetailsServiceImpl;
 import com.blog.blog_literario.services.users.UserCreationService;
+import com.blog.blog_literario.utils.UserValidator;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -47,6 +51,9 @@ class AuthServiceTest {
     @Mock EmailVerificationService emailVerificationService;
     @Mock UserRepository userRepository;
     @Mock LockoutProperties lockoutProperties;
+    // Real instance: sanitizeEmail never touches the repository, and the tests
+    // must exercise the actual trim/lowercase behavior.
+    @Spy UserValidator userValidator = new UserValidator(null);
 
     @InjectMocks AuthService authService;
 
@@ -99,6 +106,31 @@ class AuthServiceTest {
         assertThat(result.accessToken()).isEqualTo("jwt-token");
         assertThat(result.refreshToken()).isEqualTo("raw-refresh-token");
         verify(refreshTokenService).create(user);
+    }
+
+    @Test
+    void login_mixedCaseEmailWithSpaces_normalizesBeforeLookupAndAuthentication() {
+        // Stored emails are always lowercase; the typed email must be normalized
+        // or the case-sensitive lookup misses and login fails spuriously.
+        var request = new LoginRequest("  Alice@Test.COM ", "password123");
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setEmailVerified(true);
+        UserDetailsImpl userDetails = new UserDetailsImpl(user);
+
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+        given(authenticationManager.authenticate(any())).willReturn(
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
+        given(userDetailsService.loadUserByUsername("alice@test.com")).willReturn(userDetails);
+        given(jwtService.generateToken(userDetails, user.getTokenVersion())).willReturn("jwt-token");
+        given(refreshTokenService.create(user)).willReturn("raw-refresh-token");
+
+        AuthTokenPair result = authService.login(request);
+
+        assertThat(result.accessToken()).isEqualTo("jwt-token");
+        ArgumentCaptor<Authentication> authCaptor = ArgumentCaptor.forClass(Authentication.class);
+        verify(authenticationManager).authenticate(authCaptor.capture());
+        assertThat(authCaptor.getValue().getPrincipal()).isEqualTo("alice@test.com");
+        verify(userDetailsService).loadUserByUsername("alice@test.com");
     }
 
     @Test

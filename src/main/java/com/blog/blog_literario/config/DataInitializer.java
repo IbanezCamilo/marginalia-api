@@ -11,6 +11,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.RoleRepository;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.utils.UserValidator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OwnerProperties ownerProperties;
+    private final UserValidator userValidator;
 
     @Override
     public void run(String... args) throws Exception {
@@ -65,19 +67,22 @@ public class DataInitializer implements CommandLineRunner {
         Role ownerRole = roleRepository.findByName(Role.OWNER)
                 .orElseThrow(() -> new RuntimeException("ERROR: El rol owner no existe"));
 
-        Optional<User> existing = userRepository.findByEmail(ownerProperties.email());
+        // Stored emails are always lowercase; normalize OWNER_EMAIL the same way so a
+        // mixed-case env var can't seed an owner that login (which lowercases) never finds.
+        String ownerEmail = userValidator.sanitizeEmail(ownerProperties.email());
+        Optional<User> existing = userRepository.findByEmail(ownerEmail);
 
         if (existing.isEmpty()) {
             User owner = new User();
             owner.setName("Propietario");
-            owner.setEmail(ownerProperties.email());
+            owner.setEmail(ownerEmail);
             owner.setPassword(passwordEncoder.encode(ownerProperties.password()));
             owner.setRole(ownerRole);
             owner.setProfilePicture(null);
             owner.setEmailVerified(true);
 
             userRepository.save(owner);
-            log.info("Owner user created with email: {}", ownerProperties.email());
+            log.info("Owner user created with email: {}", ownerEmail);
             return;
         }
 
@@ -91,7 +96,7 @@ public class DataInitializer implements CommandLineRunner {
         user.setRole(ownerRole);
         user.incrementTokenVersion();
         userRepository.save(user);
-        log.info("Upgraded existing seed user '{}' from {} to OWNER", ownerProperties.email(), previousRoleName);
+        log.info("Upgraded existing seed user '{}' from {} to OWNER", ownerEmail, previousRoleName);
     }
 
 }
