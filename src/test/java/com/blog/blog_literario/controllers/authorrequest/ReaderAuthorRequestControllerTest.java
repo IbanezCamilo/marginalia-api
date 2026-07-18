@@ -49,6 +49,7 @@ class ReaderAuthorRequestControllerTest {
     private static final AuthorRequestResponse SAMPLE = new AuthorRequestResponse(
             1, 2, "Bob", "bob@test.com",
             "I want to write", "PENDING", "Pendiente",
+            null, null, null,
             null, null, null, LocalDateTime.now()
     );
 

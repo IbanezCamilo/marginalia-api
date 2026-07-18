@@ -1,5 +1,7 @@
 package com.blog.blog_literario.services.email;
 
+import java.util.List;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -20,5 +22,12 @@ public class LoggingEmailService implements EmailService {
     @Override
     public void sendVerificationEmail(String to, String userName, String verificationUrl, String idempotencyKey) {
         log.info("[email.provider=logging] Verification email for {} <{}>: {}", userName, to, verificationUrl);
+    }
+
+    @Override
+    public void sendAuthorRequestNotification(List<String> to, String requesterName, String requesterEmail,
+            String motivation, String adminPanelUrl, String idempotencyKey) {
+        log.info("[email.provider=logging] Author request notification to {} — {} <{}> wrote: {}",
+                to, requesterName, requesterEmail, motivation);
     }
 }

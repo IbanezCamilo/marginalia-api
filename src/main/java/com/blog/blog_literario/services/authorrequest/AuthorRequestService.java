@@ -1,11 +1,19 @@
 package com.blog.blog_literario.services.authorrequest;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+import java.util.List;
+
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.blog.blog_literario.config.properties.AuthorRequestProperties;
 import com.blog.blog_literario.dto.authorrequest.AuthorRequestResponse;
+import com.blog.blog_literario.events.AuthorRequestSubmitted;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.AuthorRequest;
 import com.blog.blog_literario.model.AuthorRequestStatus;
@@ -32,10 +40,9 @@ import lombok.RequiredArgsConstructor;
  *   2. A user may only have one PENDING request at a time.
  *   3. Only PENDING requests can be approved or rejected.
  *   4. Approving a request promotes the requester's role to AUTHOR.
- *
- * Note: rules 1-3 are also partially enforced at the DB level
- * via the chk_author_requests_resolution_coherence constraint,
- * but the service layer provides clearer error messages.
+ *   5. While another admin holds an active review claim on a request,
+ *      nobody else may claim or resolve it (claims expire after
+ *      author-request.claim-ttl-minutes).
  */
 @Service
 @Transactional
@@ -45,6 +52,10 @@ public class AuthorRequestService {
     private final AuthorRequestRepository authorRequestRepository;
     private final UserRepository userRepository;
     private final UserUpdateService userUpdateService;
+    private final AuthorRequestProperties authorRequestProperties;
+    private final ApplicationEventPublisher eventPublisher;
+
+    private static final DateTimeFormatter CLAIM_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     // ─── READER operations ─────────────────────────────────────────────────────
 
@@ -83,7 +94,18 @@ public class AuthorRequestService {
         request.setMotivation(motivation);
         // Status defaults to PENDING via the field initializer in the entity
 
-        return toResponse(authorRequestRepository.save(request));
+        AuthorRequest saved = authorRequestRepository.save(request);
+
+        // Notify all admins by email once this transaction commits. The email list
+        // travels in the event because the AFTER_COMMIT listener runs outside any
+        // transaction and must not touch repositories. Request IDs are unique and a
+        // request is created exactly once, so the id makes a per-request idempotency key.
+        List<String> adminEmails = userRepository.findEmailsByRoleNames(List.of(Role.ADMIN, Role.OWNER));
+        eventPublisher.publishEvent(new AuthorRequestSubmitted(
+                saved.getId(), requester.getName(), requester.getEmail(),
+                motivation, adminEmails, "author-request/" + saved.getId()));
+
+        return toResponse(saved);
     }
 
     /**
@@ -154,7 +176,7 @@ public class AuthorRequestService {
             @NonNull Integer adminId,
             String note
     ) {
-        AuthorRequest request = findPendingRequest(requestId);
+        AuthorRequest request = findActionableRequest(requestId, adminId);
         User admin = findUserById(adminId);
 
         // Promote the requester's role to AUTHOR — delegates to UserUpdateService so
@@ -185,7 +207,7 @@ public class AuthorRequestService {
             @NonNull Integer adminId,
             String note
     ) {
-        AuthorRequest request = findPendingRequest(requestId);
+        AuthorRequest request = findActionableRequest(requestId, adminId);
         User admin = findUserById(adminId);
 
         request.reject(admin, note);
@@ -201,6 +223,50 @@ public class AuthorRequestService {
     @Transactional(readOnly = true)
     public long countPending() {
         return authorRequestRepository.countByStatus(AuthorRequestStatus.PENDING);
+    }
+
+    /**
+     * Claims a PENDING request for review ("under review" indicator).
+     *
+     * Succeeds when the request is unclaimed, already claimed by this admin
+     * (refreshing the timestamp), or the previous claim has expired.
+     *
+     * @param requestId ID of the request to claim
+     * @param adminId   ID of the admin opening the resolution modal
+     * @return the updated request, including the fresh claim
+     * @throws ResourceNotFoundException if request or admin does not exist
+     * @throws IllegalStateException     if the request is not PENDING, or another
+     *                                   admin holds an active claim on it
+     */
+    public AuthorRequestResponse claim(@NonNull Integer requestId, @NonNull Integer adminId) {
+        AuthorRequest request = findActionableRequest(requestId, adminId);
+        User admin = findUserById(adminId);
+
+        request.claim(admin);
+
+        return toResponse(authorRequestRepository.save(request));
+    }
+
+    /**
+     * Releases this admin's review claim on a request (modal closed without resolving).
+     *
+     * Deliberately a no-op when the claim is held by someone else, already gone,
+     * or the request is resolved — release fires from a dialog-cancel path, and
+     * failing loudly on those harmless races would only produce confusing errors.
+     *
+     * @param requestId ID of the request to release
+     * @param adminId   ID of the admin cancelling the review
+     * @throws ResourceNotFoundException if the request does not exist
+     */
+    public void release(@NonNull Integer requestId, @NonNull Integer adminId) {
+        AuthorRequest request = authorRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Author request not found with ID: " + requestId));
+
+        if (request.getClaimedBy() != null && request.getClaimedBy().getId().equals(adminId)) {
+            request.releaseClaim();
+            authorRequestRepository.save(request);
+        }
     }
 
     // ─── Private helpers ───────────────────────────────────────────────────────
@@ -222,6 +288,40 @@ public class AuthorRequestService {
         }
 
         return request;
+    }
+
+    /**
+     * Loads a PENDING request and asserts this admin may act on it.
+     * Centralizes rule 5 for claim(), approve(), and reject():
+     * another admin's claim only blocks while it is still active.
+     */
+    private AuthorRequest findActionableRequest(Integer requestId, Integer adminId) {
+        AuthorRequest request = findPendingRequest(requestId);
+
+        if (isClaimedByOther(request, adminId)) {
+            throw new IllegalStateException(
+                "La solicitud ya está siendo revisada por " + request.getClaimedBy().getName()
+                    + " desde las " + request.getClaimedAt().format(CLAIM_TIME_FORMAT) + ".");
+        }
+
+        return request;
+    }
+
+    /**
+     * A claim counts only while it is younger than the configured TTL —
+     * expired claims are treated exactly like no claim at all.
+     */
+    private boolean isClaimActive(AuthorRequest request) {
+        return request.getClaimedAt() != null
+                && request.getClaimedAt()
+                        .plusMinutes(authorRequestProperties.claimTtlMinutes())
+                        .isAfter(LocalDateTime.now());
+    }
+
+    private boolean isClaimedByOther(AuthorRequest request, Integer adminId) {
+        return request.getClaimedBy() != null
+                && !request.getClaimedBy().getId().equals(adminId)
+                && isClaimActive(request);
     }
 
     /**
@@ -253,8 +353,11 @@ public class AuthorRequestService {
     /**
      * Maps an AuthorRequest entity to its response DTO.
      * resolvedByName is null while the request is PENDING.
+     * Claim fields are exposed only while the claim is active, so clients can
+     * treat "claim fields non-null" as "under review" without knowing the TTL.
      */
     private AuthorRequestResponse toResponse(AuthorRequest r) {
+        boolean claimActive = isClaimActive(r);
         return new AuthorRequestResponse(
                 r.getId(),
                 r.getRequester().getId(),
@@ -266,6 +369,9 @@ public class AuthorRequestService {
                 r.getAdminNote(),
                 r.getResolvedBy() != null ? r.getResolvedBy().getName() : null,
                 r.getResolvedAt(),
+                claimActive ? r.getClaimedBy().getId() : null,
+                claimActive ? r.getClaimedBy().getName() : null,
+                claimActive ? r.getClaimedAt() : null,
                 r.getCreatedAt()
         );
     }

@@ -27,6 +27,12 @@ public record AuthorRequestResponse(
         String        resolvedByName,
         LocalDateTime resolvedAt,
 
+        // Active review claim (all null when unclaimed, expired, or resolved —
+        // the service nulls expired claims so clients never need to know the TTL)
+        Integer       claimedById,
+        String        claimedByName,
+        LocalDateTime claimedAt,
+
         // Audit
         LocalDateTime createdAt
 ) {}

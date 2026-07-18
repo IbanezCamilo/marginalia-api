@@ -80,6 +80,15 @@ public interface AuthorRequestRepository extends JpaRepository<AuthorRequest, In
     void clearResolvedByForUser(@Param("userId") Integer userId);
 
     /**
+     * Clears any review claim held by the given admin, preventing an orphaned
+     * foreign key when that admin account is deleted (and freeing the requests
+     * immediately when the admin is demoted, instead of waiting for the claim TTL).
+     */
+    @Modifying
+    @Query("UPDATE AuthorRequest r SET r.claimedBy = NULL, r.claimedAt = NULL WHERE r.claimedBy.id = :userId")
+    void clearClaimedByForUser(@Param("userId") Integer userId);
+
+    /**
      * Deletes every request submitted by the given user. Because {@code requester_id}
      * is NOT NULL it can't be nulled out like {@code resolvedBy}, so the user's own
      * request history is removed along with their account when they are deleted.

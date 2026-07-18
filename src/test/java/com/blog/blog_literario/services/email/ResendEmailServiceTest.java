@@ -1,10 +1,15 @@
 package com.blog.blog_literario.services.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,10 +42,14 @@ class ResendEmailServiceTest {
 
     @BeforeEach
     void setUp() {
-        given(resend.emails()).willReturn(emails);
-        given(resendProperties.from()).willReturn("Marginalia <no-reply@test.dev>");
-        given(verificationProperties.tokenExpirationHours()).willReturn(24L);
-        given(emailProperties.logoUrl()).willReturn("https://media.test.dev/logo.png");
+        // lenient: the author-request notification path never reads the verification
+        // TTL, and the empty-recipient guard returns before touching any stub — the
+        // shared setup must not trip strict stubbing on those tests
+        lenient().when(resend.emails()).thenReturn(emails);
+        lenient().when(resendProperties.from()).thenReturn("Marginalia <no-reply@test.dev>");
+        lenient().when(resendProperties.notificationsFrom()).thenReturn("Marginalia <avisos@test.dev>");
+        lenient().when(verificationProperties.tokenExpirationHours()).thenReturn(24L);
+        lenient().when(emailProperties.logoUrl()).thenReturn("https://media.test.dev/logo.png");
     }
 
     @Test
@@ -126,5 +135,111 @@ class ResendEmailServiceTest {
         ArgumentCaptor<CreateEmailOptions> optionsCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
         verify(emails).send(optionsCaptor.capture(), any(RequestOptions.class));
         assertThat(optionsCaptor.getValue().getHtml()).doesNotContain("<script>");
+    }
+
+    // ─── Author request notification ───────────────────────────────────────────
+
+    @Test
+    void sendAuthorRequestNotification_success_sendsOnceToAllAdminsWithIdempotencyKey() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willReturn(new CreateEmailResponse());
+
+        resendEmailService.sendAuthorRequestNotification(
+                List.of("admin@test.com", "owner@test.com"), "Reader", "reader@test.com",
+                "I want to write", "http://front/user/solicitudes", "author-request/7");
+
+        ArgumentCaptor<CreateEmailOptions> optionsCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        ArgumentCaptor<RequestOptions> requestCaptor = ArgumentCaptor.forClass(RequestOptions.class);
+        verify(emails).send(optionsCaptor.capture(), requestCaptor.capture());
+
+        // Staff notifications use their own sender, not the account-email address
+        assertThat(optionsCaptor.getValue().getFrom()).isEqualTo("Marginalia <avisos@test.dev>");
+        assertThat(optionsCaptor.getValue().getTo()).containsExactly("admin@test.com", "owner@test.com");
+        assertThat(optionsCaptor.getValue().getSubject()).isEqualTo("Nueva solicitud de autoría en Marginalia");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("Reader");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("reader@test.com");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("I want to write");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("http://front/user/solicitudes");
+        // The plain-text part must never depend on the HTML rendering.
+        assertThat(optionsCaptor.getValue().getText()).contains("http://front/user/solicitudes");
+        assertThat(optionsCaptor.getValue().getText()).contains("I want to write");
+        assertThat(requestCaptor.getValue().getIdempotencyKey()).isEqualTo("author-request/7");
+    }
+
+    @Test
+    void sendAuthorRequestNotification_escapesUserProvidedNameAndMotivationInHtml() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willReturn(new CreateEmailResponse());
+
+        resendEmailService.sendAuthorRequestNotification(
+                List.of("admin@test.com"), "<script>x</script>", "reader@test.com",
+                "<img src=x onerror=alert(1)>", "http://front/user/solicitudes", "author-request/8");
+
+        ArgumentCaptor<CreateEmailOptions> optionsCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        verify(emails).send(optionsCaptor.capture(), any(RequestOptions.class));
+        assertThat(optionsCaptor.getValue().getHtml()).doesNotContain("<script>");
+        assertThat(optionsCaptor.getValue().getHtml()).doesNotContain("<img src=x");
+    }
+
+    @Test
+    void sendAuthorRequestNotification_nullMotivation_rendersFallback() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willReturn(new CreateEmailResponse());
+
+        resendEmailService.sendAuthorRequestNotification(
+                List.of("admin@test.com"), "Reader", "reader@test.com",
+                null, "http://front/user/solicitudes", "author-request/9");
+
+        ArgumentCaptor<CreateEmailOptions> optionsCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        verify(emails).send(optionsCaptor.capture(), any(RequestOptions.class));
+        assertThat(optionsCaptor.getValue().getText()).contains("(sin motivación)");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("(sin motivaci");
+    }
+
+    @Test
+    void sendAuthorRequestNotification_emptyRecipients_sendsNothing() {
+        resendEmailService.sendAuthorRequestNotification(
+                List.of(), "Reader", "reader@test.com",
+                "I want to write", "http://front/user/solicitudes", "author-request/10");
+
+        verifyNoInteractions(emails);
+    }
+
+    @Test
+    void sendAuthorRequestNotification_rateLimited_retriesAndSucceeds() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willThrow(new RuntimeException("Failed to send email: 429 {\"message\":\"Too many requests\"}"))
+                .willReturn(new CreateEmailResponse());
+
+        resendEmailService.sendAuthorRequestNotification(
+                List.of("admin@test.com"), "Reader", "reader@test.com",
+                "I want to write", "http://front/user/solicitudes", "author-request/11");
+
+        verify(emails, times(2)).send(any(CreateEmailOptions.class), any(RequestOptions.class));
+    }
+
+    @Test
+    void sendAuthorRequestNotification_validationError_doesNotRetryOrThrow() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willThrow(new RuntimeException("Failed to send email: 422 {\"message\":\"Invalid to\"}"));
+
+        resendEmailService.sendAuthorRequestNotification(
+                List.of("bad-address"), "Reader", "reader@test.com",
+                "I want to write", "http://front/user/solicitudes", "author-request/12");
+
+        verify(emails, times(1)).send(any(CreateEmailOptions.class), any(RequestOptions.class));
+    }
+
+    @Test
+    void sendAuthorRequestNotification_serverErrorsExhaustAllAttemptsWithoutThrowing() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willThrow(new RuntimeException("Failed to send email: 500 {\"message\":\"Internal error\"}"));
+
+        assertThatCode(() -> resendEmailService.sendAuthorRequestNotification(
+                List.of("admin@test.com"), "Reader", "reader@test.com",
+                "I want to write", "http://front/user/solicitudes", "author-request/13"))
+                .doesNotThrowAnyException();
+
+        verify(emails, times(3)).send(any(CreateEmailOptions.class), any(RequestOptions.class));
     }
 }

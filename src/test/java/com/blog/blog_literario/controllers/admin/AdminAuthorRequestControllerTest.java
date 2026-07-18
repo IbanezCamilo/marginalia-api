@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,6 +51,7 @@ class AdminAuthorRequestControllerTest {
     private static final AuthorRequestResponse SAMPLE = new AuthorRequestResponse(
             1, 2, "Alice", "alice@test.com",
             "I want to write", "PENDING", "Pendiente",
+            null, null, null,
             null, null, null, LocalDateTime.now()
     );
 
@@ -98,6 +100,58 @@ class AdminAuthorRequestControllerTest {
         mockMvc.perform(get("/api/admin/author-requests/pending-count").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value(5));
+    }
+
+    @Test
+    void claim_asAdmin_returns200WithUpdatedRequest() throws Exception {
+        given(authorRequestService.claim(1, 1)).willReturn(SAMPLE);
+
+        mockMvc.perform(put("/api/admin/author-requests/1/claim")
+                .with(authentication(TestSecurityFactory.asAdmin(1))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+
+        verify(authorRequestService).claim(1, 1);
+    }
+
+    @Test
+    void claim_alreadyClaimedByOtherAdmin_returns409WithProblemDetail() throws Exception {
+        given(authorRequestService.claim(1, 1))
+                .willThrow(new IllegalStateException("La solicitud ya está siendo revisada por Otra Admin desde las 10:30."));
+
+        mockMvc.perform(put("/api/admin/author-requests/1/claim")
+                .with(authentication(TestSecurityFactory.asAdmin(1))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/conflict"))
+                .andExpect(jsonPath("$.detail").value("La solicitud ya está siendo revisada por Otra Admin desde las 10:30."));
+    }
+
+    @Test
+    void releaseClaim_asAdmin_returns204() throws Exception {
+        mockMvc.perform(delete("/api/admin/author-requests/1/claim")
+                .with(authentication(TestSecurityFactory.asAdmin(1))))
+                .andExpect(status().isNoContent());
+
+        verify(authorRequestService).release(1, 1);
+    }
+
+    @Test
+    void claim_asReader_returns403() throws Exception {
+        mockMvc.perform(put("/api/admin/author-requests/1/claim")
+                .with(user("reader").roles("READER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void approve_staleVersion_returns409WithProblemDetail() throws Exception {
+        given(authorRequestService.approve(eq(1), eq(1), any()))
+                .willThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(
+                        com.blog.blog_literario.model.AuthorRequest.class, 1));
+
+        mockMvc.perform(put("/api/admin/author-requests/1/approve")
+                .with(authentication(TestSecurityFactory.asAdmin(1))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/conflict"));
     }
 
     @Test

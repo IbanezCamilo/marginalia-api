@@ -15,6 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -47,6 +48,15 @@ public class AuthorRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
+
+    /**
+     * Optimistic-locking version, owned entirely by Hibernate.
+     * Never call the Lombok-generated setter from application code —
+     * a stale concurrent update must fail with ObjectOptimisticLockingFailureException.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     // ─── Who is requesting ─────────────────────────────────────────────────────
 
@@ -86,6 +96,24 @@ public class AuthorRequest {
     @JoinColumn(name = "resolved_by_id")
     private User resolvedBy;
 
+    // ─── Review claim ──────────────────────────────────────────────────────────
+
+    /**
+     * The admin currently reviewing this request ("under review" indicator).
+     * Null while unclaimed; a non-null claim is only honored while it is younger
+     * than the TTL (author-request.claim-ttl-minutes) — expiry is checked in code.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "claimed_by_id")
+    private User claimedBy;
+
+    /**
+     * When the current claim was taken (or last refreshed).
+     * Null while unclaimed.
+     */
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
+
     // ─── Timestamps ────────────────────────────────────────────────────────────
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -119,6 +147,7 @@ public class AuthorRequest {
         this.resolvedBy = admin;
         this.adminNote  = note;
         this.resolvedAt = LocalDateTime.now();
+        releaseClaim(); // resolved rows never carry a stale claim
     }
 
     /**
@@ -130,5 +159,23 @@ public class AuthorRequest {
         this.resolvedBy = admin;
         this.adminNote  = note;
         this.resolvedAt = LocalDateTime.now();
+        releaseClaim(); // resolved rows never carry a stale claim
+    }
+
+    /**
+     * Claims this request for review by the given admin.
+     * Re-claiming by the same admin simply refreshes the timestamp.
+     */
+    public void claim(User admin) {
+        this.claimedBy = admin;
+        this.claimedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Releases the review claim (explicit cancel, or as part of resolution).
+     */
+    public void releaseClaim() {
+        this.claimedBy = null;
+        this.claimedAt = null;
     }
 }

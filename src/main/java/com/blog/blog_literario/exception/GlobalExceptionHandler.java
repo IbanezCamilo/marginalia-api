@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -56,6 +57,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail handleIllegalState(IllegalStateException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        pd.setType(URI.create("https://blog-literario.com/errors/conflict"));
+        return pd;
+    }
+
+    /**
+     * 409 — the row was modified by a concurrent transaction (@Version conflict).
+     * The raw message names entity classes, so a fixed user-facing detail is used instead.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ProblemDetail handleOptimisticLocking(OptimisticLockingFailureException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "La solicitud fue modificada por otra persona al mismo tiempo. Recarga la página e inténtalo de nuevo.");
         pd.setType(URI.create("https://blog-literario.com/errors/conflict"));
         return pd;
     }

@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.blog.blog_literario.config.SecurityConfig;
+import com.blog.blog_literario.model.AuthorRequest;
 import com.blog.blog_literario.security.CorrelationIdFilter;
 import com.blog.blog_literario.security.JwtAuthenticationFilter;
 import com.blog.blog_literario.security.JwtService;
@@ -20,6 +21,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,6 +51,9 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/illegal-state")
         void illegalState() { throw new IllegalStateException("Illegal state"); }
+
+        @GetMapping("/test/optimistic-lock")
+        void optimisticLock() { throw new ObjectOptimisticLockingFailureException(AuthorRequest.class, 1); }
 
         @PostMapping("/test/validate")
         void validate(@Validated @RequestBody ValidBody body) {}
@@ -90,6 +95,17 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/conflict"))
                 .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void optimisticLockConflict_returns409WithFixedSpanishDetail() throws Exception {
+        mockMvc.perform(get("/test/optimistic-lock").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                // Fixed user-facing detail — the raw message names entity classes
+                .andExpect(jsonPath("$.detail").value(
+                        "La solicitud fue modificada por otra persona al mismo tiempo. Recarga la página e inténtalo de nuevo."));
     }
 
     @Test
