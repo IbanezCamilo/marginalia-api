@@ -214,6 +214,32 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void update_demotingAdmin_clearsTheirReviewClaims() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        UpdateUserRequest request = new UpdateUserRequest(null, null, Role.AUTHOR);
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.findById(3)).willReturn(Optional.of(owner));
+        given(userRepository.save(adminTarget)).willReturn(adminTarget);
+
+        adminUserService.update(3, 1, request);
+
+        verify(authorRequestRepository).clearClaimedByForUser(1);
+    }
+
+    @Test
+    void update_adminWithoutRoleChange_keepsTheirReviewClaims() {
+        User adminTarget = new User(1, "OtherAdmin", "other@test.com", new Role(1, Role.ADMIN));
+        UpdateUserRequest request = new UpdateUserRequest("NewName", null, null);
+        given(userRepository.findById(1)).willReturn(Optional.of(adminTarget));
+        given(userRepository.findById(3)).willReturn(Optional.of(owner));
+        given(userRepository.save(adminTarget)).willReturn(adminTarget);
+
+        adminUserService.update(3, 1, request);
+
+        verify(authorRequestRepository, never()).clearClaimedByForUser(any());
+    }
+
+    @Test
     void update_nonExistentUser_throwsResourceNotFoundException() {
         UpdateUserRequest request = new UpdateUserRequest("Bob", null, null);
         given(userRepository.findById(99)).willReturn(Optional.empty());
@@ -297,6 +323,7 @@ class AdminUserServiceTest {
         verify(storageService).delete("profile.jpg");
         verify(postRepository).clearModeratedByForUser(1);
         verify(authorRequestRepository).clearResolvedByForUser(1);
+        verify(authorRequestRepository).clearClaimedByForUser(1);
         verify(authorRequestRepository).deleteByRequesterId(1);
         verify(refreshTokenRepository).deleteByUser(user);
         verify(emailVerificationTokenRepository).deleteByUser(user);

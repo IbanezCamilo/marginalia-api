@@ -192,6 +192,13 @@ public class AdminUserService {
                 adminId
         );
 
+        // A demoted admin can no longer review author requests — free any request
+        // they were holding "under review" instead of waiting for the claim TTL
+        if (targetIsAdmin && request.roleName() != null
+                && !Role.ADMIN.equalsIgnoreCase(request.roleName())) {
+            authorRequestRepository.clearClaimedByForUser(id);
+        }
+
         return toResponse(userRepository.save(user));
     }
 
@@ -229,9 +236,10 @@ public class AdminUserService {
         }
 
         // Clear references from other users' rows so deleting this user doesn't
-        // leave a dangling moderatedBy/resolvedBy foreign key behind
+        // leave a dangling moderatedBy/resolvedBy/claimedBy foreign key behind
         postRepository.clearModeratedByForUser(id);
         authorRequestRepository.clearResolvedByForUser(id);
+        authorRequestRepository.clearClaimedByForUser(id);
 
         // Delete the user's own author requests: requester_id is NOT NULL, so it
         // can't be nulled out — the request history goes away with the account

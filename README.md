@@ -130,7 +130,8 @@ Copy `.env.example` → `.env` and fill in your values:
 | `JWT_REFRESH_EXPIRATION` | No | Refresh token TTL in ms | `604800000` *(7 days)* |
 | `EMAIL_PROVIDER` | No | `logging` (default — writes the verification link to the log) or `resend` (real sends) | `logging` |
 | `RESEND_API_KEY` | With `resend` | Resend API key | *(from Resend)* |
-| `RESEND_FROM` | With `resend` | Verified sender address | `noreply@example.com` |
+| `RESEND_FROM` | With `resend` | Verified sender address for account emails (verification) | `noreply@example.com` |
+| `RESEND_NOTIFICATIONS_FROM` | No | Verified sender for staff notifications (new author requests); defaults to `RESEND_FROM` | `notifications@example.com` |
 | `APP_BASE_URL` | No | Base URL for constructing image URLs (local storage) | `http://localhost:8080` |
 | `STORAGE_ACTIVE` | No | Storage backend: `local` (default) or `r2` | `local` |
 | `R2_ACCOUNT_ID` | With `r2` | Cloudflare account ID | `a1b2c3d4...` |

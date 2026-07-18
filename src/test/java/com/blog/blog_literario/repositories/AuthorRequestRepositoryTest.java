@@ -1,7 +1,9 @@
 package com.blog.blog_literario.repositories;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.blog.blog_literario.model.AuthorRequest;
@@ -164,6 +167,74 @@ class AuthorRequestRepositoryTest {
 
         AuthorRequest reloaded = authorRequestRepository.findById(request.getId()).orElseThrow();
         assertThat(reloaded.getResolvedBy()).isNull();
+    }
+
+    @Test
+    void clearClaimedByForUser_nullsOutClaimFieldsForThatAdminOnly() {
+        Role adminRole = roleRepository.save(new Role("ADMIN"));
+        User adminUser = persistAdmin(adminRole, "admin@test.com");
+        User otherAdmin = persistAdmin(adminRole, "otra@test.com");
+
+        AuthorRequest claimedByAdmin = persistRequest(AuthorRequestStatus.PENDING);
+        claimedByAdmin.claim(adminUser);
+        AuthorRequest claimedByOther = persistRequest(AuthorRequestStatus.PENDING);
+        claimedByOther.claim(otherAdmin);
+        em.flush();
+
+        authorRequestRepository.clearClaimedByForUser(adminUser.getId());
+        em.flush();
+        em.clear();
+
+        AuthorRequest cleared = authorRequestRepository.findById(claimedByAdmin.getId()).orElseThrow();
+        assertThat(cleared.getClaimedBy()).isNull();
+        assertThat(cleared.getClaimedAt()).isNull();
+
+        AuthorRequest untouched = authorRequestRepository.findById(claimedByOther.getId()).orElseThrow();
+        assertThat(untouched.getClaimedBy()).isNotNull();
+        assertThat(untouched.getClaimedAt()).isNotNull();
+    }
+
+    @Test
+    void save_versionIncrementsOnEveryUpdate() {
+        AuthorRequest request = persistRequest(AuthorRequestStatus.PENDING);
+        em.flush();
+        Long initialVersion = request.getVersion();
+
+        request.setAdminNote("first note");
+        em.flush();
+
+        assertThat(initialVersion).isNotNull();
+        assertThat(request.getVersion()).isEqualTo(initialVersion + 1);
+    }
+
+    @Test
+    void saveAndFlush_staleVersion_throwsOptimisticLockingFailure() {
+        // Reproduces the two-admins race: both read version N; the first commit bumps
+        // the row to N+1, so the second (stale) write must fail instead of silently winning.
+        AuthorRequest request = persistRequest(AuthorRequestStatus.PENDING);
+        request.setClaimedAt(LocalDateTime.now()); // any column works; claim keeps it realistic
+        em.flush();
+        Integer id = request.getId();
+        em.detach(request); // detached copy still carrying the old version
+
+        AuthorRequest fresh = authorRequestRepository.findById(id).orElseThrow();
+        fresh.setAdminNote("resolved by admin A");
+        em.flush(); // bumps the version in the database
+        em.clear();
+
+        request.setAdminNote("resolved by admin B (stale)");
+        assertThatThrownBy(() -> authorRequestRepository.saveAndFlush(request))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+    }
+
+    private User persistAdmin(Role adminRole, String email) {
+        User u = new User();
+        u.setName(email.substring(0, email.indexOf('@')));
+        u.setEmail(email);
+        u.setPassword("hashed");
+        u.setProfilePicture("");
+        u.setRole(adminRole);
+        return em.persist(u);
     }
 
     @Test

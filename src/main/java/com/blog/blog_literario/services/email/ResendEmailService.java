@@ -1,5 +1,6 @@
 package com.blog.blog_literario.services.email;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,6 +57,39 @@ public class ResendEmailService implements EmailService {
                 .setIdempotencyKey(idempotencyKey)
                 .build();
 
+        sendWithRetry(params, options, "verification email to " + to);
+    }
+
+    @Override
+    public void sendAuthorRequestNotification(List<String> to, String requesterName, String requesterEmail,
+            String motivation, String adminPanelUrl, String idempotencyKey) {
+        if (to == null || to.isEmpty()) {
+            log.warn("No admin recipients for author request notification ({}); nothing sent", idempotencyKey);
+            return;
+        }
+
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(resendProperties.notificationsFrom())
+                .to(to)
+                .subject("Nueva solicitud de autoría en Marginalia")
+                .html(buildAuthorRequestHtmlBody(requesterName, requesterEmail, motivation, adminPanelUrl))
+                .text(buildAuthorRequestTextBody(requesterName, requesterEmail, motivation, adminPanelUrl))
+                .build();
+
+        RequestOptions options = RequestOptions.builder()
+                .setIdempotencyKey(idempotencyKey)
+                .build();
+
+        sendWithRetry(params, options, "author request notification to " + to);
+    }
+
+    /**
+     * Sends with up to {@code MAX_ATTEMPTS} tries and exponential backoff.
+     * Only rate limits (429) and Resend-side errors (5xx / transport failures) are
+     * retried; the idempotency key travels on every attempt so a retry cannot
+     * duplicate the email. Failures are logged, never propagated.
+     */
+    private void sendWithRetry(CreateEmailOptions params, RequestOptions options, String description) {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 resend.emails().send(params, options);
@@ -63,12 +97,12 @@ public class ResendEmailService implements EmailService {
             } catch (Exception e) {
                 Integer status = extractStatusCode(e);
                 if (!isRetryable(status) || attempt == MAX_ATTEMPTS) {
-                    log.error("Failed to send verification email to {} (status {}): {}",
-                            to, status, e.getMessage());
+                    log.error("Failed to send {} (status {}): {}",
+                            description, status, e.getMessage());
                     return;
                 }
-                log.warn("Retryable error sending verification email to {} (status {}, attempt {}/{})",
-                        to, status, attempt, MAX_ATTEMPTS);
+                log.warn("Retryable error sending {} (status {}, attempt {}/{})",
+                        description, status, attempt, MAX_ATTEMPTS);
                 if (!backOff(attempt)) {
                     return;
                 }
@@ -148,5 +182,58 @@ public class ResendEmailService implements EmailService {
 
                 Este enlace caducará en %d horas. Si no creaste esta cuenta, puedes ignorar este mensaje.
                 """.formatted(userName, verificationUrl, verificationProperties.tokenExpirationHours());
+    }
+
+    /**
+     * Admin notification for a new author request, in the same inline-styled
+     * single-column format as the verification email. The requester's name,
+     * email, and motivation are user-authored — always HTML-escaped.
+     */
+    private String buildAuthorRequestHtmlBody(String requesterName, String requesterEmail,
+            String motivation, String adminPanelUrl) {
+        String safeName = HtmlUtils.htmlEscape(requesterName);
+        String safeEmail = HtmlUtils.htmlEscape(requesterEmail);
+        String safeMotivation = HtmlUtils.htmlEscape(motivationOrFallback(motivation));
+        String safeUrl = HtmlUtils.htmlEscape(adminPanelUrl);
+        String safeLogoUrl = HtmlUtils.htmlEscape(emailProperties.logoUrl());
+        return """
+                <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">%s ha solicitado convertirse en autor en Marginalia.</div>
+                <div style="background-color: #faf8f5; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
+                  <div style="max-width: 520px; margin: 0 auto;">
+                    <img src="%s" alt="Marginalia" width="120" style="display: block; margin: 0 auto 28px auto; border: 0;">
+                    <p style="margin: 0 0 6px 0; text-align: center; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #a8a29e;">&mdash; Solicitud de autor&iacute;a &mdash;</p>
+                    <h1 style="margin: 0 0 24px 0; text-align: center; font-size: 26px; font-weight: normal; color: #1c1917;">Nueva solicitud de autor&iacute;a</h1>
+                    <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #57534e;"><strong>%s</strong> (%s) ha solicitado convertirse en autor.</p>
+                    <p style="margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #a8a29e;">Motivaci&oacute;n</p>
+                    <p style="margin: 0 0 28px 0; padding: 12px 16px; border-left: 3px solid #e7e5e4; font-size: 15px; line-height: 1.6; color: #57534e; font-style: italic;">%s</p>
+                    <p style="margin: 0 0 28px 0; text-align: center;">
+                      <a href="%s" style="display: inline-block; background-color: #be163d; color: #ffffff; padding: 12px 28px; font-size: 15px; text-decoration: none; border-radius: 4px;">Revisar solicitud</a>
+                    </p>
+                    <div style="border-top: 1px solid #e7e5e4; margin: 0 0 16px 0;"></div>
+                    <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8a29e;">Recibes este mensaje porque eres administrador de Marginalia.</p>
+                  </div>
+                </div>
+                """.formatted(safeName, safeLogoUrl, safeName, safeEmail, safeMotivation, safeUrl);
+    }
+
+    private String buildAuthorRequestTextBody(String requesterName, String requesterEmail,
+            String motivation, String adminPanelUrl) {
+        return """
+                %s (%s) ha solicitado convertirse en autor en Marginalia.
+
+                Motivación:
+                %s
+
+                Revisa la solicitud aquí:
+
+                %s
+
+                Recibes este mensaje porque eres administrador de Marginalia.
+                """.formatted(requesterName, requesterEmail, motivationOrFallback(motivation), adminPanelUrl);
+    }
+
+    /** Motivation is optional; a fallback keeps the template (and htmlEscape) null-safe. */
+    private String motivationOrFallback(String motivation) {
+        return (motivation == null || motivation.isBlank()) ? "(sin motivación)" : motivation;
     }
 }

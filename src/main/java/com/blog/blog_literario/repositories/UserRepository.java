@@ -1,5 +1,7 @@
 package com.blog.blog_literario.repositories;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -57,6 +59,16 @@ public interface UserRepository extends JpaRepository<User, Integer> {
      */
     @Query("SELECT u FROM User u WHERE u.role.name = :roleName")
     Page<User> findByRoleName(@Param("roleName") String roleName, Pageable pageable);
+
+    /**
+     * Returns the email addresses of every user holding one of the given roles
+     * Used to notify all ADMIN/OWNER accounts when a new author request arrives
+     *
+     * @param roleNames the role names to match (e.g. ADMIN, OWNER)
+     * @return the matching users' email addresses
+     */
+    @Query("SELECT u.email FROM User u WHERE u.role.name IN :roleNames")
+    List<String> findEmailsByRoleNames(@Param("roleNames") Collection<String> roleNames);
 
     /**
      * Checks if another user exists with the given email (excluding current user)

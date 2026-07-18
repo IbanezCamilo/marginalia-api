@@ -6,6 +6,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,6 +29,8 @@ import lombok.RequiredArgsConstructor;
  *
  * An admin can:
  *   - List all requests, optionally filtered by status (GET)
+ *   - Claim a PENDING request for review (PUT claim)
+ *   - Release their own claim (DELETE claim)
  *   - Approve a PENDING request (PUT approve)
  *   - Reject a PENDING request (PUT reject)
  *
@@ -77,6 +80,50 @@ public class AdminAuthorRequestController {
     }
 
     /**
+     * PUT /api/admin/author-requests/{id}/claim
+     *
+     * Claims a PENDING request for review ("under review" indicator).
+     * Called when an admin opens the resolution modal, so other admins see
+     * who is already looking at the request before they act on it.
+     *
+     * Succeeds when the request is unclaimed, claimed by this same admin
+     * (refreshes the claim), or the previous claim has expired.
+     *
+     * Returns 200 OK with the updated request, including the fresh claim.
+     * Returns 404 if the request does not exist.
+     * Returns 409 Conflict if the request is not PENDING, or another admin
+     * holds an active claim (the detail says who and since when).
+     */
+    @PutMapping("/{id}/claim")
+    public ResponseEntity<AuthorRequestResponse> claim(
+            @PathVariable Integer id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(authorRequestService.claim(id, extractUserId(authentication)));
+    }
+
+    /**
+     * DELETE /api/admin/author-requests/{id}/claim
+     *
+     * Releases this admin's review claim (modal closed without resolving),
+     * instead of leaving the claim to expire by TTL.
+     *
+     * Idempotent: releasing a request you no longer hold (unclaimed, taken
+     * over after expiry, or already resolved) is a harmless no-op.
+     *
+     * Returns 204 No Content.
+     * Returns 404 if the request does not exist.
+     */
+    @DeleteMapping("/{id}/claim")
+    public ResponseEntity<Void> releaseClaim(
+            @PathVariable Integer id,
+            Authentication authentication
+    ) {
+        authorRequestService.release(id, extractUserId(authentication));
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * PUT /api/admin/author-requests/{id}/approve
      *
      * Approves a PENDING request.
@@ -87,7 +134,8 @@ public class AdminAuthorRequestController {
      *
      * Returns 200 OK with the updated request.
      * Returns 404 if the request does not exist.
-     * Returns 409 Conflict if the request is not PENDING.
+     * Returns 409 Conflict if the request is not PENDING, or another admin
+     * holds an active review claim on it.
      */
     @PutMapping("/{id}/approve")
     public ResponseEntity<AuthorRequestResponse> approve(
@@ -113,7 +161,8 @@ public class AdminAuthorRequestController {
      *
      * Returns 200 OK with the updated request.
      * Returns 404 if the request does not exist.
-     * Returns 409 Conflict if the request is not PENDING.
+     * Returns 409 Conflict if the request is not PENDING, or another admin
+     * holds an active review claim on it.
      */
     @PutMapping("/{id}/reject")
     public ResponseEntity<AuthorRequestResponse> reject(
