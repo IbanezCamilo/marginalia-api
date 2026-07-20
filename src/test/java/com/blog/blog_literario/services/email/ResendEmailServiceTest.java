@@ -242,4 +242,54 @@ class ResendEmailServiceTest {
 
         verify(emails, times(3)).send(any(CreateEmailOptions.class), any(RequestOptions.class));
     }
+
+    // ─── Post moderation notification ──────────────────────────────────────────
+
+    @Test
+    void sendPostModerationNotification_published_buildsSubjectBodyAndIdempotencyKey() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willReturn(new CreateEmailResponse());
+
+        resendEmailService.sendPostModerationNotification(
+                "alice@test.com", "Alice", "Mi <cuento>",
+                com.blog.blog_literario.model.PostStatus.DRAFT,
+                com.blog.blog_literario.model.PostStatus.PUBLISHED,
+                null, "http://front/user/posts", "post-moderation/10/abc");
+
+        ArgumentCaptor<CreateEmailOptions> optionsCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        ArgumentCaptor<RequestOptions> requestCaptor = ArgumentCaptor.forClass(RequestOptions.class);
+        verify(emails).send(optionsCaptor.capture(), requestCaptor.capture());
+
+        assertThat(optionsCaptor.getValue().getFrom()).isEqualTo("Marginalia <avisos@test.dev>");
+        assertThat(optionsCaptor.getValue().getTo()).containsExactly("alice@test.com");
+        assertThat(optionsCaptor.getValue().getSubject()).isEqualTo("Tu post fue publicado en Marginalia");
+        // User-authored title must be escaped in the HTML part.
+        assertThat(optionsCaptor.getValue().getHtml()).contains("Mi &lt;cuento&gt;");
+        assertThat(optionsCaptor.getValue().getHtml()).doesNotContain("Mi <cuento>");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("http://front/user/posts");
+        // Old and new status names appear in both parts.
+        assertThat(optionsCaptor.getValue().getHtml()).contains("Borrador").contains("Publicado");
+        assertThat(optionsCaptor.getValue().getText()).contains("Borrador").contains("Publicado");
+        assertThat(optionsCaptor.getValue().getText()).contains("http://front/user/posts");
+        assertThat(requestCaptor.getValue().getIdempotencyKey()).isEqualTo("post-moderation/10/abc");
+    }
+
+    @Test
+    void sendPostModerationNotification_rejectedWithNote_includesEscapedNote() throws ResendException {
+        given(emails.send(any(CreateEmailOptions.class), any(RequestOptions.class)))
+                .willReturn(new CreateEmailResponse());
+
+        resendEmailService.sendPostModerationNotification(
+                "alice@test.com", "Alice", "Mi cuento",
+                com.blog.blog_literario.model.PostStatus.PUBLISHED,
+                com.blog.blog_literario.model.PostStatus.REJECTED,
+                "Revisa <b>ortografía</b>", "http://front/user/posts", "post-moderation/11/def");
+
+        ArgumentCaptor<CreateEmailOptions> optionsCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        verify(emails).send(optionsCaptor.capture(), any(RequestOptions.class));
+
+        assertThat(optionsCaptor.getValue().getSubject()).isEqualTo("Tu post necesita cambios");
+        assertThat(optionsCaptor.getValue().getHtml()).contains("Revisa &lt;b&gt;ortograf");
+        assertThat(optionsCaptor.getValue().getText()).contains("Revisa <b>ortografía</b>");
+    }
 }
