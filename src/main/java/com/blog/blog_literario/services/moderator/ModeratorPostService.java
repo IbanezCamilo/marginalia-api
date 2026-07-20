@@ -36,6 +36,7 @@ public class ModeratorPostService {
     private final UserRepository userRepository;
     private final StorageService storageService;
     private final AdminActionLogService adminActionLogService;
+    private final PostModerationEventPublisher moderationEventPublisher;
 
     /**
      * Returns a paginated list of posts, optionally filtered by {@code status}.
@@ -68,6 +69,7 @@ public class ModeratorPostService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Post no encontrado con ID: " + postId));
 
+        PostStatus previousStatus = post.getStatus();
         PostStatus newStatus = parseStatus(request.status());
 
         validateTransition(post.getStatus(), newStatus);
@@ -81,6 +83,7 @@ public class ModeratorPostService {
         }
 
         postRepository.save(post);
+        moderationEventPublisher.publishStatusChange(post, moderatorId, previousStatus);
         return toResponse(post);
     }
 

@@ -44,6 +44,7 @@ class ModeratorPostServiceTest {
     @Mock UserRepository userRepository;
     @Mock StorageService storageService;
     @Mock AdminActionLogService adminActionLogService;
+    @Mock PostModerationEventPublisher moderationEventPublisher;
 
     @InjectMocks ModeratorPostService moderatorService;
 
@@ -268,6 +269,40 @@ class ModeratorPostServiceTest {
 
         assertThatThrownBy(() -> moderatorService.updateStatus(99, 1, new ModeratorStatusUpdateRequest("PUBLISHED", null)))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void updateStatus_draftToPublished_notifiesWithPreviousStatus() {
+        Post post = newPost(PostStatus.DRAFT);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(moderator));
+
+        moderatorService.updateStatus(1, 1, new ModeratorStatusUpdateRequest("PUBLISHED", null));
+
+        verify(moderationEventPublisher).publishStatusChange(post, 1, PostStatus.DRAFT);
+    }
+
+    @Test
+    void updateStatus_rejection_notifiesWithPreviousStatus() {
+        Post post = newPost(PostStatus.PUBLISHED);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(moderator));
+
+        moderatorService.updateStatus(1, 1, new ModeratorStatusUpdateRequest("REJECTED", "Corrige el título"));
+
+        verify(moderationEventPublisher).publishStatusChange(post, 1, PostStatus.PUBLISHED);
+    }
+
+    @Test
+    void updateStatus_invalidTransition_doesNotNotify() {
+        Post post = newPost(PostStatus.ARCHIVED);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> moderatorService.updateStatus(
+                1, 1, new ModeratorStatusUpdateRequest("PUBLISHED", null)))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(moderationEventPublisher, never()).publishStatusChange(any(), any(), any());
     }
 
     @Test
