@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import com.blog.blog_literario.model.PostStatus;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -29,5 +31,13 @@ public class LoggingEmailService implements EmailService {
             String motivation, String adminPanelUrl, String idempotencyKey) {
         log.info("[email.provider=logging] Author request notification to {} — {} <{}> wrote: {}",
                 to, requesterName, requesterEmail, motivation);
+    }
+
+    @Override
+    public void sendPostModerationNotification(String to, String authorName, String postTitle,
+            PostStatus previousStatus, PostStatus newStatus, String moderationNote,
+            String postsUrl, String idempotencyKey) {
+        log.info("[email.provider=logging] Post moderation notification for {} <{}>: \"{}\" {} -> {} (nota: {})",
+                authorName, to, postTitle, previousStatus.name(), newStatus.name(), moderationNote);
     }
 }

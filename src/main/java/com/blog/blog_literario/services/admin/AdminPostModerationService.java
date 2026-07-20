@@ -14,6 +14,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.services.moderator.PostModerationEventPublisher;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class AdminPostModerationService {
     private final UserRepository userRepository;
     private final StorageService storageService;
     private final AdminActionLogService adminActionLogService;
+    private final PostModerationEventPublisher moderationEventPublisher;
 
     /**
      * Returns a paginated list of posts, optionally filtered by {@code status}.
@@ -93,6 +95,7 @@ public class AdminPostModerationService {
         }
 
         postRepository.save(post);
+        moderationEventPublisher.publishStatusChange(post, adminId, previousStatus);
 
         // Fetched after the validations above so a not-found admin never masks a more
         // specific error (e.g. a blank moderation note) — matches the order callers expect.
@@ -133,6 +136,7 @@ public class AdminPostModerationService {
         }
 
         int rejectionCountBeforeReset = post.getRejectionCount();
+        PostStatus previousStatus = post.getStatus();
 
         // resetForAuthor() sets status=DRAFT, rejectionCount=0, clears note and moderation metadata
         post.resetForAuthor();
@@ -142,6 +146,7 @@ public class AdminPostModerationService {
         post.recordModeration(admin, moderationNote);
 
         postRepository.save(post);
+        moderationEventPublisher.publishStatusChange(post, adminId, previousStatus);
 
         adminActionLogService.record(
                 adminId, admin.getEmail(), "POST_RESET", "POST", postId,

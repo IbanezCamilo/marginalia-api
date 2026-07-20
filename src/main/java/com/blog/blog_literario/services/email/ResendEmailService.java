@@ -11,6 +11,7 @@ import org.springframework.web.util.HtmlUtils;
 import com.blog.blog_literario.config.properties.EmailProperties;
 import com.blog.blog_literario.config.properties.EmailVerificationProperties;
 import com.blog.blog_literario.config.properties.ResendProperties;
+import com.blog.blog_literario.model.PostStatus;
 import com.resend.Resend;
 import com.resend.core.exception.ResendException;
 import com.resend.core.net.RequestOptions;
@@ -81,6 +82,99 @@ public class ResendEmailService implements EmailService {
                 .build();
 
         sendWithRetry(params, options, "author request notification to " + to);
+    }
+
+    @Override
+    public void sendPostModerationNotification(String to, String authorName, String postTitle,
+            PostStatus previousStatus, PostStatus newStatus, String moderationNote,
+            String postsUrl, String idempotencyKey) {
+
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(resendProperties.notificationsFrom())
+                .to(to)
+                .subject(moderationSubject(newStatus))
+                .html(buildModerationHtmlBody(authorName, postTitle, previousStatus, newStatus,
+                        moderationNote, postsUrl))
+                .text(buildModerationTextBody(authorName, postTitle, previousStatus, newStatus,
+                        moderationNote, postsUrl))
+                .build();
+
+        RequestOptions options = RequestOptions.builder()
+                .setIdempotencyKey(idempotencyKey)
+                .build();
+
+        sendWithRetry(params, options, "post moderation notification to " + to);
+    }
+
+    /** Subject/headline copy is driven by the post's NEW status. */
+    private String moderationSubject(PostStatus newStatus) {
+        return switch (newStatus) {
+            case PUBLISHED -> "Tu post fue publicado en Marginalia";
+            case REJECTED  -> "Tu post necesita cambios";
+            case ARCHIVED  -> "Tu post fue archivado";
+            case DRAFT     -> "Tu post volvió a borrador";
+        };
+    }
+
+    /**
+     * Author notification for a moderation status change, in the same
+     * inline-styled single-column format as the other templates. The author's
+     * name, post title, and moderation note are user-authored — always escaped.
+     */
+    private String buildModerationHtmlBody(String authorName, String postTitle,
+            PostStatus previousStatus, PostStatus newStatus, String moderationNote, String postsUrl) {
+        String safeName = HtmlUtils.htmlEscape(authorName);
+        String safeTitle = HtmlUtils.htmlEscape(postTitle);
+        String safeUrl = HtmlUtils.htmlEscape(postsUrl);
+        String safeLogoUrl = HtmlUtils.htmlEscape(emailProperties.logoUrl());
+        String subject = HtmlUtils.htmlEscape(moderationSubject(newStatus));
+
+        String noteBlock = (moderationNote == null || moderationNote.isBlank()) ? "" : """
+                <p style="margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #a8a29e;">Nota de moderaci&oacute;n</p>
+                <p style="margin: 0 0 28px 0; padding: 12px 16px; border-left: 3px solid #e7e5e4; font-size: 15px; line-height: 1.6; color: #57534e; font-style: italic;">%s</p>
+                """.formatted(HtmlUtils.htmlEscape(moderationNote));
+
+        return """
+                <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">%s</div>
+                <div style="background-color: #faf8f5; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
+                  <div style="max-width: 520px; margin: 0 auto;">
+                    <img src="%s" alt="Marginalia" width="120" style="display: block; margin: 0 auto 28px auto; border: 0;">
+                    <p style="margin: 0 0 6px 0; text-align: center; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #a8a29e;">&mdash; Moderaci&oacute;n &mdash;</p>
+                    <h1 style="margin: 0 0 24px 0; text-align: center; font-size: 26px; font-weight: normal; color: #1c1917;">%s</h1>
+                    <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Hola %s,</p>
+                    <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Tu post <strong>%s</strong> cambi&oacute; de estado: %s &rarr; <strong>%s</strong>.</p>
+                    %s<p style="margin: 0 0 28px 0; text-align: center;">
+                      <a href="%s" style="display: inline-block; background-color: #be163d; color: #ffffff; padding: 12px 28px; font-size: 15px; text-decoration: none; border-radius: 4px;">Ver mis posts</a>
+                    </p>
+                    <div style="border-top: 1px solid #e7e5e4; margin: 0 0 16px 0;"></div>
+                    <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8a29e;">Recibes este mensaje porque eres autor en Marginalia. Puedes desactivar estos correos en Configuraci&oacute;n.</p>
+                  </div>
+                </div>
+                """.formatted(subject, safeLogoUrl, subject, safeName, safeTitle,
+                        previousStatus.getDisplayName(), newStatus.getDisplayName(),
+                        noteBlock, safeUrl);
+    }
+
+    private String buildModerationTextBody(String authorName, String postTitle,
+            PostStatus previousStatus, PostStatus newStatus, String moderationNote, String postsUrl) {
+        String noteBlock = (moderationNote == null || moderationNote.isBlank()) ? "" : """
+
+                Nota de moderación:
+                %s
+                """.formatted(moderationNote);
+        return """
+                Hola %s,
+
+                Tu post "%s" cambió de estado: %s → %s.
+                %s
+                Ver tus posts:
+
+                %s
+
+                Recibes este mensaje porque eres autor en Marginalia. Puedes desactivar estos correos en Configuración.
+                """.formatted(authorName, postTitle,
+                        previousStatus.getDisplayName(), newStatus.getDisplayName(),
+                        noteBlock, postsUrl);
     }
 
     /**

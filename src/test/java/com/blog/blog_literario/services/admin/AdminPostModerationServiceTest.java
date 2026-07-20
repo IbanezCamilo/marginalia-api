@@ -22,6 +22,7 @@ import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.images.StorageService;
+import com.blog.blog_literario.services.moderator.PostModerationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +44,7 @@ class AdminPostModerationServiceTest {
     @Mock UserRepository userRepository;
     @Mock StorageService storageService;
     @Mock AdminActionLogService adminActionLogService;
+    @Mock PostModerationEventPublisher moderationEventPublisher;
 
     @InjectMocks AdminPostModerationService adminService;
 
@@ -253,5 +255,41 @@ class AdminPostModerationServiceTest {
 
         assertThat(post.getRejectionCount()).isEqualTo(3);
         verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_statusForced_notifiesWithPreviousStatus() {
+        Post post = newPost(PostStatus.DRAFT);
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(admin));
+
+        adminService.updateStatus(1, 1, new AdminStatusUpdateRequest("PUBLISHED", "Looks good"));
+
+        verify(moderationEventPublisher).publishStatusChange(post, 1, PostStatus.DRAFT);
+    }
+
+    @Test
+    void resetPost_blockedPost_notifiesWithArchivedAsPreviousStatus() {
+        Post post = newPost(PostStatus.ARCHIVED);
+        post.setRejectionCount(3); // permanently blocked
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+        given(userRepository.findById(1)).willReturn(Optional.of(admin));
+
+        adminService.resetPost(1, 1, "Puedes reintentarlo");
+
+        verify(moderationEventPublisher).publishStatusChange(post, 1, PostStatus.ARCHIVED);
+    }
+
+    @Test
+    void updateStatus_blockedPost_doesNotNotify() {
+        Post post = newPost(PostStatus.ARCHIVED);
+        post.setRejectionCount(3); // permanently blocked → updateStatus must throw
+        given(postRepository.findById(1)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> adminService.updateStatus(
+                1, 1, new AdminStatusUpdateRequest("PUBLISHED", null)))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(moderationEventPublisher, never()).publishStatusChange(any(), any(), any());
     }
 }

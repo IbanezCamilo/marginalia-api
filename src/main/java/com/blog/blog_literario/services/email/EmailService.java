@@ -2,6 +2,8 @@ package com.blog.blog_literario.services.email;
 
 import java.util.List;
 
+import com.blog.blog_literario.model.PostStatus;
+
 /**
  * Outbound transactional email. Implementations are selected via the
  * {@code email.provider} property: {@code resend} ({@link ResendEmailService})
@@ -38,4 +40,21 @@ public interface EmailService {
      */
     void sendAuthorRequestNotification(List<String> to, String requesterName, String requesterEmail,
             String motivation, String adminPanelUrl, String idempotencyKey);
+
+    /**
+     * Notifies an author that moderation changed one of their posts' status.
+     *
+     * @param to             author's email address
+     * @param authorName     author's display name, used in the greeting
+     * @param postTitle      post title (never null; callers substitute a fallback for untitled drafts)
+     * @param previousStatus status before the moderation action
+     * @param newStatus      status after the moderation action (drives subject/headline copy)
+     * @param moderationNote moderator's note for the author (may be null)
+     * @param postsUrl       absolute frontend URL of the author's posts list
+     * @param idempotencyKey provider-level deduplication key for network retries,
+     *                       unique per moderation action (e.g. {@code post-moderation/<postId>/<uuid>})
+     */
+    void sendPostModerationNotification(String to, String authorName, String postTitle,
+            PostStatus previousStatus, PostStatus newStatus, String moderationNote,
+            String postsUrl, String idempotencyKey);
 }
