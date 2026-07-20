@@ -83,6 +83,14 @@ public class ResendEmailService implements EmailService {
         sendWithRetry(params, options, "author request notification to " + to);
     }
 
+    @Override
+    public void sendPostModerationNotification(String to, String authorName, String postTitle,
+            com.blog.blog_literario.model.PostStatus previousStatus, com.blog.blog_literario.model.PostStatus newStatus, String moderationNote,
+            String postsUrl, String idempotencyKey) {
+        // Implemented in the next commit (template + retry wiring).
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
     /**
      * Sends with up to {@code MAX_ATTEMPTS} tries and exponential backoff.
      * Only rate limits (429) and Resend-side errors (5xx / transport failures) are
