@@ -88,6 +88,7 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").hasAnyRole("ADMIN", "OWNER")
                 // Authenticated endpoints
                 .requestMatchers("/api/me/profile/**").authenticated()
+                .requestMatchers("/api/me/preferences").authenticated()
                 .requestMatchers("/api/me/author-request/**").authenticated()
                 // Author/Moderator/Admin/Owner endpoints
                 .requestMatchers("/api/me/posts/**").hasAnyRole("AUTHOR", "ADMIN", "MODERATOR", "OWNER")
