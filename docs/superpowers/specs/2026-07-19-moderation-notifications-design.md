@@ -22,13 +22,15 @@ Flyway migration `V11__add_user_preferences.sql` in `src/main/resources/db/migra
 
 ```sql
 CREATE TABLE user_preferences (
-  user_id  INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  pref_key VARCHAR(50) NOT NULL,
-  value    VARCHAR(50) NOT NULL,   -- deliberately VARCHAR, not BOOLEAN: type-agnostic for future
-                                   -- prefs (cadence, font size…) and portable to the H2 test DB
+  user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  pref_key   VARCHAR(50) NOT NULL,
+  pref_value VARCHAR(50) NOT NULL,   -- deliberately VARCHAR, not BOOLEAN: type-agnostic for future
+                                     -- prefs (cadence, font size…) and portable to the H2 test DB
   PRIMARY KEY (user_id, pref_key)
 );
 ```
+
+The column is named `pref_value` (not `value`) because `VALUE` is a reserved keyword in H2, and the test suite generates this schema on H2 via `ddl-auto=create-drop`.
 
 Booleans are stored as the strings `"true"`/`"false"`; the `UserPreference` registry declares each key's expected type and is the only place values are parsed.
 
@@ -63,7 +65,7 @@ New backend pieces:
 Mirrors the existing `AuthorRequestSubmitted` → `AuthorRequestNotificationListener` pattern exactly.
 
 New event `events/PostModerationStatusChanged.java` (record):
-`postId, postTitle, authorName, authorEmail, previousStatus, newStatus` (display names), `moderationNote` (nullable), `idempotencyKey` (`post-moderation/<postId>/<uuid>`, generated once at publish — stable across provider retry attempts).
+`postId, postTitle, authorName, authorEmail, previousStatus, newStatus` (typed as `PostStatus` — templates render `getDisplayName()`, subjects switch on the enum), `moderationNote` (nullable), `idempotencyKey` (`post-moderation/<postId>/<uuid>`, generated once at publish — stable across provider retry attempts). No event is published when the status did not actually change (e.g. an admin forcing a post to its current status).
 
 Publish points (inside the transaction, via `ApplicationEventPublisher`):
 
@@ -80,7 +82,7 @@ Skip publishing when (decided in-transaction so the listener never touches repos
 New listener `services/email/PostModerationNotificationListener.java`:
 `@Async @TransactionalEventListener(phase = AFTER_COMMIT)`, try/catch log-never-rethrow, calls `EmailService.sendPostModerationNotification(...)` with CTA URL `frontendProperties.url() + "/user/posts"`.
 
-`EmailService` interface gains `sendPostModerationNotification(to, authorName, postTitle, previousStatus, newStatus, moderationNote, postsUrl, idempotencyKey)`; implemented in BOTH `ResendEmailService` and `LoggingEmailService`.
+`EmailService` interface gains `sendPostModerationNotification(String to, String authorName, String postTitle, PostStatus previousStatus, PostStatus newStatus, String moderationNote, String postsUrl, String idempotencyKey)`; implemented in BOTH `ResendEmailService` and `LoggingEmailService`.
 
 Template (in `ResendEmailService`, same inline-styled single-column Spanish format as the existing two):
 
