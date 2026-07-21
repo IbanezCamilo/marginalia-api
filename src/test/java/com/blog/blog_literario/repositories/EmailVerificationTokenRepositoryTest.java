@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.blog.blog_literario.model.EmailVerificationToken;
 import com.blog.blog_literario.model.Role;
+import com.blog.blog_literario.model.TokenType;
 import com.blog.blog_literario.model.User;
 
 @DataJpaTest
@@ -46,6 +47,20 @@ class EmailVerificationTokenRepositoryTest {
                                                 LocalDateTime createdAt, LocalDateTime expiresAt) {
         EmailVerificationToken token = new EmailVerificationToken();
         token.setToken(hash);
+        token.setUser(user);
+        token.setCreatedAt(createdAt);
+        token.setExpiresAt(expiresAt);
+        return em.persist(token);
+    }
+
+    private EmailVerificationToken persistEmailChangeToken(User user, String tokenHash, String cancelHash,
+                                                           String pendingEmail,
+                                                           LocalDateTime createdAt, LocalDateTime expiresAt) {
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setToken(tokenHash);
+        token.setCancelToken(cancelHash);
+        token.setPendingEmail(pendingEmail);
+        token.setTokenType(TokenType.EMAIL_CHANGE);
         token.setUser(user);
         token.setCreatedAt(createdAt);
         token.setExpiresAt(expiresAt);
@@ -97,6 +112,42 @@ class EmailVerificationTokenRepositoryTest {
 
         assertThat(tokenRepository.findByToken("hash-stale")).isEmpty();
         assertThat(tokenRepository.findByToken("hash-active")).isPresent();
+    }
+
+    @Test
+    void findByCancelToken_returnsMatchingEmailChangeToken() {
+        persistEmailChangeToken(alice, "confirm-hash", "cancel-hash", "new@example.com",
+                LocalDateTime.now(), LocalDateTime.now().plusHours(24));
+
+        Optional<EmailVerificationToken> result = tokenRepository.findByCancelToken("cancel-hash");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getPendingEmail()).isEqualTo("new@example.com");
+        assertThat(result.get().getTokenType()).isEqualTo(TokenType.EMAIL_CHANGE);
+    }
+
+    @Test
+    void findByCancelToken_unknownHash_returnsEmpty() {
+        assertThat(tokenRepository.findByCancelToken("nope")).isEmpty();
+    }
+
+    @Test
+    void deleteByUserAndTokenType_removesOnlyThatTypeForThatUser() {
+        persistToken(alice, "verify-a", LocalDateTime.now(), LocalDateTime.now().plusHours(24));
+        persistEmailChangeToken(alice, "change-a", "cancel-a", "n1@example.com",
+                LocalDateTime.now(), LocalDateTime.now().plusHours(24));
+        persistEmailChangeToken(bob, "change-b", "cancel-b", "n2@example.com",
+                LocalDateTime.now(), LocalDateTime.now().plusHours(24));
+
+        tokenRepository.deleteByUserAndTokenType(alice, TokenType.EMAIL_CHANGE);
+        em.flush();
+        em.clear();
+
+        // Alice's own verification token survives — the delete is scoped by type, not blanket.
+        assertThat(tokenRepository.findByToken("verify-a")).isPresent();
+        assertThat(tokenRepository.findByToken("change-a")).isEmpty();
+        // Another user's email-change token is untouched.
+        assertThat(tokenRepository.findByToken("change-b")).isPresent();
     }
 
     @Test

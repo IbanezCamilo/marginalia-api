@@ -52,6 +52,9 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/illegal-state")
         void illegalState() { throw new IllegalStateException("Illegal state"); }
 
+        @GetMapping("/test/owner-email-immutable")
+        void ownerEmailImmutable() { throw new OwnerEmailImmutableException("Owner email is env-managed"); }
+
         @GetMapping("/test/optimistic-lock")
         void optimisticLock() { throw new ObjectOptimisticLockingFailureException(AuthorRequest.class, 1); }
 
@@ -95,6 +98,15 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/conflict"))
                 .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void ownerEmailImmutable_returns403WithForbiddenType() throws Exception {
+        mockMvc.perform(get("/test/owner-email-immutable").with(user("owner").roles("OWNER")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/forbidden"))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.detail").value("Owner email is env-managed"));
     }
 
     @Test
