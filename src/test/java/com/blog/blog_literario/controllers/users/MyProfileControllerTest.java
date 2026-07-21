@@ -2,6 +2,9 @@ package com.blog.blog_literario.controllers.users;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,6 +14,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
+
+import org.springframework.security.authentication.BadCredentialsException;
 
 import com.blog.blog_literario.config.SecurityConfig;
 import com.blog.blog_literario.dto.users.UserProfileResponse;
@@ -166,6 +171,60 @@ class MyProfileControllerTest {
     @Test
     void getProfile_unauthenticated_returns4xx() throws Exception {
         mockMvc.perform(get("/api/me/profile"))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void changeEmail_validRequest_returns202AndDelegates() throws Exception {
+        mockMvc.perform(put("/api/me/profile/email")
+                .with(user("user@test.com").roles("READER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newEmail\":\"new@test.com\",\"currentPassword\":\"secret123\"}"))
+                .andExpect(status().isAccepted());
+
+        verify(userProfileService).requestEmailChange(any(), any());
+    }
+
+    @Test
+    void changeEmail_invalidEmail_returns400() throws Exception {
+        mockMvc.perform(put("/api/me/profile/email")
+                .with(user("user@test.com").roles("READER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newEmail\":\"not-an-email\",\"currentPassword\":\"secret123\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/validation"));
+
+        verify(userProfileService, never()).requestEmailChange(any(), any());
+    }
+
+    @Test
+    void changeEmail_blankPassword_returns400() throws Exception {
+        mockMvc.perform(put("/api/me/profile/email")
+                .with(user("user@test.com").roles("READER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newEmail\":\"new@test.com\",\"currentPassword\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(userProfileService, never()).requestEmailChange(any(), any());
+    }
+
+    @Test
+    void changeEmail_wrongCurrentPassword_returns401() throws Exception {
+        willThrow(new BadCredentialsException("La contraseña actual es incorrecta"))
+                .given(userProfileService).requestEmailChange(any(), any());
+
+        mockMvc.perform(put("/api/me/profile/email")
+                .with(user("user@test.com").roles("READER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newEmail\":\"new@test.com\",\"currentPassword\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void changeEmail_unauthenticated_returns4xx() throws Exception {
+        mockMvc.perform(put("/api/me/profile/email")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newEmail\":\"new@test.com\",\"currentPassword\":\"secret123\"}"))
                 .andExpect(status().is4xxClientError());
     }
 }

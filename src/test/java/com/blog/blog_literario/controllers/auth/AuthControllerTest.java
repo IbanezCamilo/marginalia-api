@@ -314,6 +314,81 @@ class AuthControllerTest {
     }
 
     @Test
+    void confirmEmailChange_validToken_returns200AndDelegates() throws Exception {
+        mockMvc.perform(post("/api/auth/confirm-email-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"confirm-raw\"}"))
+                .andExpect(status().isOk());
+
+        verify(emailVerificationService).confirmEmailChange("confirm-raw");
+    }
+
+    @Test
+    void confirmEmailChange_blankToken_returns400() throws Exception {
+        mockMvc.perform(post("/api/auth/confirm-email-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(emailVerificationService, never()).confirmEmailChange(any());
+    }
+
+    @Test
+    void confirmEmailChange_wrongTypeOrUnknownToken_returns400WithProblemDetail() throws Exception {
+        willThrow(new InvalidVerificationTokenException("El enlace de cambio de correo no es válido"))
+                .given(emailVerificationService).confirmEmailChange("bad-token");
+
+        mockMvc.perform(post("/api/auth/confirm-email-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"bad-token\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("https://blog-literario.com/errors/invalid-verification-token"));
+    }
+
+    @Test
+    void confirmEmailChange_expiredToken_returns410() throws Exception {
+        willThrow(new VerificationTokenExpiredException("El enlace de cambio de correo ha caducado"))
+                .given(emailVerificationService).confirmEmailChange("old-token");
+
+        mockMvc.perform(post("/api/auth/confirm-email-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"old-token\"}"))
+                .andExpect(status().isGone());
+    }
+
+    @Test
+    void confirmEmailChange_newAddressTaken_returns409() throws Exception {
+        willThrow(new UserAlreadyExistsException("El correo ya está en uso"))
+                .given(emailVerificationService).confirmEmailChange("taken-token");
+
+        mockMvc.perform(post("/api/auth/confirm-email-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"taken-token\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void cancelEmailChange_validToken_returns200AndDelegates() throws Exception {
+        mockMvc.perform(post("/api/auth/cancel-email-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"cancel-raw\"}"))
+                .andExpect(status().isOk());
+
+        verify(emailVerificationService).cancelEmailChange("cancel-raw");
+    }
+
+    @Test
+    void cancelEmailChange_unknownToken_returns400() throws Exception {
+        willThrow(new InvalidVerificationTokenException("El enlace de cancelación no es válido"))
+                .given(emailVerificationService).cancelEmailChange("bad-token");
+
+        mockMvc.perform(post("/api/auth/cancel-email-change")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"bad-token\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void login_badCredentials_returns401WithProblemDetail() throws Exception {
         given(authService.login(any())).willThrow(new BadCredentialsException("bad credentials"));
 

@@ -106,6 +106,57 @@ public class ResendEmailService implements EmailService {
         sendWithRetry(params, options, "post moderation notification to " + to);
     }
 
+    @Override
+    public void sendEmailChangeConfirmation(String to, String userName, String confirmUrl, String idempotencyKey) {
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(resendProperties.from())
+                .to(to)
+                .subject("Confirma tu nuevo correo en Marginalia")
+                .html(buildEmailChangeConfirmationHtmlBody(userName, confirmUrl))
+                .text(buildEmailChangeConfirmationTextBody(userName, confirmUrl))
+                .build();
+
+        RequestOptions options = RequestOptions.builder()
+                .setIdempotencyKey(idempotencyKey)
+                .build();
+
+        sendWithRetry(params, options, "email change confirmation to " + to);
+    }
+
+    @Override
+    public void sendEmailChangeNotice(String to, String userName, String newEmail, String cancelUrl, String idempotencyKey) {
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(resendProperties.from())
+                .to(to)
+                .subject("Se solicitó un cambio de correo en tu cuenta")
+                .html(buildEmailChangeNoticeHtmlBody(userName, newEmail, cancelUrl))
+                .text(buildEmailChangeNoticeTextBody(userName, newEmail, cancelUrl))
+                .build();
+
+        RequestOptions options = RequestOptions.builder()
+                .setIdempotencyKey(idempotencyKey)
+                .build();
+
+        sendWithRetry(params, options, "email change notice to " + to);
+    }
+
+    @Override
+    public void sendEmailChangeCompletedNotice(String to, String userName, String newEmail, String idempotencyKey) {
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(resendProperties.from())
+                .to(to)
+                .subject("Tu correo de Marginalia fue cambiado")
+                .html(buildEmailChangeCompletedHtmlBody(userName, newEmail))
+                .text(buildEmailChangeCompletedTextBody(userName, newEmail))
+                .build();
+
+        RequestOptions options = RequestOptions.builder()
+                .setIdempotencyKey(idempotencyKey)
+                .build();
+
+        sendWithRetry(params, options, "email change completed notice to " + to);
+    }
+
     /** Subject/headline copy is driven by the post's NEW status. */
     private String moderationSubject(PostStatus newStatus) {
         return switch (newStatus) {
@@ -329,5 +380,117 @@ public class ResendEmailService implements EmailService {
     /** Motivation is optional; a fallback keeps the template (and htmlEscape) null-safe. */
     private String motivationOrFallback(String motivation) {
         return (motivation == null || motivation.isBlank()) ? "(sin motivación)" : motivation;
+    }
+
+    /** Confirmation email to the NEW address; clicking the link commits the change. */
+    private String buildEmailChangeConfirmationHtmlBody(String userName, String confirmUrl) {
+        String safeName = HtmlUtils.htmlEscape(userName);
+        String safeUrl = HtmlUtils.htmlEscape(confirmUrl);
+        String safeLogoUrl = HtmlUtils.htmlEscape(emailProperties.logoUrl());
+        long hours = verificationProperties.tokenExpirationHours();
+        return """
+                <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">Confirma tu nuevo correo para completar el cambio en Marginalia.</div>
+                <div style="background-color: #faf8f5; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
+                  <div style="max-width: 520px; margin: 0 auto;">
+                    <img src="%s" alt="Marginalia" width="120" style="display: block; margin: 0 auto 28px auto; border: 0;">
+                    <p style="margin: 0 0 6px 0; text-align: center; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #a8a29e;">&mdash; Cambio de correo &mdash;</p>
+                    <h1 style="margin: 0 0 24px 0; text-align: center; font-size: 26px; font-weight: normal; color: #1c1917;">Confirma tu nuevo correo</h1>
+                    <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Hola %s,</p>
+                    <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Solicitaste usar esta direcci&oacute;n como el correo de tu cuenta. Conf&iacute;rmala para completar el cambio. Hasta entonces, tu correo actual sigue activo.</p>
+                    <p style="margin: 0 0 28px 0; text-align: center;">
+                      <a href="%s" style="display: inline-block; background-color: #be163d; color: #ffffff; padding: 12px 28px; font-size: 15px; text-decoration: none; border-radius: 4px;">Confirmar nuevo correo</a>
+                    </p>
+                    <p style="margin: 0 0 4px 0; font-size: 13px; line-height: 1.6; color: #78716c;">O copia y pega este enlace en tu navegador:</p>
+                    <p style="margin: 0 0 28px 0; font-size: 13px; line-height: 1.6; color: #78716c; word-break: break-all;"><a href="%s" style="color: #be163d;">%s</a></p>
+                    <div style="border-top: 1px solid #e7e5e4; margin: 0 0 16px 0;"></div>
+                    <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8a29e;">Este enlace caducar&aacute; en %d horas. Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+                  </div>
+                </div>
+                """.formatted(safeLogoUrl, safeName, safeUrl, safeUrl, safeUrl, hours);
+    }
+
+    private String buildEmailChangeConfirmationTextBody(String userName, String confirmUrl) {
+        return """
+                Hola %s,
+
+                Solicitaste usar esta dirección como el correo de tu cuenta en Marginalia. Confírmala abriendo este enlace para completar el cambio:
+
+                %s
+
+                Hasta que la confirmes, tu correo actual sigue activo. Este enlace caducará en %d horas. Si no solicitaste este cambio, puedes ignorar este mensaje.
+                """.formatted(userName, confirmUrl, verificationProperties.tokenExpirationHours());
+    }
+
+    /** Notice to the OLD address that a change was requested, with a link to cancel it. */
+    private String buildEmailChangeNoticeHtmlBody(String userName, String newEmail, String cancelUrl) {
+        String safeName = HtmlUtils.htmlEscape(userName);
+        String safeNewEmail = HtmlUtils.htmlEscape(newEmail);
+        String safeUrl = HtmlUtils.htmlEscape(cancelUrl);
+        String safeLogoUrl = HtmlUtils.htmlEscape(emailProperties.logoUrl());
+        return """
+                <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">Se solicitó cambiar el correo de tu cuenta de Marginalia.</div>
+                <div style="background-color: #faf8f5; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
+                  <div style="max-width: 520px; margin: 0 auto;">
+                    <img src="%s" alt="Marginalia" width="120" style="display: block; margin: 0 auto 28px auto; border: 0;">
+                    <p style="margin: 0 0 6px 0; text-align: center; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #a8a29e;">&mdash; Seguridad &mdash;</p>
+                    <h1 style="margin: 0 0 24px 0; text-align: center; font-size: 26px; font-weight: normal; color: #1c1917;">Se solicit&oacute; un cambio de correo</h1>
+                    <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Hola %s,</p>
+                    <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Se solicit&oacute; cambiar el correo de tu cuenta a <strong>%s</strong>. El cambio no se aplicar&aacute; hasta que se confirme desde esa nueva direcci&oacute;n.</p>
+                    <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Si no fuiste t&uacute;, cancela el cambio ahora:</p>
+                    <p style="margin: 0 0 28px 0; text-align: center;">
+                      <a href="%s" style="display: inline-block; background-color: #be163d; color: #ffffff; padding: 12px 28px; font-size: 15px; text-decoration: none; border-radius: 4px;">Cancelar el cambio</a>
+                    </p>
+                    <p style="margin: 0 0 4px 0; font-size: 13px; line-height: 1.6; color: #78716c;">O copia y pega este enlace en tu navegador:</p>
+                    <p style="margin: 0 0 28px 0; font-size: 13px; line-height: 1.6; color: #78716c; word-break: break-all;"><a href="%s" style="color: #be163d;">%s</a></p>
+                    <div style="border-top: 1px solid #e7e5e4; margin: 0 0 16px 0;"></div>
+                    <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8a29e;">Si reconoces esta solicitud, no necesitas hacer nada: basta con confirmar desde la nueva direcci&oacute;n.</p>
+                  </div>
+                </div>
+                """.formatted(safeLogoUrl, safeName, safeNewEmail, safeUrl, safeUrl, safeUrl);
+    }
+
+    private String buildEmailChangeNoticeTextBody(String userName, String newEmail, String cancelUrl) {
+        return """
+                Hola %s,
+
+                Se solicitó cambiar el correo de tu cuenta de Marginalia a %s. El cambio no se aplicará hasta que se confirme desde esa nueva dirección.
+
+                Si no fuiste tú, cancela el cambio abriendo este enlace:
+
+                %s
+
+                Si reconoces esta solicitud, no necesitas hacer nada: basta con confirmar desde la nueva dirección.
+                """.formatted(userName, newEmail, cancelUrl);
+    }
+
+    /** Informational close-the-loop notice to the OLD address once the change is done — no link. */
+    private String buildEmailChangeCompletedHtmlBody(String userName, String newEmail) {
+        String safeName = HtmlUtils.htmlEscape(userName);
+        String safeNewEmail = HtmlUtils.htmlEscape(newEmail);
+        String safeLogoUrl = HtmlUtils.htmlEscape(emailProperties.logoUrl());
+        return """
+                <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">El correo de tu cuenta de Marginalia fue cambiado.</div>
+                <div style="background-color: #faf8f5; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
+                  <div style="max-width: 520px; margin: 0 auto;">
+                    <img src="%s" alt="Marginalia" width="120" style="display: block; margin: 0 auto 28px auto; border: 0;">
+                    <p style="margin: 0 0 6px 0; text-align: center; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #a8a29e;">&mdash; Seguridad &mdash;</p>
+                    <h1 style="margin: 0 0 24px 0; text-align: center; font-size: 26px; font-weight: normal; color: #1c1917;">Tu correo fue cambiado</h1>
+                    <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #57534e;">Hola %s,</p>
+                    <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; color: #57534e;">El correo de tu cuenta de Marginalia se cambi&oacute; a <strong>%s</strong>. A partir de ahora inicia sesi&oacute;n con esa direcci&oacute;n.</p>
+                    <div style="border-top: 1px solid #e7e5e4; margin: 0 0 16px 0;"></div>
+                    <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8a29e;">Si no fuiste t&uacute;, contacta con soporte de inmediato: tu cuenta puede estar en riesgo.</p>
+                  </div>
+                </div>
+                """.formatted(safeLogoUrl, safeName, safeNewEmail);
+    }
+
+    private String buildEmailChangeCompletedTextBody(String userName, String newEmail) {
+        return """
+                Hola %s,
+
+                El correo de tu cuenta de Marginalia se cambió a %s. A partir de ahora inicia sesión con esa dirección.
+
+                Si no fuiste tú, contacta con soporte de inmediato: tu cuenta puede estar en riesgo.
+                """.formatted(userName, newEmail);
     }
 }

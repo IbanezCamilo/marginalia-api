@@ -20,11 +20,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import com.blog.blog_literario.config.properties.EmailVerificationProperties;
+import com.blog.blog_literario.events.EmailChangeCompleted;
+import com.blog.blog_literario.events.EmailChangeRequested;
 import com.blog.blog_literario.events.VerificationEmailRequested;
 import com.blog.blog_literario.exception.InvalidVerificationTokenException;
+import com.blog.blog_literario.exception.OwnerEmailImmutableException;
+import com.blog.blog_literario.exception.UserAlreadyExistsException;
 import com.blog.blog_literario.exception.VerificationTokenExpiredException;
 import com.blog.blog_literario.model.EmailVerificationToken;
 import com.blog.blog_literario.model.Role;
+import com.blog.blog_literario.model.TokenType;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.EmailVerificationTokenRepository;
 import com.blog.blog_literario.repositories.UserRepository;
@@ -37,6 +42,7 @@ class EmailVerificationServiceTest {
     @Mock UserRepository userRepository;
     @Mock EmailVerificationProperties properties;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock RefreshTokenService refreshTokenService;
     // Real instance: sanitizeEmail never touches the repository, and the tests
     // must exercise the actual trim/lowercase behavior.
     @Spy UserValidator userValidator = new UserValidator(null);
@@ -46,6 +52,12 @@ class EmailVerificationServiceTest {
     private User unverifiedUser() {
         User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
         user.setEmailVerified(false);
+        return user;
+    }
+
+    private User verifiedUser() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setEmailVerified(true);
         return user;
     }
 
@@ -271,5 +283,218 @@ class EmailVerificationServiceTest {
         verify(tokenRepository).deleteByExpiresAtBefore(thresholdCaptor.capture());
         // 24h grace after expiry so rows still counting toward the daily cap survive.
         assertThat(thresholdCaptor.getValue()).isBefore(LocalDateTime.now().minusHours(23));
+    }
+
+    // ─── requestEmailChange ──────────────────────────────────────────────────────
+
+    @Test
+    void requestEmailChange_validNewEmail_savesEmailChangeTokenAndPublishesEvent() {
+        User user = verifiedUser();
+        given(tokenRepository.findTopByUserOrderByCreatedAtDesc(user)).willReturn(Optional.empty());
+        given(tokenRepository.countByUserAndCreatedAtAfter(any(), any())).willReturn(0L);
+        given(properties.dailyCap()).willReturn(5);
+        given(properties.tokenExpirationHours()).willReturn(24L);
+        given(userRepository.existsByEmailExcludingId("new@test.com", 1)).willReturn(false);
+        given(tokenRepository.save(any(EmailVerificationToken.class))).willAnswer(invocation -> {
+            EmailVerificationToken token = invocation.getArgument(0);
+            token.setId(20L);
+            return token;
+        });
+
+        emailVerificationService.requestEmailChange(user, "  New@Test.com ");
+
+        ArgumentCaptor<EmailVerificationToken> tokenCaptor = ArgumentCaptor.forClass(EmailVerificationToken.class);
+        verify(tokenRepository).save(tokenCaptor.capture());
+        EmailVerificationToken saved = tokenCaptor.getValue();
+        assertThat(saved.getTokenType()).isEqualTo(TokenType.EMAIL_CHANGE);
+        assertThat(saved.getPendingEmail()).isEqualTo("new@test.com"); // sanitized: trimmed + lowercased
+        assertThat(saved.getCancelToken()).isNotBlank();
+        assertThat(saved.getExpiresAt()).isAfter(LocalDateTime.now().plusHours(23));
+
+        ArgumentCaptor<EmailChangeRequested> eventCaptor = ArgumentCaptor.forClass(EmailChangeRequested.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        EmailChangeRequested event = eventCaptor.getValue();
+        assertThat(event.newEmail()).isEqualTo("new@test.com");
+        assertThat(event.oldEmail()).isEqualTo("alice@test.com");
+        assertThat(event.name()).isEqualTo("Alice");
+        // Only hashes are persisted; the raw tokens live only in the emailed links.
+        assertThat(saved.getToken()).isEqualTo(emailVerificationService.hashToken(event.confirmRawToken()));
+        assertThat(saved.getCancelToken()).isEqualTo(emailVerificationService.hashToken(event.cancelRawToken()));
+        // The account keeps its current address until the change is confirmed.
+        assertThat(user.getEmail()).isEqualTo("alice@test.com");
+    }
+
+    @Test
+    void requestEmailChange_ownerRole_throwsOwnerEmailImmutableAndIssuesNothing() {
+        User owner = new User(1, "Owner", "owner@test.com", new Role(Role.OWNER));
+        owner.setEmailVerified(true);
+
+        assertThatThrownBy(() -> emailVerificationService.requestEmailChange(owner, "new@test.com"))
+                .isInstanceOf(OwnerEmailImmutableException.class);
+
+        // Rejected before any token work — no uniqueness query, no save, no event.
+        verify(userRepository, never()).existsByEmailExcludingId(any(), any());
+        verify(tokenRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void requestEmailChange_newEmailInUseByAnother_throwsUserAlreadyExists() {
+        User user = verifiedUser();
+        given(userRepository.existsByEmailExcludingId("taken@test.com", 1)).willReturn(true);
+
+        assertThatThrownBy(() -> emailVerificationService.requestEmailChange(user, "taken@test.com"))
+                .isInstanceOf(UserAlreadyExistsException.class);
+
+        verify(tokenRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void requestEmailChange_sameAsCurrentEmail_throwsIllegalArgument() {
+        User user = verifiedUser();
+
+        assertThatThrownBy(() -> emailVerificationService.requestEmailChange(user, "  Alice@Test.com "))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(tokenRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void requestEmailChange_withinCooldown_throwsIllegalState() {
+        User user = verifiedUser();
+        given(userRepository.existsByEmailExcludingId("new@test.com", 1)).willReturn(false);
+        EmailVerificationToken recent = new EmailVerificationToken();
+        recent.setCreatedAt(LocalDateTime.now().minusSeconds(10));
+        given(tokenRepository.findTopByUserOrderByCreatedAtDesc(user)).willReturn(Optional.of(recent));
+        given(tokenRepository.countByUserAndCreatedAtAfter(any(), any())).willReturn(1L);
+        given(properties.cooldownSeconds()).willReturn(60L);
+        given(properties.dailyCap()).willReturn(5);
+
+        assertThatThrownBy(() -> emailVerificationService.requestEmailChange(user, "new@test.com"))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(tokenRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    // ─── confirmEmailChange ──────────────────────────────────────────────────────
+
+    @Test
+    void confirmEmailChange_validToken_swapsEmailInvalidatesSessionAndPublishesCompletion() {
+        User user = verifiedUser();
+        EmailVerificationToken stored = emailChangeToken(user, "confirm-raw", "new@test.com",
+                LocalDateTime.now().plusHours(1));
+        given(tokenRepository.findByToken(emailVerificationService.hashToken("confirm-raw")))
+                .willReturn(Optional.of(stored));
+        given(userRepository.existsByEmailExcludingId("new@test.com", 1)).willReturn(false);
+
+        emailVerificationService.confirmEmailChange("confirm-raw");
+
+        assertThat(user.getEmail()).isEqualTo("new@test.com");
+        assertThat(user.getTokenVersion()).isEqualTo(1); // sessions invalidated
+        verify(userRepository).save(user);
+        verify(tokenRepository).deleteByUserAndTokenType(user, TokenType.EMAIL_CHANGE);
+        verify(refreshTokenService).deleteAllByUser(user);
+
+        ArgumentCaptor<EmailChangeCompleted> eventCaptor = ArgumentCaptor.forClass(EmailChangeCompleted.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().oldEmail()).isEqualTo("alice@test.com");
+        assertThat(eventCaptor.getValue().newEmail()).isEqualTo("new@test.com");
+    }
+
+    @Test
+    void confirmEmailChange_verificationTypeToken_throwsInvalidAndDoesNotConsume() {
+        User user = verifiedUser();
+        EmailVerificationToken verificationToken = new EmailVerificationToken();
+        verificationToken.setUser(user);
+        verificationToken.setTokenType(TokenType.VERIFICATION);
+        verificationToken.setExpiresAt(LocalDateTime.now().plusHours(1));
+        given(tokenRepository.findByToken(any())).willReturn(Optional.of(verificationToken));
+
+        assertThatThrownBy(() -> emailVerificationService.confirmEmailChange("raw"))
+                .isInstanceOf(InvalidVerificationTokenException.class);
+
+        assertThat(user.getEmail()).isEqualTo("alice@test.com");
+        verify(userRepository, never()).save(any());
+        verify(refreshTokenService, never()).deleteAllByUser(any());
+    }
+
+    @Test
+    void confirmEmailChange_unknownToken_throwsInvalid() {
+        given(tokenRepository.findByToken(any())).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> emailVerificationService.confirmEmailChange("nope"))
+                .isInstanceOf(InvalidVerificationTokenException.class);
+    }
+
+    @Test
+    void confirmEmailChange_expiredToken_throwsExpired() {
+        User user = verifiedUser();
+        EmailVerificationToken stored = emailChangeToken(user, "confirm-raw", "new@test.com",
+                LocalDateTime.now().minusMinutes(1));
+        given(tokenRepository.findByToken(any())).willReturn(Optional.of(stored));
+
+        assertThatThrownBy(() -> emailVerificationService.confirmEmailChange("confirm-raw"))
+                .isInstanceOf(VerificationTokenExpiredException.class);
+
+        assertThat(user.getEmail()).isEqualTo("alice@test.com");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void confirmEmailChange_newEmailTakenSinceRequest_throwsUserAlreadyExists() {
+        User user = verifiedUser();
+        EmailVerificationToken stored = emailChangeToken(user, "confirm-raw", "new@test.com",
+                LocalDateTime.now().plusHours(1));
+        given(tokenRepository.findByToken(any())).willReturn(Optional.of(stored));
+        given(userRepository.existsByEmailExcludingId("new@test.com", 1)).willReturn(true);
+
+        assertThatThrownBy(() -> emailVerificationService.confirmEmailChange("confirm-raw"))
+                .isInstanceOf(UserAlreadyExistsException.class);
+
+        assertThat(user.getEmail()).isEqualTo("alice@test.com");
+        verify(userRepository, never()).save(any());
+        verify(refreshTokenService, never()).deleteAllByUser(any());
+    }
+
+    // ─── cancelEmailChange ───────────────────────────────────────────────────────
+
+    @Test
+    void cancelEmailChange_validCancelToken_deletesPendingTokenWithoutChangingEmail() {
+        User user = verifiedUser();
+        EmailVerificationToken stored = emailChangeToken(user, "confirm-raw", "new@test.com",
+                LocalDateTime.now().plusHours(1));
+        given(tokenRepository.findByCancelToken(emailVerificationService.hashToken("cancel-raw")))
+                .willReturn(Optional.of(stored));
+
+        emailVerificationService.cancelEmailChange("cancel-raw");
+
+        verify(tokenRepository).delete(stored);
+        assertThat(user.getEmail()).isEqualTo("alice@test.com");
+        verify(userRepository, never()).save(any());
+        verify(refreshTokenService, never()).deleteAllByUser(any());
+    }
+
+    @Test
+    void cancelEmailChange_unknownToken_throwsInvalid() {
+        given(tokenRepository.findByCancelToken(any())).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> emailVerificationService.cancelEmailChange("nope"))
+                .isInstanceOf(InvalidVerificationTokenException.class);
+
+        verify(tokenRepository, never()).delete(any(EmailVerificationToken.class));
+    }
+
+    private EmailVerificationToken emailChangeToken(User user, String rawConfirmToken,
+                                                    String pendingEmail, LocalDateTime expiresAt) {
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setUser(user);
+        token.setTokenType(TokenType.EMAIL_CHANGE);
+        token.setPendingEmail(pendingEmail);
+        token.setToken(emailVerificationService.hashToken(rawConfirmToken));
+        token.setExpiresAt(expiresAt);
+        return token;
     }
 }

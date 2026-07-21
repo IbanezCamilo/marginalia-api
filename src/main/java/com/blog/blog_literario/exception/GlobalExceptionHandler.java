@@ -101,6 +101,14 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    /** 403 — the OWNER account's email is environment-managed and cannot be self-changed. */
+    @ExceptionHandler(OwnerEmailImmutableException.class)
+    public ProblemDetail handleOwnerEmailImmutable(OwnerEmailImmutableException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        pd.setType(URI.create("https://blog-literario.com/errors/forbidden"));
+        return pd;
+    }
+
     /** 400 — verification token does not match any stored token. */
     @ExceptionHandler(InvalidVerificationTokenException.class)
     public ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {

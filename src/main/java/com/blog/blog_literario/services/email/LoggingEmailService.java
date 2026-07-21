@@ -40,4 +40,20 @@ public class LoggingEmailService implements EmailService {
         log.info("[email.provider=logging] Post moderation notification for {} <{}>: \"{}\" {} -> {} (nota: {})",
                 authorName, to, postTitle, previousStatus.name(), newStatus.name(), moderationNote);
     }
+
+    @Override
+    public void sendEmailChangeConfirmation(String to, String userName, String confirmUrl, String idempotencyKey) {
+        log.info("[email.provider=logging] Email change confirmation for {} <{}>: {}", userName, to, confirmUrl);
+    }
+
+    @Override
+    public void sendEmailChangeNotice(String to, String userName, String newEmail, String cancelUrl, String idempotencyKey) {
+        log.info("[email.provider=logging] Email change notice to {} <{}> (nuevo: {}), cancelar: {}",
+                userName, to, newEmail, cancelUrl);
+    }
+
+    @Override
+    public void sendEmailChangeCompletedNotice(String to, String userName, String newEmail, String idempotencyKey) {
+        log.info("[email.provider=logging] Email change completed for {} <{}> -> {}", userName, to, newEmail);
+    }
 }

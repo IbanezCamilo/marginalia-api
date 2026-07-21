@@ -20,6 +20,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.blog.blog_literario.dto.users.ChangeEmailRequest;
 import com.blog.blog_literario.dto.users.ChangePasswordRequest;
 import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
@@ -27,6 +28,7 @@ import com.blog.blog_literario.model.Role;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.security.UserDetailsImpl;
+import com.blog.blog_literario.services.auth.EmailVerificationService;
 import com.blog.blog_literario.services.auth.RefreshTokenService;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
@@ -42,6 +44,7 @@ class UserProfileServiceTest {
     @Mock UserUpdateService userUpdateService;
     @Mock UserValidator userValidator;
     @Mock RefreshTokenService refreshTokenService;
+    @Mock EmailVerificationService emailVerificationService;
 
     @InjectMocks UserProfileService userProfileService;
 
@@ -194,6 +197,38 @@ class UserProfileServiceTest {
         verify(userUpdateService).updatePassword(user, "newPassword123");
         verify(refreshTokenService).deleteAllByUser(user);
         verify(userRepository).save(user);
+    }
+
+    @Test
+    void requestEmailChange_correctPassword_delegatesToVerificationService() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setPassword("current-hash");
+        UserDetails userDetails = new UserDetailsImpl(user);
+        ChangeEmailRequest request = new ChangeEmailRequest("new@test.com", "current-plain");
+
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("current-plain", "current-hash")).willReturn(true);
+
+        userProfileService.requestEmailChange(userDetails, request);
+
+        // The verification service owns sanitization, uniqueness, throttle, and token issuance.
+        verify(emailVerificationService).requestEmailChange(user, "new@test.com");
+    }
+
+    @Test
+    void requestEmailChange_wrongCurrentPassword_throwsBadCredentialsAndDoesNotDelegate() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(Role.READER));
+        user.setPassword("current-hash");
+        UserDetails userDetails = new UserDetailsImpl(user);
+        ChangeEmailRequest request = new ChangeEmailRequest("new@test.com", "wrong-current");
+
+        given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("wrong-current", "current-hash")).willReturn(false);
+
+        assertThatThrownBy(() -> userProfileService.requestEmailChange(userDetails, request))
+                .isInstanceOf(BadCredentialsException.class);
+
+        verify(emailVerificationService, never()).requestEmailChange(any(), any());
     }
 
     @Test

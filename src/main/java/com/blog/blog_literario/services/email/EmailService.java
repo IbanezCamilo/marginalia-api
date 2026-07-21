@@ -57,4 +57,38 @@ public interface EmailService {
     void sendPostModerationNotification(String to, String authorName, String postTitle,
             PostStatus previousStatus, PostStatus newStatus, String moderationNote,
             String postsUrl, String idempotencyKey);
+
+    /**
+     * Sends the confirmation link for a pending email change to the <em>new</em> address.
+     * Clicking it commits the change.
+     *
+     * @param to             the new address being confirmed
+     * @param userName       display name used in the greeting
+     * @param confirmUrl     absolute frontend URL containing the raw confirm token
+     * @param idempotencyKey provider-level deduplication key (e.g. {@code email-change/<hash>/confirm})
+     */
+    void sendEmailChangeConfirmation(String to, String userName, String confirmUrl, String idempotencyKey);
+
+    /**
+     * Notifies the <em>current</em> address that an email change was requested, with a link
+     * to cancel it. Lets the owner abort a change they didn't initiate.
+     *
+     * @param to             the current (old) address
+     * @param userName       display name used in the greeting
+     * @param newEmail       the requested new address, shown so the owner knows what was asked
+     * @param cancelUrl      absolute frontend URL containing the raw cancel token
+     * @param idempotencyKey provider-level deduplication key (e.g. {@code email-change/<hash>/cancel})
+     */
+    void sendEmailChangeNotice(String to, String userName, String newEmail, String cancelUrl, String idempotencyKey);
+
+    /**
+     * Informs the <em>old</em> address that the email change has completed. Informational
+     * only — no action link — closing the loop opened by {@link #sendEmailChangeNotice}.
+     *
+     * @param to             the former address
+     * @param userName       display name used in the greeting
+     * @param newEmail       the address the account now uses
+     * @param idempotencyKey provider-level deduplication key (e.g. {@code email-change-done/<hash>})
+     */
+    void sendEmailChangeCompletedNotice(String to, String userName, String newEmail, String idempotencyKey);
 }

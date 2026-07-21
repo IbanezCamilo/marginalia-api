@@ -86,6 +86,24 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Confirm email change", description = "Validates the token from the new-address link and swaps the account's email. Invalidates the session (login identity changed). 400 if the token is unknown or the wrong type, 410 if it expired, 409 if the new address was taken since the request.")
+    @PostMapping("/confirm-email-change")
+    public ResponseEntity<Void> confirmEmailChange(@RequestBody @Valid VerifyEmailRequest dto) {
+
+        emailVerificationService.confirmEmailChange(dto.token());
+
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Cancel email change", description = "Validates the token from the old-address link and voids the pending email change. 400 if the token is unknown.")
+    @PostMapping("/cancel-email-change")
+    public ResponseEntity<Void> cancelEmailChange(@RequestBody @Valid VerifyEmailRequest dto) {
+
+        emailVerificationService.cancelEmailChange(dto.token());
+
+        return ResponseEntity.ok().build();
+    }
+
     @Operation(summary = "Verification status", description = "Whether the given email belongs to a verified account. Polled by the post-registration waiting screen to detect verification from another device. Unknown emails answer verified=false, never 404.")
     @GetMapping("/verification-status")
     public ResponseEntity<VerificationStatusResponse> verificationStatus(@RequestParam String email) {

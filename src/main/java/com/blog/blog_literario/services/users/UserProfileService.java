@@ -8,11 +8,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.blog.blog_literario.dto.users.ChangeEmailRequest;
 import com.blog.blog_literario.dto.users.ChangePasswordRequest;
 import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.UserRepository;
+import com.blog.blog_literario.services.auth.EmailVerificationService;
 import com.blog.blog_literario.services.auth.RefreshTokenService;
 import com.blog.blog_literario.services.images.AvatarResolver;
 import com.blog.blog_literario.services.images.StorageService;
@@ -36,6 +38,7 @@ public class UserProfileService {
     private final UserUpdateService userUpdateService;
     private final UserValidator userValidator;
     private final RefreshTokenService refreshTokenService;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(UserDetails userDetails) {
@@ -110,6 +113,25 @@ public class UserProfileService {
         userUpdateService.updatePassword(user, request.newPassword());
         refreshTokenService.deleteAllByUser(user);
         userRepository.save(user);
+    }
+
+    /**
+     * Starts a self-service email change after verifying the current password (same gate
+     * as {@link #changePassword}). The heavy lifting — sanitization, uniqueness, throttle,
+     * token issuance, and dispatching the confirm/cancel emails — is delegated to
+     * {@link EmailVerificationService#requestEmailChange}. The account keeps its current
+     * address until the new one is confirmed.
+     *
+     * @throws BadCredentialsException if the supplied current password is incorrect
+     */
+    public void requestEmailChange(UserDetails userDetails, ChangeEmailRequest request) {
+        User user = findByEmail(userDetails.getUsername());
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BadCredentialsException("La contraseña actual es incorrecta");
+        }
+
+        emailVerificationService.requestEmailChange(user, request.newEmail());
     }
 
     private UserProfileResponse toResponse(User user) {

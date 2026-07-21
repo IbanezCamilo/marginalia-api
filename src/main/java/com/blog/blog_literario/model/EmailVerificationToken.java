@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -33,8 +35,9 @@ import lombok.NoArgsConstructor;
 @Table(
     name = "email_verification_tokens",
     indexes = {
-        @Index(name = "idx_email_verification_tokens_token",   columnList = "token"),
-        @Index(name = "idx_email_verification_tokens_user_id", columnList = "user_id")
+        @Index(name = "idx_email_verification_tokens_token",        columnList = "token"),
+        @Index(name = "idx_email_verification_tokens_user_id",      columnList = "user_id"),
+        @Index(name = "idx_email_verification_tokens_cancel_token", columnList = "cancel_token")
     }
 )
 public class EmailVerificationToken {
@@ -46,6 +49,30 @@ public class EmailVerificationToken {
 
     @Column(name = "token", nullable = false, unique = true, length = 64)
     private String token;
+
+    /**
+     * Which flow this row belongs to. Explicit discriminator — the redemption path is
+     * chosen from this, never inferred from {@code pendingEmail} being set.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "token_type", nullable = false, length = 20)
+    private TokenType tokenType = TokenType.VERIFICATION;
+
+    /**
+     * Staged new address for an {@link TokenType#EMAIL_CHANGE} row; {@code null} for a
+     * {@link TokenType#VERIFICATION} row. Copied onto the user only once the confirm link
+     * is redeemed, so the current address stays active while the change is pending.
+     */
+    @Column(name = "pending_email", length = 100)
+    private String pendingEmail;
+
+    /**
+     * SHA-256 hash of the cancel token emailed to the <em>old</em> address for an
+     * {@link TokenType#EMAIL_CHANGE} row; {@code null} for a verification row. Lets the
+     * current owner abort a change they didn't initiate.
+     */
+    @Column(name = "cancel_token", unique = true, length = 64)
+    private String cancelToken;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

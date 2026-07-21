@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.blog.blog_literario.dto.users.ChangeEmailRequest;
 import com.blog.blog_literario.dto.users.ChangePasswordRequest;
 import com.blog.blog_literario.dto.users.UserProfileResponse;
 import com.blog.blog_literario.dto.users.UserProfileUpdateRequest;
@@ -89,5 +90,19 @@ public class MyProfileController {
 
         userProfileService.changePassword(userDetails, request);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Requests a change of the authenticated user's email. Requires the current password.
+     * Responds 202: the request is accepted but the change only takes effect once the new
+     * address is confirmed via the emailed link, so the current address stays active.
+     */
+    @PutMapping("/email")
+    public ResponseEntity<Void> changeEmail(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody ChangeEmailRequest request) {
+
+        userProfileService.requestEmailChange(userDetails, request);
+        return ResponseEntity.accepted().build();
     }
 }
