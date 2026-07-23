@@ -12,7 +12,16 @@ import java.util.Optional;
 public enum UserPreference {
 
     /** Email the author when moderation changes one of their posts' status. */
-    POST_MODERATION_EMAILS("notifications.post-moderation", ValueType.BOOLEAN, "true");
+    POST_MODERATION_EMAILS("notifications.post-moderation", ValueType.BOOLEAN, "true"),
+
+    /** Show the author's bio on their public profile and alongside their posts. */
+    SHOW_BIO("privacy.show-bio", ValueType.BOOLEAN, "true"),
+
+    /**
+     * Show the author's uploaded photo publicly. When off, the generated initials
+     * avatar is served instead — the same one an author who never uploaded a photo gets.
+     */
+    SHOW_PHOTO("privacy.show-photo", ValueType.BOOLEAN, "true");
 
     /** Value types a preference can declare; validation lives with the type. */
     public enum ValueType {

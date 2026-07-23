@@ -11,20 +11,21 @@ import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.dto.users.PublicAuthorResponse;
 import com.blog.blog_literario.dto.users.PublicAuthorSummaryResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
-import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
 import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostRepository;
 import com.blog.blog_literario.repositories.UserRepository;
 import com.blog.blog_literario.services.images.AvatarResolver;
-import com.blog.blog_literario.services.images.StorageService;
-import com.blog.blog_literario.utils.ReadingTime;
+import com.blog.blog_literario.services.posts.PublicPostMapper;
 
 import lombok.RequiredArgsConstructor;
 
 /**
  * Read-only service for public author profiles and their published post feeds.
  * No authentication is required to call these methods.
+ *
+ * <p>What a visitor sees is filtered by the author's own privacy preferences; see
+ * {@link PublicProfileVisibility}. The response shape never changes — only the values.
  */
 @Service
 @Transactional(readOnly = true)
@@ -33,8 +34,9 @@ public class PublicAuthorService {
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
-    private final StorageService storageService;
     private final AvatarResolver avatarResolver;
+    private final PublicPostMapper publicPostMapper;
+    private final AuthorVisibilityResolver authorVisibilityResolver;
 
     /**
      * @throws ResourceNotFoundException if no user exists with the given {@code id}
@@ -44,7 +46,7 @@ public class PublicAuthorService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Autor no encontrado con ID: " + id));
 
-        return toAuthorResponse(author);
+        return toAuthorResponse(author, authorVisibilityResolver.forAuthor(id));
     }
 
     /**
@@ -57,45 +59,31 @@ public class PublicAuthorService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Autor no encontrado con ID: " + authorId));
 
+        // Every post on this page has the same author, so visibility is resolved once.
+        PublicProfileVisibility visibility = authorVisibilityResolver.forAuthor(authorId);
+
         return postRepository
                 .findByAuthorIdAndStatus(authorId, PostStatus.PUBLISHED, pageable)
-                .map(this::toPostResponse);
+                .map(post -> publicPostMapper.toResponse(post, visibility));
     }
 
-    /** Authors with at least one published post, ordered by name; feeds the catalog's author facet. */
+    /**
+     * Authors with at least one published post, ordered by name; feeds the catalog's author facet.
+     * Names are always public — they sign every post — so nothing here is redacted.
+     */
     public List<PublicAuthorSummaryResponse> listPublishedAuthors() {
         return postRepository.findDistinctPublishedAuthors().stream()
                 .map(author -> new PublicAuthorSummaryResponse(author.getId(), author.getName()))
                 .toList();
     }
 
-    private PublicAuthorResponse toAuthorResponse(User author) {
+    private PublicAuthorResponse toAuthorResponse(User author, PublicProfileVisibility visibility) {
         return new PublicAuthorResponse(
                 author.getId(),
                 author.getName(),
-                author.getDescription(),
-                avatarResolver.resolve(author.getProfilePicture(), author.getName())
-        );
-    }
-
-    private PublicPostResponse toPostResponse(Post post) {
-        User author = post.getAuthor();
-        return new PublicPostResponse(
-                post.getTitle(),
-                post.getContent(),
-                post.getSlug(),
-                author.getId(),
-                author.getName(),
-                author.getDescription(),
-                avatarResolver.resolve(author.getProfilePicture(), author.getName()),
-                post.getCategory().getName(),
-                post.getCategory().getSlug(),
-                storageService.buildUrl(post.getCoverImage()),
-                post.getFocalX(),
-                post.getFocalY(),
-                post.getCreatedAt(),
-                post.isFeatured(),
-                ReadingTime.minutesFor(post.getWordCount())
+                visibility.bioOrNull(author.getDescription()),
+                avatarResolver.resolve(
+                        visibility.photoOrNull(author.getProfilePicture()), author.getName())
         );
     }
 }

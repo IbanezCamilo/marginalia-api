@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,70 @@ class UserPreferenceServiceTest {
 
         assertThat(resolved).containsEntry("notifications.post-moderation", "true");
         assertThat(resolved).hasSize(UserPreference.values().length);
+    }
+
+    /**
+     * Pinned deliberately to the literal "true" rather than to
+     * {@code pref.getDefaultValue()}: the privacy toggles must stay opt-out, and an
+     * assertion phrased against the declared default would keep passing if someone
+     * flipped the declaration itself.
+     */
+    @Test
+    void getResolved_noStoredRows_privacyPreferencesDefaultToVisible() {
+        given(preferenceRepository.findByUserId(2)).willReturn(List.of());
+
+        Map<String, String> resolved = preferenceService.getResolved(aliceDetails);
+
+        assertThat(resolved).containsEntry("privacy.show-bio", "true");
+        assertThat(resolved).containsEntry("privacy.show-photo", "true");
+    }
+
+    @Test
+    void resolveBooleans_noStoredRows_resolvesEveryRequestedPrefToItsDefault() {
+        given(preferenceRepository.findByUserIdInAndPrefKeyIn(any(), any())).willReturn(List.of());
+
+        Map<Integer, Map<UserPreference, Boolean>> resolved = preferenceService.resolveBooleans(
+                List.of(2, 3), Set.of(UserPreference.SHOW_BIO, UserPreference.SHOW_PHOTO));
+
+        assertThat(resolved).containsOnlyKeys(2, 3);
+        assertThat(resolved.get(2)).containsEntry(UserPreference.SHOW_BIO, true)
+                .containsEntry(UserPreference.SHOW_PHOTO, true);
+        assertThat(resolved.get(3)).containsEntry(UserPreference.SHOW_BIO, true)
+                .containsEntry(UserPreference.SHOW_PHOTO, true);
+    }
+
+    @Test
+    void resolveBooleans_storedRow_overridesDefaultForThatUserOnly() {
+        given(preferenceRepository.findByUserIdInAndPrefKeyIn(any(), any())).willReturn(List.of(
+                new UserPreferenceEntry(2, "privacy.show-bio", "false")));
+
+        Map<Integer, Map<UserPreference, Boolean>> resolved = preferenceService.resolveBooleans(
+                List.of(2, 3), Set.of(UserPreference.SHOW_BIO, UserPreference.SHOW_PHOTO));
+
+        assertThat(resolved.get(2)).containsEntry(UserPreference.SHOW_BIO, false)
+                .containsEntry(UserPreference.SHOW_PHOTO, true);
+        assertThat(resolved.get(3)).containsEntry(UserPreference.SHOW_BIO, true);
+    }
+
+    @Test
+    void resolveBooleans_manyUsers_issuesASingleBatchedQuery() {
+        given(preferenceRepository.findByUserIdInAndPrefKeyIn(any(), any())).willReturn(List.of());
+
+        preferenceService.resolveBooleans(
+                List.of(2, 3, 4), Set.of(UserPreference.SHOW_BIO, UserPreference.SHOW_PHOTO));
+
+        verify(preferenceRepository).findByUserIdInAndPrefKeyIn(
+                List.of(2, 3, 4), List.of("privacy.show-bio", "privacy.show-photo"));
+        verify(preferenceRepository, never()).findByUserIdAndPrefKey(any(), any());
+    }
+
+    @Test
+    void resolveBooleans_emptyInput_returnsEmptyMapWithoutQuerying() {
+        assertThat(preferenceService.resolveBooleans(List.of(), Set.of(UserPreference.SHOW_BIO)))
+                .isEmpty();
+        assertThat(preferenceService.resolveBooleans(List.of(2), Set.of())).isEmpty();
+
+        verify(preferenceRepository, never()).findByUserIdInAndPrefKeyIn(any(), any());
     }
 
     @Test
