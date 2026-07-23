@@ -1,8 +1,13 @@
 package com.blog.blog_literario.services.users;
 
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -78,6 +83,48 @@ public class UserPreferenceService {
                 .map(UserPreferenceEntry::getValue)
                 .orElse(pref.getDefaultValue());
         return Boolean.parseBoolean(value);
+    }
+
+    /**
+     * Batched resolution of BOOLEAN preferences for many users at once, in a single
+     * query. Every requested user id is present in the returned map, and every
+     * requested preference is present in each inner map (falling back to the
+     * registry default when no row is stored), so callers never null-check.
+     *
+     * @return {@code userId -> (preference -> resolved boolean)}; empty if either argument is empty
+     */
+    @Transactional(readOnly = true)
+    public Map<Integer, Map<UserPreference, Boolean>> resolveBooleans(
+            Collection<Integer> userIds, Set<UserPreference> prefs) {
+
+        if (userIds.isEmpty() || prefs.isEmpty()) {
+            return Map.of();
+        }
+
+        // EnumSet gives declaration order, so the emitted query is deterministic.
+        Set<UserPreference> orderedPrefs = EnumSet.copyOf(prefs);
+        List<String> keys = orderedPrefs.stream().map(UserPreference::getKey).toList();
+        Map<String, String> storedByCompositeKey = new HashMap<>();
+        for (UserPreferenceEntry entry : preferenceRepository.findByUserIdInAndPrefKeyIn(userIds, keys)) {
+            storedByCompositeKey.put(storedKey(entry.getUserId(), entry.getPrefKey()), entry.getValue());
+        }
+
+        Map<Integer, Map<UserPreference, Boolean>> resolved = new LinkedHashMap<>();
+        for (Integer userId : userIds) {
+            Map<UserPreference, Boolean> forUser = new EnumMap<>(UserPreference.class);
+            for (UserPreference pref : orderedPrefs) {
+                String value = storedByCompositeKey.getOrDefault(
+                        storedKey(userId, pref.getKey()), pref.getDefaultValue());
+                forUser.put(pref, Boolean.parseBoolean(value));
+            }
+            resolved.put(userId, forUser);
+        }
+        return resolved;
+    }
+
+    /** Composite lookup key; the id is numeric, so the first colon always delimits it. */
+    private static String storedKey(Integer userId, String prefKey) {
+        return userId + ":" + prefKey;
     }
 
     private Map<String, String> resolveAll(Integer userId) {
