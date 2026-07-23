@@ -1,5 +1,9 @@
 package com.blog.blog_literario.services.posts;
 
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,12 +17,10 @@ import com.blog.blog_literario.dto.posts.PublicPostResponse;
 import com.blog.blog_literario.exception.ResourceNotFoundException;
 import com.blog.blog_literario.model.Post;
 import com.blog.blog_literario.model.PostStatus;
-import com.blog.blog_literario.model.User;
 import com.blog.blog_literario.repositories.PostCatalogSpecifications;
 import com.blog.blog_literario.repositories.PostRepository;
-import com.blog.blog_literario.services.images.AvatarResolver;
-import com.blog.blog_literario.services.images.StorageService;
-import com.blog.blog_literario.utils.ReadingTime;
+import com.blog.blog_literario.services.users.AuthorVisibilityResolver;
+import com.blog.blog_literario.services.users.PublicProfileVisibility;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,8 +34,8 @@ import lombok.RequiredArgsConstructor;
 public class PublicPostQueryService {
 
     private final PostRepository postRepository;
-    private final StorageService storageService;
-    private final AvatarResolver avatarResolver;
+    private final PublicPostMapper publicPostMapper;
+    private final AuthorVisibilityResolver authorVisibilityResolver;
 
     /**
      * Returns a paginated page of published posts constrained by every active facet in
@@ -53,7 +55,14 @@ public class PublicPostQueryService {
                 PostCatalogSpecifications.hasAuthor(filter.authorId()),
                 PostCatalogSpecifications.readingTimeIn(filter.time()),
                 PostCatalogSpecifications.matchesQuery(filter.q()));
-        return postRepository.findAll(spec, effective).map(this::toResponse);
+
+        Page<Post> posts = postRepository.findAll(spec, effective);
+
+        // One visibility lookup for every distinct author on the page, not one per post.
+        Map<Integer, PublicProfileVisibility> visibility =
+                authorVisibilityResolver.forAuthors(distinctAuthorIds(posts));
+
+        return posts.map(post -> publicPostMapper.toResponse(post, visibilityFor(visibility, post)));
     }
 
     /**
@@ -64,28 +73,21 @@ public class PublicPostQueryService {
                 .findBySlugAndStatus(slug, PostStatus.PUBLISHED)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + slug));
 
-        return toResponse(post);
+        return publicPostMapper.toResponse(
+                post, authorVisibilityResolver.forAuthor(post.getAuthor().getId()));
     }
 
-    private PublicPostResponse toResponse(Post post) {
-        User author = post.getAuthor();
+    private Set<Integer> distinctAuthorIds(Page<Post> posts) {
+        Set<Integer> authorIds = new LinkedHashSet<>();
+        for (Post post : posts) {
+            authorIds.add(post.getAuthor().getId());
+        }
+        return authorIds;
+    }
 
-        return new PublicPostResponse(
-                post.getTitle(),
-                post.getContent(),
-                post.getSlug(),
-                author.getId(),
-                author.getName(),
-                author.getDescription(),
-                avatarResolver.resolve(author.getProfilePicture(), author.getName()),
-                post.getCategory().getName(),
-                post.getCategory().getSlug(),
-                storageService.buildUrl(post.getCoverImage()),
-                post.getFocalX(),
-                post.getFocalY(),
-                post.getCreatedAt(),
-                post.isFeatured(),
-                ReadingTime.minutesFor(post.getWordCount())
-        );
+    /** Falls back to fully visible so a missing entry can never blank out a byline. */
+    private PublicProfileVisibility visibilityFor(
+            Map<Integer, PublicProfileVisibility> visibility, Post post) {
+        return visibility.getOrDefault(post.getAuthor().getId(), PublicProfileVisibility.VISIBLE);
     }
 }
