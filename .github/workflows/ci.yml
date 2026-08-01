@@ -24,5 +24,25 @@ jobs:
       - name: Run tests
         run: ./mvnw test
 
-      - name: Check for dependency vulnerabilities
+      # Informational only: lists newer versions, never fails. This step used to be
+      # named "Check for dependency vulnerabilities", which it never did — CVE gating
+      # is the dependency-review job below.
+      - name: Report available dependency updates
         run: ./mvnw versions:display-dependency-updates versions:display-parent-updates
+
+  # Fails the PR when a dependency with a known advisory is added or bumped into.
+  # PR-only by design: the action diffs the base and head manifests, so there is no
+  # diff to review on a direct push. Continuous coverage of already-merged
+  # dependencies comes from Dependabot alerts, which need no workflow.
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Review dependencies for known vulnerabilities
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
