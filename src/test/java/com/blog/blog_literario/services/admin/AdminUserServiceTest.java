@@ -411,6 +411,34 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void resetPassword_existingUser_revokesRefreshTokens() {
+        User user = new User(1, "Alice", "alice@test.com", new Role(1, Role.READER));
+        AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
+        given(userRepository.findById(1)).willReturn(Optional.of(user));
+        given(userRepository.findById(2)).willReturn(Optional.of(admin));
+
+        adminUserService.resetPassword(2, 1, request);
+
+        // Bumping tokenVersion only invalidates outstanding access tokens. The 7-day
+        // refresh token must be revoked too, otherwise the target rotates it via
+        // POST /api/auth/refresh and is issued a fresh access token at the new version
+        // — an admin resetting a compromised account would not actually lock it out.
+        verify(refreshTokenRepository).deleteByUser(user);
+    }
+
+    @Test
+    void resetPassword_rejectedByRoleGuard_doesNotRevokeRefreshTokens() {
+        User ownerTarget = new User(1, "Owner", "owner1@test.com", new Role(1, Role.OWNER));
+        AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
+        given(userRepository.findById(1)).willReturn(Optional.of(ownerTarget));
+
+        assertThatThrownBy(() -> adminUserService.resetPassword(2, 1, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(refreshTokenRepository, never()).deleteByUser(any());
+    }
+
+    @Test
     void resetPassword_nonExistentUser_throwsResourceNotFoundException() {
         AdminResetPasswordRequest request = new AdminResetPasswordRequest("newPassword123");
         given(userRepository.findById(99)).willReturn(Optional.empty());
