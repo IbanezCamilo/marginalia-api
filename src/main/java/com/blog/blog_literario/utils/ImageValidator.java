@@ -41,45 +41,27 @@ public class ImageValidator {
     }
 
     /**
-     * Reads the first 8 bytes of the file and checks them against known image signatures.
+     * Reads the leading bytes of the file and checks them against the signatures in
+     * {@link ImageFormat}.
      *
      * @throws IllegalArgumentException if the bytes do not match JPEG, PNG, or WebP
      */
     private static void validateMagicBytes(MultipartFile file) throws IOException {
-        byte[] header = new byte[8];
+        byte[] header;
 
-        try(InputStream is = file.getInputStream()){
-            int bytesRead = is.read(header);
-            if(bytesRead < 4){
-                throw new IllegalArgumentException("Archivo demasiado pequeño para ser una imagen valida");
-            }
+        try (InputStream is = file.getInputStream()) {
+            header = is.readNBytes(ImageFormat.HEADER_LENGTH);
         }
 
-        if(!isJpeg(header) && !isPng(header) && !isWebP(header)){
+        // Keeps the original 4-byte floor: anything shorter cannot be a real image even
+        // if it happens to carry a 3-byte JPEG signature. Reported separately from an
+        // unrecognized format so the message stays useful.
+        if (header.length < 4) {
+            throw new IllegalArgumentException("Archivo demasiado pequeño para ser una imagen valida");
+        }
+
+        if (ImageFormat.detect(header).isEmpty()) {
             throw new IllegalArgumentException("Formato no es un formato de imagen válido (JPEG, PNG, WebP)");
         }
     }
-
-    // JPEG: FF D8 FF
-    private static boolean isJpeg(byte[] h){
-        return  h[0] == (byte) 0xFF &&
-                h[1] == (byte) 0xD8 &&
-                h[2] == (byte) 0xFF;
-    }
-
-    // PNG: 89 50 4E 47 0D 0A 1A 0A
-    private static boolean isPng(byte[] h){
-        return  h[0] == (byte) 0x89 &&
-                h[1] == (byte) 0x50 && //P
-                h[2] == (byte) 0x4E && //N
-                h[3] == (byte) 0x47;   //G
-    }
-
-    // WebP: 52 49 46 46 (RIFF) and then 57 45 42 50 (WEBP) at offset 8
-    private static boolean isWebP(byte[] h) {
-        return h[0] == (byte) 0x52 && // 'R'
-            h[1] == (byte) 0x49 && // 'I'
-            h[2] == (byte) 0x46 && // 'F'
-            h[3] == (byte) 0x46;   // 'F'
-}
 }

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -29,6 +30,9 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 class R2StorageServiceTest {
 
     private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+    private static final byte[] PNG_BYTES = {(byte) 0x89, 0x50, 0x4E, 0x47};
+    private static final byte[] WEBP_BYTES =
+            {0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50};
 
     @Mock
     private S3Client r2Client;
@@ -51,6 +55,44 @@ class R2StorageServiceTest {
 
         assertThat(fileName).endsWith(".jpg");
         verify(r2Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void save_ignoresClientSuppliedContentType_andStoresTypeDerivedFromMagicBytes() {
+        // R2 objects are served from a public custom domain, outside this app's
+        // SecurityFilterChain — so no nosniff/CSP header applies to them. Storing the
+        // client's Content-Type would let an author upload valid JPEG bytes declared as
+        // text/html and have Cloudflare serve it as HTML: stored XSS on the media domain.
+        MockMultipartFile file = new MockMultipartFile("image", "payload.jpg", "text/html", JPEG_BYTES);
+
+        storageService.save(file, null);
+
+        ArgumentCaptor<PutObjectRequest> captor = ArgumentCaptor.forClass(PutObjectRequest.class);
+        verify(r2Client).putObject(captor.capture(), any(RequestBody.class));
+        assertThat(captor.getValue().contentType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void save_nullClientContentType_stillStoresDetectedContentType() {
+        MockMultipartFile file = new MockMultipartFile("image", "photo.png", null, PNG_BYTES);
+
+        storageService.save(file, null);
+
+        ArgumentCaptor<PutObjectRequest> captor = ArgumentCaptor.forClass(PutObjectRequest.class);
+        verify(r2Client).putObject(captor.capture(), any(RequestBody.class));
+        assertThat(captor.getValue().contentType()).isEqualTo("image/png");
+    }
+
+    @Test
+    void save_webpImage_storesWebpContentTypeAndExtension() {
+        MockMultipartFile file = new MockMultipartFile("image", "photo.webp", "image/webp", WEBP_BYTES);
+
+        String fileName = storageService.save(file, null);
+
+        ArgumentCaptor<PutObjectRequest> captor = ArgumentCaptor.forClass(PutObjectRequest.class);
+        verify(r2Client).putObject(captor.capture(), any(RequestBody.class));
+        assertThat(captor.getValue().contentType()).isEqualTo("image/webp");
+        assertThat(fileName).endsWith(".webp");
     }
 
     @Test
