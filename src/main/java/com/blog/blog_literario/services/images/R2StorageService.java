@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.blog.blog_literario.config.properties.R2Properties;
 import com.blog.blog_literario.utils.FileNameGenerator;
+import com.blog.blog_literario.utils.ImageFormat;
 import com.blog.blog_literario.utils.ImageValidator;
 
 import lombok.RequiredArgsConstructor;
@@ -51,11 +52,21 @@ public class R2StorageService implements StorageService {
 
             String fileName = FileNameGenerator.generate(file);
 
+            // Content type comes from the verified magic bytes, never from the client.
+            // These objects are served from a public custom domain that sits outside this
+            // app's SecurityFilterChain, so no nosniff/CSP header protects them: honouring
+            // a client-declared "text/html" on image bytes would be stored XSS.
+            // validate() above guarantees the format is present.
+            String contentType = ImageFormat.detect(file)
+                    .map(ImageFormat::contentType)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Formato no reconocido tras la validación"));
+
             r2Client.putObject(
                     PutObjectRequest.builder()
                             .bucket(r2Properties.bucketName())
                             .key(fileName)
-                            .contentType(file.getContentType())
+                            .contentType(contentType)
                             .build(),
                     RequestBody.fromBytes(file.getBytes()));
 

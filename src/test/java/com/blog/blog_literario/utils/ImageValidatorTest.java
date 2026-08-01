@@ -16,8 +16,14 @@ class ImageValidatorTest {
             (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
     };
 
+    // A real WebP header is "RIFF" + 4 little-endian size bytes + "WEBP" at offset 8.
     private static final byte[] WEBP_BYTES = {
-            0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00
+            0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50
+    };
+
+    // Same RIFF container, different form type — a valid AVI, not an image.
+    private static final byte[] AVI_BYTES = {
+            0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x41, 0x56, 0x49, 0x20
     };
 
     @Test
@@ -39,6 +45,28 @@ class ImageValidatorTest {
         MockMultipartFile file = new MockMultipartFile("image", "photo.webp", "image/webp", WEBP_BYTES);
 
         assertThatCode(() -> ImageValidator.validate(file)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void validate_riffContainerThatIsNotWebP_throwsIllegalArgumentException() {
+        // "RIFF" alone is not a WebP signature — the form type at offset 8 must be "WEBP".
+        // Accepting any RIFF container lets an attacker store arbitrary bytes as an image.
+        MockMultipartFile file = new MockMultipartFile("image", "clip.avi", "image/webp", AVI_BYTES);
+
+        assertThatThrownBy(() -> ImageValidator.validate(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Formato no es un formato de imagen válido (JPEG, PNG, WebP)");
+    }
+
+    @Test
+    void validate_riffHeaderTruncatedBeforeFormType_throwsIllegalArgumentException() {
+        // Only 8 bytes: "RIFF" + size, with the form type missing entirely.
+        MockMultipartFile file = new MockMultipartFile("image", "trunc.webp", "image/webp",
+                new byte[] {0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00});
+
+        assertThatThrownBy(() -> ImageValidator.validate(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Formato no es un formato de imagen válido (JPEG, PNG, WebP)");
     }
 
     @Test

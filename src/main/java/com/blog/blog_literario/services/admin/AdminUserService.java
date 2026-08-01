@@ -316,6 +316,12 @@ public class AdminUserService {
         }
 
         userUpdateService.updatePassword(user, request.newPassword());
+        // updatePassword bumps tokenVersion, which only invalidates outstanding access
+        // tokens. The refresh token must be revoked as well — otherwise the target
+        // rotates it via POST /api/auth/refresh and is issued a fresh access token at
+        // the new version, keeping access for the token's full 7-day lifetime. Mirrors
+        // the self-service path in UserProfileService#changePassword.
+        refreshTokenRepository.deleteByUser(user);
         userRepository.save(user);
 
         adminActionLogService.record(

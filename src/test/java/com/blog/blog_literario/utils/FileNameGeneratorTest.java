@@ -10,7 +10,11 @@ class FileNameGeneratorTest {
 
     private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
     private static final byte[] PNG_BYTES = {(byte) 0x89, 0x50, 0x4E, 0x47};
-    private static final byte[] WEBP_BYTES = {0x52, 0x49, 0x46, 0x46};
+    // "RIFF" + 4 little-endian size bytes + "WEBP" form type at offset 8.
+    private static final byte[] WEBP_BYTES =
+            {0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50};
+    private static final byte[] AVI_BYTES =
+            {0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x41, 0x56, 0x49, 0x20};
 
     @Test
     void generate_jpegBytes_returnsUuidWithJpgExtension() throws Exception {
@@ -50,6 +54,16 @@ class FileNameGeneratorTest {
         assertThatThrownBy(() -> FileNameGenerator.generate(file))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Formato no reconocido. Asegúrate de llamar ImageValidator.validate() primero");
+    }
+
+    @Test
+    void generate_riffContainerThatIsNotWebP_throwsIllegalStateException() {
+        // Must agree with ImageValidator: a non-WEBP RIFF container is not an image, so
+        // it must never be handed a ".webp" extension.
+        MockMultipartFile file = new MockMultipartFile("image", "clip.avi", "image/webp", AVI_BYTES);
+
+        assertThatThrownBy(() -> FileNameGenerator.generate(file))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
